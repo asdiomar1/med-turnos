@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Type="http://schemas.microsoft.com/packaging/2010/07/manifest" Target="/Npgsql.EntityFrameworkCore.PostgreSQL.nuspec" Id="R81B6848113C2FE8F" />
+  <Relationship Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="/package/services/metadata/core-properties/08bc8531ae5949c1a2f8f996ab0076e0.psmdcp" Id="R068B452BEAE32FE6" />
+</Relationships>

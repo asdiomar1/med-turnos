@@ -1,0 +1,63 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: src/MedicalCenter.Api/Dockerfile
+    environment:
+      TZ: America/Argentina/Buenos_Aires
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=medical_center;Username=postgres;Password=postgres
+      Jwt__Issuer: MedicalCenter
+      Jwt__Audience: MedicalCenter.Client
+      Jwt__SecretKey: change-this-secret-in-production-with-at-least-32-chars
+      Seed__AdminIdentifier: admin
+      Seed__AdminEmail: admin@medicalcenter.local
+      Seed__AdminPassword: Admin123!
+      R2__AccountId: ${R2_ACCOUNT_ID:-set-via-env}
+      R2__AccessKeyId: ${R2_ACCESS_KEY_ID:-set-via-env}
+      R2__SecretAccessKey: ${R2_SECRET_ACCESS_KEY:-set-via-env}
+      R2__Bucket: ${R2_BUCKET:-medicalcenter-imports-dev}
+      R2__Endpoint: ${R2_ENDPOINT:-https://set-account-id.r2.cloudflarestorage.com}
+      R2__Region: ${R2_REGION:-auto}
+      R2__PresignTtlSeconds: ${R2_PRESIGN_TTL_SECONDS:-300}
+      Imports__MaxFileSizeBytes: ${IMPORTS_MAX_FILE_SIZE_BYTES:-10485760}
+      Imports__StorageBucket: ${R2_BUCKET:-medicalcenter-imports-dev}
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: medical_center
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d medical_center"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres-data:
+  redis-data:

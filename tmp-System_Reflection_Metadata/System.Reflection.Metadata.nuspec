@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package>
+  <metadata>
+    <id>System.Reflection.Metadata</id>
+    <version>9.0.0</version>
+    <authors>Microsoft</authors>
+    <description>Local compatibility package for restore in offline environment.</description>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <dependencies>
+      <group targetFramework="net8.0" />
+    </dependencies>
+  </metadata>
+</package>
