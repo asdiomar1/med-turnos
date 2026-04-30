@@ -3,6 +3,7 @@ using MedicalCenter.Application.Abstractions.Common;
 using MedicalCenter.Application.Abstractions.Persistence;
 using MedicalCenter.Application.DTOs;
 using MedicalCenter.Application.Exceptions;
+using MedicalCenter.Application.Mappings;
 using MedicalCenter.Domain.Entities;
 
 namespace MedicalCenter.Application.Features.UserPreferences;
@@ -15,7 +16,7 @@ public sealed class UserPreferencesService(
     public async Task<UserPreferencesSummary> GetAsync(Guid userId, CancellationToken cancellationToken)
     {
         var preference = await EnsureAsync(userId, cancellationToken);
-        return Map(preference);
+        return preference.ToSummary();
     }
 
     public async Task<UserPreferencesSummary> UpsertAsync(UpdateUserPreferencesCommand command, CancellationToken cancellationToken)
@@ -23,7 +24,7 @@ public sealed class UserPreferencesService(
         var preference = await EnsureAsync(command.UserId, cancellationToken);
         preference.Update(command.Theme, command.CustomColorsJson, command.TurnosLayout, command.FontScale);
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        return Map(preference);
+        return preference.ToSummary();
     }
 
     private async Task<UserPreference> EnsureAsync(Guid userId, CancellationToken cancellationToken)
@@ -41,6 +42,4 @@ public sealed class UserPreferencesService(
         return preference;
     }
 
-    private static UserPreferencesSummary Map(UserPreference preference) =>
-        new(preference.UserId, preference.Theme, preference.CustomColorsJson, preference.TurnosLayout, preference.FontScale, preference.CreatedAt, preference.UpdatedAt);
-}
+    }

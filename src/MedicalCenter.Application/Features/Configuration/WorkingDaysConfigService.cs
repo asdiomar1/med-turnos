@@ -1,5 +1,6 @@
 using MedicalCenter.Application.Abstractions.Persistence;
 using MedicalCenter.Application.DTOs;
+using MedicalCenter.Application.Mappings;
 using MedicalCenter.Domain.Entities;
 
 namespace MedicalCenter.Application.Features.Configuration;
@@ -12,7 +13,7 @@ public sealed class WorkingDaysConfigService(IDiasLaborablesConfigRepository rep
     public async Task<DiasLaborablesConfigDto> GetAsync(CancellationToken cancellationToken)
     {
         var config = await repository.GetAsync(ConfigKey, cancellationToken);
-        return config is null ? new DiasLaborablesConfigDto(ConfigKey, DefaultDays) : Map(config);
+        return config is null ? new DiasLaborablesConfigDto(ConfigKey, DefaultDays) : config.ToDto();
     }
 
     public async Task<DiasLaborablesConfigDto> UpsertAsync(IReadOnlyCollection<short> diasSemana, CancellationToken cancellationToken)
@@ -20,10 +21,8 @@ public sealed class WorkingDaysConfigService(IDiasLaborablesConfigRepository rep
         var normalized = Normalize(diasSemana);
         var config = new DiasLaborablesConfig(ConfigKey, normalized);
         await repository.UpsertAsync(config, cancellationToken);
-        return Map(config);
+        return config.ToDto();
     }
-
-    private static DiasLaborablesConfigDto Map(DiasLaborablesConfig config) => new(config.Id, config.DiasSemana);
 
     private static IReadOnlyCollection<short> Normalize(IReadOnlyCollection<short> diasSemana) =>
         (diasSemana.Count == 0 ? DefaultDays : diasSemana)

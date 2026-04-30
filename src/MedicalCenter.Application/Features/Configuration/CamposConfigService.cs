@@ -3,6 +3,7 @@ using MedicalCenter.Application.Abstractions.Persistence;
 using MedicalCenter.Application.DTOs;
 using MedicalCenter.Application.Exceptions;
 using MedicalCenter.Application.Features.AdminEventFeed;
+using MedicalCenter.Application.Mappings;
 using MedicalCenter.Domain.Entities;
 
 namespace MedicalCenter.Application.Features.Configuration;
@@ -15,7 +16,7 @@ public sealed class CamposConfigService(
     private static readonly string[] AllowedTypes = ["texto", "checkbox", "numero"];
 
     public async Task<IReadOnlyCollection<CampoConfigSummaryDto>> GetAllAsync(CancellationToken cancellationToken) =>
-        (await repository.GetAllAsync(cancellationToken)).Select(Map).ToArray();
+        (await repository.GetAllAsync(cancellationToken)).Select(c => c.ToSummary()).ToArray();
 
     public async Task<CampoConfigSummaryDto> CreateAsync(Guid actorUserId, string nombre, string tipo, CancellationToken cancellationToken)
     {
@@ -37,7 +38,7 @@ public sealed class CamposConfigService(
             cancellationToken);
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        return Map(campoConfig);
+        return campoConfig.ToSummary();
     }
 
     public async Task<CampoConfigSummaryDto> UpdateAsync(Guid actorUserId, Guid id, string nombre, string tipo, CancellationToken cancellationToken)
@@ -61,7 +62,7 @@ public sealed class CamposConfigService(
             cancellationToken);
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        return Map(campoConfig);
+        return campoConfig.ToSummary();
     }
 
     public async Task DeleteAsync(Guid actorUserId, Guid id, CancellationToken cancellationToken)
@@ -141,5 +142,4 @@ public sealed class CamposConfigService(
         await adminEventFeedRepository.AddAsync(entry, cancellationToken);
     }
 
-    private static CampoConfigSummaryDto Map(CampoConfig x) => new(x.Id, x.Nombre, x.Tipo, x.Orden, x.CreatedAt);
-}
+    }

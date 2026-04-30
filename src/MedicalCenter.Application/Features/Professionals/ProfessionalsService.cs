@@ -3,6 +3,7 @@ using MedicalCenter.Application.Abstractions.Persistence;
 using MedicalCenter.Application.DTOs;
 using MedicalCenter.Application.Exceptions;
 using MedicalCenter.Application.Features.AdminEventFeed;
+using MedicalCenter.Application.Mappings;
 using MedicalCenter.Domain.Entities;
 
 namespace MedicalCenter.Application.Features.Professionals;
@@ -15,7 +16,7 @@ public sealed class ProfessionalsService(
     IUnitOfWork unitOfWork) : IProfessionalsService
 {
     public async Task<IReadOnlyCollection<MedicoSummaryDto>> GetMedicosAsync(CancellationToken cancellationToken) =>
-        (await medicoRepository.GetAsync(false, cancellationToken)).Select(Map).ToArray();
+        (await medicoRepository.GetAsync(false, cancellationToken)).Select(m => m.ToSummary()).ToArray();
 
     public async Task<MedicoSummaryDto> CreateMedicoAsync(Guid actorUserId, string nombre, CancellationToken cancellationToken)
     {
@@ -37,7 +38,7 @@ public sealed class ProfessionalsService(
             cancellationToken);
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        return Map(medico);
+        return medico.ToSummary();
     }
 
     public async Task<MedicoSummaryDto> UpdateMedicoAsync(Guid actorUserId, int medicoId, string nombre, CancellationToken cancellationToken)
@@ -60,7 +61,7 @@ public sealed class ProfessionalsService(
             cancellationToken);
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        return Map(medico);
+        return medico.ToSummary();
     }
 
     public async Task<MedicoSummaryDto> SetMedicoActiveAsync(Guid actorUserId, int medicoId, bool activo, CancellationToken cancellationToken)
@@ -78,11 +79,11 @@ public sealed class ProfessionalsService(
             cancellationToken);
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        return Map(medico);
+        return medico.ToSummary();
     }
 
     public async Task<IReadOnlyCollection<ReferenteSummaryDto>> GetReferentesAsync(CancellationToken cancellationToken) =>
-        (await referenteRepository.GetAsync(cancellationToken)).Select(Map).ToArray();
+        (await referenteRepository.GetAsync(cancellationToken)).Select(r => r.ToSummary()).ToArray();
 
     public async Task<ReferenteSummaryDto> CreateReferenteAsync(Guid actorUserId, string nombre, string tipo, CancellationToken cancellationToken)
     {
@@ -105,7 +106,7 @@ public sealed class ProfessionalsService(
             cancellationToken);
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        return Map(referente);
+        return referente.ToSummary();
     }
 
     public async Task<ReferenteSummaryDto> UpdateReferenteAsync(Guid actorUserId, int referenteId, string nombre, string tipo, CancellationToken cancellationToken)
@@ -130,7 +131,7 @@ public sealed class ProfessionalsService(
             cancellationToken);
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        return Map(referente);
+        return referente.ToSummary();
     }
 
     public async Task<ReferenteSummaryDto> SetReferenteActiveAsync(Guid actorUserId, int referenteId, bool activo, CancellationToken cancellationToken)
@@ -148,7 +149,7 @@ public sealed class ProfessionalsService(
             cancellationToken);
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        return Map(referente);
+        return referente.ToSummary();
     }
 
     public async Task<IReadOnlyCollection<OperadorCamaraSummaryDto>> GetOperadoresAsync(CancellationToken cancellationToken) =>
@@ -233,9 +234,4 @@ public sealed class ProfessionalsService(
         await adminEventFeedRepository.AddAsync(entry, cancellationToken);
     }
 
-    private static MedicoSummaryDto Map(Medico medico) =>
-        new(medico.Id, medico.Nombre, medico.Activo, medico.Orden, medico.CreatedAt, medico.PerfilId);
-
-    private static ReferenteSummaryDto Map(Referente referente) =>
-        new(referente.Id, referente.Nombre, NormalizeReferenteTypeForResponse(referente.Tipo), referente.Activo, referente.Orden, referente.CreatedAt, referente.UpdatedAt);
-}
+    }

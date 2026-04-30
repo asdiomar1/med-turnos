@@ -3,6 +3,7 @@ using MedicalCenter.Application.Abstractions.Common;
 using MedicalCenter.Application.Abstractions.Persistence;
 using MedicalCenter.Application.DTOs;
 using MedicalCenter.Application.Exceptions;
+using MedicalCenter.Application.Mappings;
 using MedicalCenter.Domain.Entities;
 using MedicalCenter.Domain.Enums;
 
@@ -28,7 +29,7 @@ public sealed class DailyClosingsService(
         var closing = await EnsureClosingAsync(fecha, actorUserId, cancellationToken);
         closing.Confirm(actorUserId, NormalizeJson(detallesJson));
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        return Map(closing);
+        return closing.ToSummary();
     }
 
     public async Task<DailyClosingSummaryDto> GetDetailAsync(DateOnly fecha, Guid? closingId, CancellationToken cancellationToken)
@@ -51,7 +52,7 @@ public sealed class DailyClosingsService(
                 null);
         }
 
-        return Map(closing);
+        return closing.ToSummary();
     }
 
     public async Task<IReadOnlyCollection<DailyClosingSummaryDto>> GetMonthlyExportAsync(int year, int month, CancellationToken cancellationToken)
@@ -62,7 +63,7 @@ public sealed class DailyClosingsService(
         }
 
         var closings = await dailyClosingRepository.GetByMonthAsync(year, month, cancellationToken);
-        return closings.Select(Map).ToArray();
+        return closings.Select(c => c.ToSummary()).ToArray();
     }
 
     public async Task<DailyClosingSummaryDto> ReopenAsync(Guid actorUserId, DateOnly fecha, Guid? closingId, string? motivo, CancellationToken cancellationToken)
@@ -76,7 +77,7 @@ public sealed class DailyClosingsService(
 
         closing.Reopen(actorUserId, motivo);
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        return Map(closing);
+        return closing.ToSummary();
     }
 
     private async Task<DailyClosing> EnsureClosingAsync(DateOnly fecha, Guid actorUserId, CancellationToken cancellationToken)
@@ -152,9 +153,6 @@ public sealed class DailyClosingsService(
             items.Count(x => x.Status == AppointmentStatus.Apartado),
             items.Count(x => x.Status == AppointmentStatus.Cancelado));
     }
-
-    private static DailyClosingSummaryDto Map(DailyClosing closing) =>
-        new(closing.Id, closing.Fecha, closing.Status.ToString().ToLowerInvariant(), closing.DetallesJson, closing.CreatedByUserId, closing.ConfirmedByUserId, closing.ReopenedByUserId, closing.MotivoReapertura, closing.CreatedAt, closing.UpdatedAt, closing.ConfirmedAt, closing.ReopenedAt);
 
     private static string? NormalizeJson(string? raw)
     {

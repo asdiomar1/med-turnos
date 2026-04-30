@@ -2,6 +2,7 @@ using MedicalCenter.Application.Abstractions.Persistence;
 using MedicalCenter.Application.Abstractions.Common;
 using MedicalCenter.Application.DTOs;
 using MedicalCenter.Application.Exceptions;
+using MedicalCenter.Application.Mappings;
 using MedicalCenter.Domain.Entities;
 
 namespace MedicalCenter.Application.Features.PatientNotes;
@@ -15,7 +16,7 @@ public sealed class PatientNotesService(
     public async Task<IReadOnlyCollection<PatientNoteSummary>> GetByPatientAsync(Guid patientId, CancellationToken cancellationToken)
     {
         var notes = await patientNoteRepository.GetByPatientIdAsync(patientId, cancellationToken);
-        return notes.Select(Map).ToArray();
+        return notes.Select(n => n.ToSummary()).ToArray();
     }
 
     public async Task<PatientNoteSummary> CreateAsync(Guid actorUserId, Guid patientId, string mensaje, CancellationToken cancellationToken)
@@ -40,7 +41,7 @@ public sealed class PatientNotesService(
         var note = new PatientNote(Guid.NewGuid(), patient.Id, actorUserId, mensaje.Trim(), DateTimeOffset.UtcNow);
         await patientNoteRepository.AddAsync(note, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        return Map(note);
+        return note.ToSummary();
     }
 
     public async Task DeleteAsync(Guid actorUserId, Guid noteId, CancellationToken cancellationToken)
@@ -55,6 +56,4 @@ public sealed class PatientNotesService(
         await patientNoteRepository.DeleteAsync(note, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
     }
-
-    private static PatientNoteSummary Map(PatientNote note) => new(note.Id, note.PatientId, note.AuthorId, note.Message, note.CreatedAt);
 }

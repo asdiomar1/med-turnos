@@ -1,6 +1,7 @@
 using MedicalCenter.Application.Abstractions.Persistence;
 using MedicalCenter.Application.DTOs;
 using MedicalCenter.Application.Exceptions;
+using MedicalCenter.Application.Mappings;
 using MedicalCenter.Domain.Entities;
 
 namespace MedicalCenter.Application.Features.Configuration;
@@ -8,7 +9,7 @@ namespace MedicalCenter.Application.Features.Configuration;
 public sealed class WhatsappMessageSettingsService(IWhatsappMessageSettingsRepository repository) : IWhatsappMessageSettingsService
 {
     public async Task<IReadOnlyCollection<WhatsappMessageSettingDto>> GetAllAsync(CancellationToken cancellationToken) =>
-        (await repository.GetAllAsync(cancellationToken)).Select(Map).ToArray();
+        (await repository.GetAllAsync(cancellationToken)).Select(s => s.ToDto()).ToArray();
 
     public async Task<WhatsappMessageSettingDto> UpsertAsync(string key, string messageText, bool active, CancellationToken cancellationToken)
     {
@@ -45,15 +46,12 @@ public sealed class WhatsappMessageSettingsService(IWhatsappMessageSettingsRepos
 
         if (existing is null)
         {
-            return Map(setting);
+            return setting.ToDto();
         }
 
         await repository.UpsertAsync(existing, cancellationToken);
-        return Map(existing);
+        return existing.ToDto();
     }
-
-    private static WhatsappMessageSettingDto Map(WhatsappMessageSetting x) =>
-        new(x.Id, x.Label, x.Description, x.MessageText, x.Active, x.CreatedAt, x.UpdatedAt);
 
     private static string NormalizeKey(string? key) => string.IsNullOrWhiteSpace(key) ? string.Empty : key.Trim();
     private static string HumanizeKey(string key) => key.Replace('_', ' ');
