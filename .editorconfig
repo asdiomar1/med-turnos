@@ -1,0 +1,70 @@
+# EditorConfig is awesome: https://EditorConfig.org
+
+# top-level EditorConfig for most .NET files
+root = true
+
+# Default settings: A newline ending on every file and ensure the file ends with a newline.
+[*]
+end_of_line = crlf
+insert_final_newline = true
+charset = utf-8
+trim_trailing_whitespace = true
+
+# C# files
+[*.cs]
+indent_style = space
+indent_size = 4
+
+# Solution and project files
+[*.{slnx,sln,csproj,props,targets,nuspec,rax}]
+indent_style = tab
+indent_size = 2
+
+# YAML files
+[*.{yaml,yml}]
+indent_style = space
+indent_size = 2
+
+# JSON files
+[*.json]
+indent_style = space
+indent_size = 2
+
+# Markdown files
+[*.md]
+trim_trailing_whitespace = false
+
+# XML files
+[*.{xml,xaml,resx}]
+indent_style = space
+indent_size = 2
+
+# Batch files
+[*.{bat,cmd}]
+end_of_line = crlf
+
+# C# coding conventions
+[*.cs]
+dotnet_sort_across_grouped_declarations_none_of_these = visibility_modifier,readonly_modifier
+dotnet_sort_across_grouped_declarations_all_these = static,readonly,volatile,const
+
+# Expression-bodied members
+dotnet_diagnostic.IDE0055.severity = none
+
+# Use var in C# 10+
+dotnet_diagnostic.IDE0007.severity = suggestion
+csharp_prefer_simple_using_statement = true:suggestion
+csharp_prefer_braces = true:warning
+csharp_style_namespace_declarations = file_scoped:warning
+csharp_style_using_statements = file_scoped:warning
+
+# Modifier preferences
+csharp_prefer_readonly_struct = true
+csharp_style_readonly_struct = true
+csharp_prefer_readonly_struct_member = true
+csharp_style_readonly_struct_member = true
+
+# Unnecessary code
+dotnet_diagnostic.IDE0051.severity = warning
+dotnet_diagnostic.IDE0052.severity = warning
+dotnet_diagnostic.IDE0053.severity = warning

@@ -1,0 +1,39 @@
+model = "gpt-5"
+model_reasoning_effort = "medium"
+model_verbosity = "medium"
+
+# Codex detecta la raíz del proyecto por estos marcadores.
+project_root_markers = [".git", ".codex"]
+
+# Comportamiento por defecto para un repo backend:
+# puede editar dentro del workspace y ejecutar comandos locales normales.
+sandbox_mode = "workspace-write"
+approval_policy = "on-request"
+
+# Archivo de instrucciones específico del repo.
+# En config de proyecto, las rutas relativas se resuelven desde la carpeta .codex/
+model_instructions_file = "../docs/codex-instructions.md"
+
+[tools]
+web_search = true
+
+[environment_policy]
+inherit = "core"
+
+[profiles.scaffold]
+model_reasoning_effort = "high"
+model_verbosity = "medium"
+sandbox_mode = "workspace-write"
+approval_policy = "on-request"
+
+[profiles.readonly]
+model_reasoning_effort = "medium"
+model_verbosity = "low"
+sandbox_mode = "read-only"
+approval_policy = "on-request"
+
+[profiles.fullauto]
+model_reasoning_effort = "high"
+model_verbosity = "medium"
+sandbox_mode = "workspace-write"
+approval_policy = "never"

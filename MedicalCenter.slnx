@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/MedicalCenter.Api/MedicalCenter.Api.csproj" />
+    <Project Path="src/MedicalCenter.Application/MedicalCenter.Application.csproj" />
+    <Project Path="src/MedicalCenter.Contracts/MedicalCenter.Contracts.csproj" />
+    <Project Path="src/MedicalCenter.Domain/MedicalCenter.Domain.csproj" />
+    <Project Path="src/MedicalCenter.Infrastructure/MedicalCenter.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/MedicalCenter.IntegrationTests/MedicalCenter.IntegrationTests.csproj" />
+    <Project Path="tests/MedicalCenter.UnitTests/MedicalCenter.UnitTests.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /c/Users/asdio/OneDrive/Desktop/MedicalCenter/src -name \"ConsultationStatus*\" -exec cat {} \\\\;)",
+      "Bash(xargs grep:*)",
+      "Bash(xargs ls:*)",
+      "Bash(dotnet build:*)",
+      "Bash(ls /c/Users/asdio/OneDrive/Desktop/MedicalCenter/src/MedicalCenter.Infrastructure/Persistence/Migrations/*.cs)",
+      "Bash(grep:*)",
+      "Bash(find:*)",
+      "Bash(rtk dotnet:*)",
+      "mcp__plugin_engram_engram__mem_search",
+      "mcp__plugin_engram_engram__mem_context",
+      "mcp__plugin_engram_engram__mem_save",
+      "mcp__plugin_engram_engram__mem_session_summary",
+      "Bash(xargs -I {} basename {})"
+    ]
+  }
+}

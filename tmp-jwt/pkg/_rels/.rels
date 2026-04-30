@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Type="http://schemas.microsoft.com/packaging/2010/07/manifest" Target="/Microsoft.AspNetCore.Authentication.JwtBearer.nuspec" Id="RED018DF8F4F9754B" />
+  <Relationship Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="/package/services/metadata/core-properties/9b18abf56c674e1c8f6ef7787a41dd5d.psmdcp" Id="R333E4AD3E6E1488E" />
+</Relationships>
