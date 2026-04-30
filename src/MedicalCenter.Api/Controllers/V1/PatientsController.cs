@@ -1,6 +1,7 @@
 using MedicalCenter.Application.Features.Patients;
 using MedicalCenter.Api.Extensions;
 using MedicalCenter.Api.Filters;
+using MedicalCenter.Api.Mappings;
 using MedicalCenter.Contracts.Common;
 using MedicalCenter.Contracts.Patients;
 using MedicalCenter.Infrastructure.Security;
@@ -20,27 +21,7 @@ public sealed class PatientsController(IPatientsService patientsService, ISecuri
     public async Task<IActionResult> Get([FromQuery] string? search, [FromQuery(Name = "include_inactive")] bool includeInactive = false, CancellationToken cancellationToken = default)
     {
         var items = await patientsService.GetAsync(search, includeInactive, cancellationToken);
-        return Ok(items.Select(x => new PatientResponse
-        {
-            Id = x.Id,
-            Nombre = x.Nombre,
-            Email = x.Email,
-            Telefono = x.Telefono,
-            DocumentoIdentidad = x.DocumentoIdentidad,
-            DocumentoIdentidadNormalizado = x.DocumentoIdentidadNormalizado,
-            Nacionalidad = x.Nacionalidad,
-            CondicionIvaId = x.CondicionIvaId,
-            ObraSocialId = x.ObraSocialId,
-            NumeroCredencialObraSocial = x.NumeroCredencialObraSocial,
-            PortalHabilitado = x.PortalHabilitado,
-            RequiereResetPortal = x.RequiereResetPortal,
-            LoginIdentifier = x.LoginIdentifier,
-            Claustrofobico = x.Claustrofobico,
-            Notas = x.Notas,
-            DatosExtra = JsonSerializer.Deserialize<object>(x.DatosExtra) ?? new { },
-            OptInWhatsapp = x.OptInWhatsapp,
-            OptInSource = x.OptInSource
-        }));
+        return Ok(items.Select(x => x.ToResponse()));
     }
 
     [HttpPost]
@@ -94,7 +75,7 @@ public sealed class PatientsController(IPatientsService patientsService, ISecuri
             cancellationToken);
 
         LogMutation("update_patient", pacienteId.ToString());
-        return Ok(Map(result));
+        return Ok(result.ToResponse());
     }
 
     [HttpDelete("{pacienteId:guid}")]
@@ -112,7 +93,7 @@ public sealed class PatientsController(IPatientsService patientsService, ISecuri
     {
         var result = await patientsService.ConfigurePortalAsync(pacienteId, request.PortalHabilitado, cancellationToken);
         LogMutation("configure_portal", pacienteId.ToString());
-        return Ok(Map(result));
+        return Ok(result.ToResponse());
     }
 
     [HttpPost("{pacienteId:guid}/portal/reset-enable")]
@@ -121,7 +102,7 @@ public sealed class PatientsController(IPatientsService patientsService, ISecuri
     {
         var result = await patientsService.EnableResetAsync(pacienteId, cancellationToken);
         LogMutation("enable_reset", pacienteId.ToString());
-        return Ok(Map(result));
+        return Ok(result.ToResponse());
     }
 
     [HttpPatch("me")]
@@ -129,7 +110,7 @@ public sealed class PatientsController(IPatientsService patientsService, ISecuri
     {
         var result = await patientsService.UpdateMyDataAsync(User.GetUserId(), request.Nombre, request.Email, request.Telefono, cancellationToken);
         LogMutation("update_my_data", User.GetUserId().ToString());
-        return Ok(Map(result));
+        return Ok(result.ToResponse());
     }
 
     private void LogMutation(string action, string targetId)
@@ -142,26 +123,4 @@ public sealed class PatientsController(IPatientsService patientsService, ISecuri
             IpAddress: HttpContext.Connection.RemoteIpAddress?.ToString()
         ));
     }
-
-    private static PatientResponse Map(MedicalCenter.Application.DTOs.PatientSummary x) => new()
-    {
-        Id = x.Id,
-        Nombre = x.Nombre,
-        Email = x.Email,
-        Telefono = x.Telefono,
-        DocumentoIdentidad = x.DocumentoIdentidad,
-        DocumentoIdentidadNormalizado = x.DocumentoIdentidadNormalizado,
-        Nacionalidad = x.Nacionalidad,
-        CondicionIvaId = x.CondicionIvaId,
-        ObraSocialId = x.ObraSocialId,
-        NumeroCredencialObraSocial = x.NumeroCredencialObraSocial,
-        PortalHabilitado = x.PortalHabilitado,
-        RequiereResetPortal = x.RequiereResetPortal,
-        LoginIdentifier = x.LoginIdentifier,
-        Claustrofobico = x.Claustrofobico,
-        Notas = x.Notas,
-        DatosExtra = JsonSerializer.Deserialize<object>(x.DatosExtra) ?? new { },
-        OptInWhatsapp = x.OptInWhatsapp,
-        OptInSource = x.OptInSource
-    };
 }

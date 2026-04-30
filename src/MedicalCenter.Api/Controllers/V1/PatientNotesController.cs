@@ -1,4 +1,5 @@
 using MedicalCenter.Api.Extensions;
+using MedicalCenter.Api.Mappings;
 using MedicalCenter.Application.Features.PatientNotes;
 using MedicalCenter.Contracts.PatientNotes;
 using Microsoft.AspNetCore.Authorization;
@@ -15,7 +16,7 @@ public sealed class PatientNotesController(IPatientNotesService patientNotesServ
     public async Task<IActionResult> Get(Guid pacienteId, CancellationToken cancellationToken)
     {
         var items = await patientNotesService.GetByPatientAsync(pacienteId, cancellationToken);
-        return Ok(items.Select(Map));
+        return Ok(items.Select(x => x.ToResponse()));
     }
 
     [HttpPost]
@@ -23,7 +24,7 @@ public sealed class PatientNotesController(IPatientNotesService patientNotesServ
     public async Task<IActionResult> Create(Guid pacienteId, [FromBody] CreatePatientNoteRequest request, CancellationToken cancellationToken)
     {
         var result = await patientNotesService.CreateAsync(User.GetUserId(), pacienteId, request.Mensaje, cancellationToken);
-        return StatusCode(StatusCodes.Status201Created, Map(result));
+        return StatusCode(StatusCodes.Status201Created, result.ToResponse());
     }
 
     [HttpDelete("{notaId:guid}")]
@@ -33,13 +34,4 @@ public sealed class PatientNotesController(IPatientNotesService patientNotesServ
         await patientNotesService.DeleteAsync(User.GetUserId(), notaId, cancellationToken);
         return NoContent();
     }
-
-    private static PatientNoteResponse Map(MedicalCenter.Application.DTOs.PatientNoteSummary x) => new()
-    {
-        Id = x.Id,
-        PatientId = x.PatientId,
-        AuthorId = x.AuthorId,
-        Message = x.Message,
-        CreatedAt = x.CreatedAt
-    };
 }

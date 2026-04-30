@@ -1,4 +1,5 @@
 using MedicalCenter.Api.Extensions;
+using MedicalCenter.Api.Mappings;
 using MedicalCenter.Application.Abstractions.Auth;
 using MedicalCenter.Application.Exceptions;
 using MedicalCenter.Contracts.Auth;
@@ -21,7 +22,7 @@ public sealed class AuthController(IAuthService authService, ISecurityAuditLogge
         try
         {
             var result = await authService.LoginAsync(request.Identifier, request.Password, cancellationToken);
-            return Ok(Map(result));
+            return Ok(result.ToResponse());
         }
         catch (UnauthorizedException)
         {
@@ -42,7 +43,7 @@ public sealed class AuthController(IAuthService authService, ISecurityAuditLogge
     public async Task<IActionResult> Refresh([FromBody] RefreshRequest request, CancellationToken cancellationToken)
     {
         var result = await authService.RefreshAsync(request.RefreshToken, cancellationToken);
-        return Ok(Map(result));
+        return Ok(result.ToResponse());
     }
 
     [HttpPost("logout")]
@@ -65,11 +66,7 @@ public sealed class AuthController(IAuthService authService, ISecurityAuditLogge
     public async Task<IActionResult> ActivatePortal([FromBody] PortalActivateRequest request, CancellationToken cancellationToken)
     {
         var result = await authService.ActivatePortalAsync(request.Token, request.LoginIdentifier, request.Password, cancellationToken);
-        return Ok(new PortalActivationResponse
-        {
-            Ok = result.Ok,
-            LoginIdentifier = result.LoginIdentifier
-        });
+        return Ok(result.ToResponse());
     }
 
     [HttpPost("portal/recovery")]
@@ -78,11 +75,7 @@ public sealed class AuthController(IAuthService authService, ISecurityAuditLogge
     public async Task<IActionResult> RequestPortalRecovery([FromBody] PortalRecoveryRequest request, CancellationToken cancellationToken)
     {
         var result = await authService.RequestPortalRecoveryAsync(request.DocumentoIdentidad, cancellationToken);
-        return Ok(new PortalRecoveryResponse
-        {
-            Ok = result.Ok,
-            NeedsManualSupport = result.NeedsManualSupport
-        });
+        return Ok(result.ToResponse());
     }
 
     [HttpPost("portal/access-tokens")]
@@ -91,18 +84,9 @@ public sealed class AuthController(IAuthService authService, ISecurityAuditLogge
     public async Task<IActionResult> CreatePortalAccessToken([FromBody] CreatePortalAccessTokenRequest request, CancellationToken cancellationToken)
     {
         var result = await authService.CreatePortalAccessTokenAsync(request.PacienteId, request.Purpose, request.DeliveryChannel, User.GetUserId(), cancellationToken);
-        var response = new PortalAccessTokenResponse
-        {
-            TokenId = result.TokenId,
-            Purpose = result.Purpose,
-            DeliveryChannel = result.DeliveryChannel,
-            ExpiresAt = result.ExpiresAt,
-            TokenPlain = result.TokenPlain
-        };
-
         return Ok(new DataResponse<PortalAccessTokenResponse>
         {
-            Data = response,
+            Data = result.ToResponse(),
             Error = null
         });
     }
@@ -113,29 +97,6 @@ public sealed class AuthController(IAuthService authService, ISecurityAuditLogge
     public async Task<IActionResult> GetEffectiveAccess(CancellationToken cancellationToken)
     {
         var result = await authService.GetEffectiveAccessAsync(User.GetUserId(), cancellationToken);
-        return Ok(new EffectiveAccessResponse
-        {
-            ProfileId = result.ProfileId,
-            Roles = result.Roles,
-            EffectivePermissions = result.EffectivePermissions,
-            PrimaryRole = result.PrimaryRole,
-            DefaultHome = result.DefaultHome,
-            IsStaff = result.IsStaff
-        });
+        return Ok(result.ToResponse());
     }
-
-    private static AuthSessionResponse Map(MedicalCenter.Application.DTOs.AuthResponse result) => new()
-    {
-        Session = new AuthTokenResponse
-        {
-            AccessToken = result.Session.AccessToken,
-            RefreshToken = result.RefreshToken,
-            ExpiresIn = result.Session.ExpiresInSeconds
-        },
-        User = new AuthUserResponse
-        {
-            Id = result.UserId,
-            Email = result.Email
-        }
-    };
 }

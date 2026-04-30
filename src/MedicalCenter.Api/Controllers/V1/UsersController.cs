@@ -1,5 +1,5 @@
-using System.Text.Json;
 using MedicalCenter.Api.Extensions;
+using MedicalCenter.Api.Mappings;
 using MedicalCenter.Application.Features.UserPreferences;
 using MedicalCenter.Contracts.Users;
 using Microsoft.AspNetCore.Authorization;
@@ -16,7 +16,7 @@ public sealed class UsersController(IUserPreferencesService userPreferencesServi
     public async Task<IActionResult> GetMyPreferences(CancellationToken cancellationToken)
     {
         var result = await userPreferencesService.GetAsync(User.GetUserId(), cancellationToken);
-        return Ok(Map(result));
+        return Ok(result.ToResponse());
     }
 
     [HttpPut("me/preferences")]
@@ -32,28 +32,6 @@ public sealed class UsersController(IUserPreferencesService userPreferencesServi
                 request.FontScale),
             cancellationToken);
 
-        return Ok(Map(result));
-    }
-
-    private static UserPreferencesResponse Map(MedicalCenter.Application.DTOs.UserPreferencesSummary x) => new()
-    {
-        UserId = x.UserId,
-        Theme = x.Theme,
-        CustomColors = ParseJson(x.CustomColorsJson),
-        TurnosLayout = x.TurnosLayout,
-        FontScale = x.FontScale,
-        CreatedAt = x.CreatedAt,
-        UpdatedAt = x.UpdatedAt
-    };
-
-    private static JsonElement? ParseJson(string? raw)
-    {
-        if (string.IsNullOrWhiteSpace(raw))
-        {
-            return null;
-        }
-
-        using var doc = JsonDocument.Parse(raw);
-        return doc.RootElement.Clone();
+        return Ok(result.ToResponse());
     }
 }

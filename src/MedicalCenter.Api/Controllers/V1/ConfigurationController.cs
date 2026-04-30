@@ -1,4 +1,5 @@
 using MedicalCenter.Api.Extensions;
+using MedicalCenter.Api.Mappings;
 using MedicalCenter.Application.Features.Configuration;
 using MedicalCenter.Contracts.Configuration;
 using Microsoft.AspNetCore.Authorization;
@@ -17,37 +18,37 @@ public sealed class ConfigurationController(
     [HttpGet("dias-laborables")]
     [Authorize(Policy = "ConfigRead")]
     public async Task<IActionResult> GetDiasLaborables(CancellationToken cancellationToken) =>
-        Ok(Map(await workingDaysConfigService.GetAsync(cancellationToken)));
+        Ok((await workingDaysConfigService.GetAsync(cancellationToken)).ToResponse());
 
     [HttpPut("dias-laborables")]
     [Authorize(Policy = "ConfigHorariosManage")]
     public async Task<IActionResult> UpsertDiasLaborables([FromBody] UpsertDiasLaborablesConfigRequest request, CancellationToken cancellationToken) =>
-        Ok(Map(await workingDaysConfigService.UpsertAsync(request.DiasSemana, cancellationToken)));
+        Ok((await workingDaysConfigService.UpsertAsync(request.DiasSemana, cancellationToken)).ToResponse());
 
     [HttpGet("whatsapp-message-settings")]
     [Authorize(Policy = "ConfigRead")]
     public async Task<IActionResult> GetWhatsappMessageSettings(CancellationToken cancellationToken) =>
-        Ok((await whatsappMessageSettingsService.GetAllAsync(cancellationToken)).Select(Map));
+        Ok((await whatsappMessageSettingsService.GetAllAsync(cancellationToken)).Select(x => x.ToResponse()));
 
     [HttpPut("whatsapp-message-settings/{key}")]
     [Authorize(Policy = "WhatsappManage")]
     public async Task<IActionResult> UpsertWhatsappMessageSetting(string key, [FromBody] UpdateWhatsappMessageSettingRequest request, CancellationToken cancellationToken) =>
-        Ok(Map(await whatsappMessageSettingsService.UpsertAsync(key, request.MessageText, request.Active, cancellationToken)));
+        Ok((await whatsappMessageSettingsService.UpsertAsync(key, request.MessageText, request.Active, cancellationToken)).ToResponse());
 
     [HttpGet("campos-config")]
     [Authorize(Policy = "ConfigRead")]
     public async Task<IActionResult> GetCamposConfig(CancellationToken cancellationToken) =>
-        Ok((await camposConfigService.GetAllAsync(cancellationToken)).Select(Map));
+        Ok((await camposConfigService.GetAllAsync(cancellationToken)).Select(x => x.ToResponse()));
 
     [HttpPost("campos-config")]
     [Authorize(Policy = "ConfigCatalogsManage")]
     public async Task<IActionResult> CreateCampoConfig([FromBody] CreateCampoConfigRequest request, CancellationToken cancellationToken) =>
-        Ok(Map(await camposConfigService.CreateAsync(User.GetUserId(), request.Nombre, request.Tipo, cancellationToken)));
+        Ok((await camposConfigService.CreateAsync(User.GetUserId(), request.Nombre, request.Tipo, cancellationToken)).ToResponse());
 
     [HttpPatch("campos-config/{id:guid}")]
     [Authorize(Policy = "ConfigCatalogsManage")]
     public async Task<IActionResult> UpdateCampoConfig(Guid id, [FromBody] UpdateCampoConfigRequest request, CancellationToken cancellationToken) =>
-        Ok(Map(await camposConfigService.UpdateAsync(User.GetUserId(), id, request.Nombre, request.Tipo, cancellationToken)));
+        Ok((await camposConfigService.UpdateAsync(User.GetUserId(), id, request.Nombre, request.Tipo, cancellationToken)).ToResponse());
 
     [HttpDelete("campos-config/{id:guid}")]
     [Authorize(Policy = "ConfigCatalogsManage")]
@@ -56,30 +57,4 @@ public sealed class ConfigurationController(
         await camposConfigService.DeleteAsync(User.GetUserId(), id, cancellationToken);
         return NoContent();
     }
-
-    private static DiasLaborablesConfigResponse Map(MedicalCenter.Application.DTOs.DiasLaborablesConfigDto x) => new()
-    {
-        Key = x.Key,
-        DiasSemana = x.DiasSemana
-    };
-
-    private static WhatsappMessageSettingResponse Map(MedicalCenter.Application.DTOs.WhatsappMessageSettingDto x) => new()
-    {
-        Key = x.Key,
-        Label = x.Label,
-        Description = x.Description,
-        MessageText = x.MessageText,
-        Active = x.Active,
-        CreatedAt = x.CreatedAt,
-        UpdatedAt = x.UpdatedAt
-    };
-
-    private static CampoConfigResponse Map(MedicalCenter.Application.DTOs.CampoConfigSummaryDto x) => new()
-    {
-        Id = x.Id,
-        Nombre = x.Nombre,
-        Tipo = x.Tipo,
-        Orden = x.Orden,
-        CreatedAt = x.CreatedAt
-    };
 }

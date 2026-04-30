@@ -1,3 +1,4 @@
+using MedicalCenter.Api.Mappings;
 using MedicalCenter.Application.DTOs;
 using MedicalCenter.Application.Features.WhatsApp;
 using MedicalCenter.Contracts.WhatsApp;
@@ -15,21 +16,13 @@ public sealed class TurnosWhatsAppController(IWhatsappService whatsappService) :
     public async Task<IActionResult> Dispatch([FromBody] WhatsappDispatchRequest request, CancellationToken cancellationToken)
     {
         var result = await whatsappService.DispatchAsync(new WhatsappDispatchCommand(request.SlotIds, request.Limit), cancellationToken);
-        return Ok(new WhatsappDispatchResponse
-        {
-            Requested = result.Requested,
-            Found = result.Found
-        });
+        return Ok(result.ToResponse());
     }
 
     [HttpPost("send-reminders-24h")]
     public async Task<IActionResult> SendReminders24h([FromBody] WhatsappReminderRequest request, CancellationToken cancellationToken)
     {
         var result = await whatsappService.SendRemindersAsync(new WhatsappReminderCommand(request.FechaObjetivo), cancellationToken);
-        return Ok(new WhatsappReminderResponse
-        {
-            FechaObjetivo = result.FechaObjetivo,
-            Total = result.Total
-        });
+        return Ok(result.ToResponse());
     }
 }

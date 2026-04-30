@@ -1,5 +1,5 @@
-using System.Text.Json;
 using MedicalCenter.Api.Extensions;
+using MedicalCenter.Api.Mappings;
 using MedicalCenter.Application.Features.DailyClosings;
 using MedicalCenter.Contracts.Dashboards;
 using MedicalCenter.Contracts.DailyClosings;
@@ -17,7 +17,7 @@ public sealed class DailyClosingsController(IDailyClosingsService dailyClosingsS
     public async Task<IActionResult> GetState([FromQuery] DateOnly? fecha, CancellationToken cancellationToken)
     {
         var date = fecha ?? DateOnly.FromDateTime(DateTime.UtcNow);
-        return Ok(Map(await dailyClosingsService.GetDetailAsync(date, null, cancellationToken)));
+        return Ok((await dailyClosingsService.GetDetailAsync(date, null, cancellationToken)).ToResponse());
     }
 
     [HttpPost("preview")]
@@ -25,19 +25,7 @@ public sealed class DailyClosingsController(IDailyClosingsService dailyClosingsS
     {
         request ??= new PreviewDailyClosingRequest();
         var result = await dailyClosingsService.PreviewAsync(request.Fecha ?? DateOnly.FromDateTime(DateTime.UtcNow), cancellationToken);
-        return Ok(new DailyClosingPreviewResponse
-        {
-            Fecha = result.Fecha,
-            TotalTurnos = result.TotalTurnos,
-            Libres = result.Libres,
-            Ocupados = result.Ocupados,
-            Apartados = result.Apartados,
-            Cancelados = result.Cancelados,
-            OcupacionPorcentaje = result.OcupacionPorcentaje,
-            AptoParaCierre = result.AptoParaCierre,
-            Alertas = result.Alertas.Select(Map).ToArray(),
-            GeneradoEn = result.GeneradoEn
-        });
+        return Ok(result.ToResponse());
     }
 
     [HttpPost("confirmar")]
@@ -47,28 +35,28 @@ public sealed class DailyClosingsController(IDailyClosingsService dailyClosingsS
         request ??= new ConfirmDailyClosingRequest();
         var date = fecha ?? DateOnly.FromDateTime(DateTime.UtcNow);
         var result = await dailyClosingsService.ConfirmAsync(User.GetUserId(), date, request.Detalles.HasValue ? request.Detalles.Value.GetRawText() : null, cancellationToken);
-        return Ok(Map(result));
+        return Ok(result.ToResponse());
     }
 
     [HttpGet("detalle")]
     public async Task<IActionResult> Detail([FromQuery] DateOnly? fecha, [FromQuery(Name = "cierre_id")] Guid? closingId, CancellationToken cancellationToken)
     {
         var date = fecha ?? DateOnly.FromDateTime(DateTime.UtcNow);
-        return Ok(Map(await dailyClosingsService.GetDetailAsync(date, closingId, cancellationToken)));
+        return Ok((await dailyClosingsService.GetDetailAsync(date, closingId, cancellationToken)).ToResponse());
     }
 
     [HttpGet("export")]
     public async Task<IActionResult> Export([FromQuery] DateOnly? fecha, [FromQuery(Name = "cierre_id")] Guid? closingId, CancellationToken cancellationToken)
     {
         var date = fecha ?? DateOnly.FromDateTime(DateTime.UtcNow);
-        return Ok(Map(await dailyClosingsService.GetDetailAsync(date, closingId, cancellationToken)));
+        return Ok((await dailyClosingsService.GetDetailAsync(date, closingId, cancellationToken)).ToResponse());
     }
 
     [HttpGet("export/mensual")]
     public async Task<IActionResult> ExportMonthly([FromQuery] int anio, [FromQuery] int mes, CancellationToken cancellationToken)
     {
         var items = await dailyClosingsService.GetMonthlyExportAsync(anio, mes, cancellationToken);
-        return Ok(items.Select(Map));
+        return Ok(items.Select(x => x.ToResponse()));
     }
 
     [HttpPost("reabrir")]
@@ -77,42 +65,6 @@ public sealed class DailyClosingsController(IDailyClosingsService dailyClosingsS
     {
         request ??= new ReopenDailyClosingRequest();
         var date = fecha ?? DateOnly.FromDateTime(DateTime.UtcNow);
-        return Ok(Map(await dailyClosingsService.ReopenAsync(User.GetUserId(), date, closingId, request.Motivo, cancellationToken)));
+        return Ok((await dailyClosingsService.ReopenAsync(User.GetUserId(), date, closingId, request.Motivo, cancellationToken)).ToResponse());
     }
-
-    private static DailyClosingResponse Map(MedicalCenter.Application.DTOs.DailyClosingSummaryDto x) => new()
-    {
-        Id = x.Id,
-        Fecha = x.Fecha,
-        Estado = x.Estado,
-        Detalles = ParseJson(x.DetallesJson),
-        CreatedByUserId = x.CreatedByUserId,
-        ConfirmedByUserId = x.ConfirmedByUserId,
-        ReopenedByUserId = x.ReopenedByUserId,
-        MotivoReapertura = x.MotivoReapertura,
-        CreatedAt = x.CreatedAt,
-        UpdatedAt = x.UpdatedAt,
-        ConfirmedAt = x.ConfirmedAt,
-        ReopenedAt = x.ReopenedAt
-    };
-
-    private static DashboardAlertResponse Map(MedicalCenter.Application.DTOs.DashboardAlertDto x) => new()
-    {
-        Code = x.Code,
-        Message = x.Message,
-        Severity = x.Severity,
-        Count = x.Count
-    };
-
-    private static JsonElement? ParseJson(string? raw)
-    {
-        if (string.IsNullOrWhiteSpace(raw))
-        {
-            return null;
-        }
-
-        using var doc = JsonDocument.Parse(raw);
-        return doc.RootElement.Clone();
-    }
-
 }
