@@ -6,6 +6,7 @@ using MedicalCenter.Application.Abstractions.Persistence;
 using MedicalCenter.Application.DTOs;
 using MedicalCenter.Application.Exceptions;
 using MedicalCenter.Application.Features.WhatsApp;
+using MedicalCenter.Application.Mappings;
 using MedicalCenter.Domain.Common;
 using MedicalCenter.Domain.Constants;
 using MedicalCenter.Domain.Entities;
@@ -64,7 +65,7 @@ public sealed class AppointmentsService(
             .Where(x => activeHours.Contains(x.Hora.ToString("HH:mm")))
             .GroupBy(x => x.Fecha)
             .OrderBy(x => x.Key)
-            .Select(group => new AppointmentGroupSummary(group.Key, group.Select(Map).ToArray()))
+            .Select(group => new AppointmentGroupSummary(group.Key, group.Select(x => x.ToSummary()).ToArray()))
             .ToArray();
     }
 
@@ -124,7 +125,7 @@ public sealed class AppointmentsService(
                         command.PacienteId, appointment.Fecha, appointment.Hora, null, cancellationToken))
                     throw new ConflictException("El turno ya no está disponible.");
 
-                return Map(appointment);
+                return appointment.ToSummary();
             },
             cancellationToken);
     }
@@ -164,7 +165,7 @@ public sealed class AppointmentsService(
                     throw new ConflictException("No se pudo cancelar el turno por concurrencia.");
                 }
 
-                return Map(appointment);
+                return appointment.ToSummary();
             },
             cancellationToken);
     }
@@ -248,7 +249,7 @@ public sealed class AppointmentsService(
                     throw new ConflictException("El turno ya no esta disponible.");
                 }
 
-                return Map(appointment);
+                return appointment.ToSummary();
             },
             cancellationToken);
     }
@@ -306,7 +307,7 @@ public sealed class AppointmentsService(
                     throw new ConflictException("No se pudo confirmar el apartado por concurrencia.");
                 }
 
-                return Map(appointment);
+                return appointment.ToSummary();
             },
             cancellationToken);
     }
@@ -343,7 +344,7 @@ public sealed class AppointmentsService(
                     throw new ConflictException("No se pudo liberar el apartado por concurrencia.");
                 }
 
-                return Map(appointment);
+                return appointment.ToSummary();
             },
             cancellationToken);
     }
@@ -404,7 +405,7 @@ public sealed class AppointmentsService(
                     throw new ConflictException("No se pudo asignar el bloque por concurrencia.");
                 }
 
-                return slots.Select(Map).ToArray();
+                return slots.Select(x => x.ToSummary()).ToArray();
             },
             cancellationToken);
     }
@@ -463,7 +464,7 @@ public sealed class AppointmentsService(
                     throw new ConflictException("No se pudo cancelar el bloque por concurrencia.");
                 }
 
-                return slots.Select(Map).ToArray();
+                return slots.Select(x => x.ToSummary()).ToArray();
             },
             cancellationToken);
     }
@@ -526,7 +527,7 @@ public sealed class AppointmentsService(
                     throw new ConflictException("No se pudo cancelar la tanda por concurrencia.");
                 }
 
-                return slots.Select(Map).ToArray();
+                return slots.Select(x => x.ToSummary()).ToArray();
             },
             cancellationToken);
     }
@@ -568,7 +569,7 @@ public sealed class AppointmentsService(
                     throw new ConflictException("El turno ya no esta disponible.");
                 }
 
-                return Map(appointment);
+                return appointment.ToSummary();
             },
             cancellationToken);
     }
@@ -613,7 +614,7 @@ public sealed class AppointmentsService(
                     throw new ConflictException("No se pudo cancelar el turno por concurrencia.");
                 }
 
-                return Map(appointment);
+                return appointment.ToSummary();
             },
             cancellationToken);
     }
@@ -638,36 +639,6 @@ public sealed class AppointmentsService(
 
         return patient.Id;
     }
-
-    private static AppointmentSummary Map(Appointment appointment) =>
-        new(
-            appointment.Id,
-            appointment.Fecha,
-            appointment.Hora,
-            appointment.Lugar,
-            appointment.Status.ToString().ToLowerInvariant(),
-            appointment.PatientId,
-            appointment.CameraId,
-            appointment.BlockId,
-            appointment.TandaId,
-            appointment.ApartadoPorUserId,
-            appointment.ApartadoTs,
-            appointment.EsBloqueCompleto,
-            appointment.EsTanda,
-            appointment.ReferidoTercero,
-            appointment.ReferenteId,
-            appointment.ModalidadCobro,
-            appointment.ObraSocialId,
-            appointment.NumeroAutorizacion,
-            appointment.SesionesAutorizadas,
-            appointment.CicloObraSocialId,
-            appointment.IniciarNuevoCicloObraSocial,
-            appointment.ConvenioCorroborado,
-            appointment.MedicoId,
-            appointment.EsNuevoIngreso,
-            appointment.EsMonoxido,
-            appointment.MonoxidoOrdenMedica,
-            appointment.MonoxidoResumenClinico);
 
     private async Task<AppointmentSummary> RescheduleSingleAsync(Appointment source, Appointment target, RescheduleAppointmentCommand command, Guid actorUserId, CancellationToken cancellationToken)
     {
@@ -710,7 +681,7 @@ public sealed class AppointmentsService(
             throw new ConflictException("No se pudo reprogramar el turno por concurrencia.");
         }
 
-        return Map(target);
+        return target.ToSummary();
     }
 
     private async Task<AppointmentSummary> RescheduleGroupedAsync(Appointment source, Appointment target, RescheduleAppointmentCommand command, Guid actorUserId, CancellationToken cancellationToken)
@@ -779,7 +750,7 @@ public sealed class AppointmentsService(
             throw new ConflictException("No se pudo reprogramar el turno por concurrencia.");
         }
 
-        return Map(orderedTargetGroup.First());
+        return orderedTargetGroup.First().ToSummary();
     }
 
     private async Task<Appointment[]> GetGroupedSlotsForRescheduleAsync(Appointment source, CancellationToken cancellationToken)
@@ -883,7 +854,7 @@ public sealed class AppointmentsService(
         var activeHours = await GetActiveHoursAsync(cancellationToken);
         return appointments
             .Where(x => activeHours.Contains(x.Hora.ToString("HH:mm")))
-            .Select(Map)
+            .Select(x => x.ToSummary())
             .ToArray();
     }
 
@@ -1067,12 +1038,12 @@ public sealed class AppointmentsService(
     }
 
     public async Task<IReadOnlyCollection<AppointmentSummary>> GetSlotsByTandaAsync(Guid tandaId, CancellationToken cancellationToken) =>
-        (await appointmentRepository.GetByTandaIdAsync(tandaId, cancellationToken)).Select(Map).ToArray();
+        (await appointmentRepository.GetByTandaIdAsync(tandaId, cancellationToken)).Select(x => x.ToSummary()).ToArray();
 
     public async Task<IReadOnlyCollection<AppointmentSummary>> GetActiveSlotsByTandaAsync(Guid tandaId, CancellationToken cancellationToken) =>
         (await appointmentRepository.GetByTandaIdAsync(tandaId, cancellationToken))
             .Where(x => x.Status == AppointmentStatus.Ocupado)
-            .Select(Map)
+            .Select(x => x.ToSummary())
             .ToArray();
 
     public async Task<IReadOnlyCollection<BlockHistorySummary>> GetBlockHistoryAsync(DateOnly fecha, TimeOnly hora, int? camaraId, CancellationToken cancellationToken)
@@ -1157,7 +1128,7 @@ public sealed class AppointmentsService(
         {
             throw new ConflictException("No se pudo actualizar el turno por concurrencia.");
         }
-        return Map(appointment);
+        return appointment.ToSummary();
     }
 
     public async Task<IReadOnlyCollection<AppointmentSummary>> UpdateOperativeByTandaAsync(Guid actorUserId, Guid tandaId, AppointmentOperativeCommand command, CancellationToken cancellationToken)
@@ -1173,7 +1144,7 @@ public sealed class AppointmentsService(
         {
             throw new ConflictException("No se pudo actualizar la tanda por concurrencia.");
         }
-        return appointments.Select(Map).ToArray();
+        return appointments.Select(x => x.ToSummary()).ToArray();
     }
 
     private async Task<User> RequireActorAsync(Guid actorUserId, string permission, CancellationToken cancellationToken)

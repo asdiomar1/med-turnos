@@ -5,6 +5,7 @@ using MedicalCenter.Application.Abstractions.Common;
 using MedicalCenter.Application.Abstractions.Persistence;
 using MedicalCenter.Application.DTOs;
 using MedicalCenter.Application.Exceptions;
+using MedicalCenter.Application.Mappings;
 using MedicalCenter.Domain.Entities;
 using MedicalCenter.Domain.Enums;
 using DomainClinicalHistory = MedicalCenter.Domain.Entities.ClinicalHistory;
@@ -25,7 +26,7 @@ public sealed class ConsultationsService(
 
     public async Task<IReadOnlyCollection<ConsultationScheduleHourSummary>> GetScheduleHoursAsync(CancellationToken cancellationToken) =>
         (await consultationRepository.GetScheduleHoursAsync(cancellationToken))
-            .Select(Map)
+            .Select(x => x.ToSummary())
             .ToArray();
 
     public async Task<ConsultationScheduleHourSummary> CreateScheduleHourAsync(ConsultationScheduleHourUpsertCommand command, CancellationToken cancellationToken)
@@ -34,7 +35,7 @@ public sealed class ConsultationsService(
         var entity = new ConsultationScheduleHour(await consultationRepository.GetNextScheduleHourIdAsync(cancellationToken), command.Hora.Trim(), command.Orden, true);
         await consultationRepository.AddScheduleHourAsync(entity, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        return Map(entity);
+        return entity.ToSummary();
     }
 
     public async Task<ConsultationScheduleHourSummary> UpdateScheduleHourAsync(int id, ConsultationScheduleHourUpsertCommand command, CancellationToken cancellationToken)
@@ -43,7 +44,7 @@ public sealed class ConsultationsService(
         var entity = await consultationRepository.GetScheduleHourByIdAsync(id, cancellationToken) ?? throw new NotFoundException("Horario no encontrado.");
         entity.Update(command.Hora.Trim(), command.Orden);
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        return Map(entity);
+        return entity.ToSummary();
     }
 
     public async Task<ConsultationScheduleHourSummary> ToggleScheduleHourAsync(int id, bool activo, CancellationToken cancellationToken)
@@ -51,7 +52,7 @@ public sealed class ConsultationsService(
         var entity = await consultationRepository.GetScheduleHourByIdAsync(id, cancellationToken) ?? throw new NotFoundException("Horario no encontrado.");
         entity.SetActivo(activo);
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        return Map(entity);
+        return entity.ToSummary();
     }
 
     public async Task<ConsultationScheduleHourDeletionPreviewSummary> PreviewDeleteScheduleHourAsync(int id, CancellationToken cancellationToken)
@@ -72,7 +73,7 @@ public sealed class ConsultationsService(
         var entity = await consultationRepository.GetScheduleHourByIdAsync(id, cancellationToken) ?? throw new NotFoundException("Horario no encontrado.");
         entity.SetActivo(false);
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        return Map(entity);
+        return entity.ToSummary();
     }
 
     public async Task<int> GenerateAsync(DateOnly fecha, CancellationToken cancellationToken)
@@ -288,13 +289,7 @@ public sealed class ConsultationsService(
     }
 
     public async Task<IReadOnlyCollection<ConsultationSessionSummary>> GetCompletedSessionsAsync(Guid patientId, CancellationToken cancellationToken) =>
-        (await consultationRepository.GetSessionsByPatientIdAsync(patientId, cancellationToken)).Select(Map).ToArray();
-
-    private static ConsultationScheduleHourSummary Map(ConsultationScheduleHour hour) =>
-        new(hour.Id, hour.Hora, hour.Activo, hour.Orden, hour.CreatedAt);
-
-    private static ConsultationSessionSummary Map(ConsultationSession session) =>
-        new(session.Id, session.PacienteId, session.SlotId, session.Fecha, session.Hora, session.CamaraId, session.CreatedAt, session.ModalidadCobro, session.ObraSocialId, session.CierreId, session.NumeroAutorizacion, session.SesionesAutorizadas, session.CicloObraSocialId);
+        (await consultationRepository.GetSessionsByPatientIdAsync(patientId, cancellationToken)).Select(x => x.ToSummary()).ToArray();
 
     private ConsultationSlotSummary Map(ConsultationSlot slot, GuidLookupSummary? patient, IntLookupSummary? medico, GuidLookupSummary? confirmadoPor, GuidLookupSummary? cerradoPor) =>
         new(slot.Id, slot.Fecha, slot.Hora, slot.Estado.ToString().ToLowerInvariant(), slot.PacienteId, slot.MedicoId, slot.MotivoCancelacion, slot.ObservacionesAdmin, slot.ConfirmadoPor, slot.ConfirmadoAt, slot.CerradoPor, slot.CerradoAt, slot.CreatedAt, slot.UpdatedAt, patient, medico, confirmadoPor, cerradoPor);

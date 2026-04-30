@@ -2,6 +2,7 @@ using MedicalCenter.Application.Abstractions.Persistence;
 using MedicalCenter.Application.Abstractions.Common;
 using MedicalCenter.Application.DTOs;
 using MedicalCenter.Application.Exceptions;
+using MedicalCenter.Application.Mappings;
 using MedicalCenter.Domain.Entities;
 using System.Text.Json;
 
@@ -12,25 +13,7 @@ public sealed class PatientsService(IPatientRepository patientRepository, IUserR
     public async Task<IReadOnlyCollection<PatientSummary>> GetAsync(string? search, bool includeInactive, CancellationToken cancellationToken)
     {
         var patients = await patientRepository.GetAsync(search, includeInactive, cancellationToken);
-        return patients.Select(x => new PatientSummary(
-            x.Id,
-            x.Nombre,
-            x.Email,
-            x.Telefono,
-            x.DocumentoIdentidad,
-            x.DocumentoIdentidadNormalizado,
-            x.Nacionalidad,
-            x.CondicionIvaId,
-            x.ObraSocialId,
-            x.NumeroCredencialObraSocial,
-            x.PortalHabilitado,
-            x.RequiereResetPortal,
-            x.LoginIdentifier,
-            x.Claustrofobico,
-            x.Notas,
-            x.DatosExtra,
-            x.OptInWhatsapp,
-            x.OptInSource)).ToArray();
+        return patients.Select(x => x.ToSummary()).ToArray();
     }
 
     public async Task<CreatedPatientResult> CreateAsync(
@@ -82,7 +65,7 @@ public sealed class PatientsService(IPatientRepository patientRepository, IUserR
         Validate(patient.Nombre, telefono, documentoIdentidad, nacionalidad, condicionIvaId, obraSocialId, numeroCredencialObraSocial, datosExtra);
         patient.UpdateAdministrativeData(email?.Trim(), telefono.Trim(), documentoIdentidad.Trim(), NormalizeDocumento(documentoIdentidad), nacionalidad?.Trim(), condicionIvaId, obraSocialId, numeroCredencialObraSocial?.Trim(), claustrofobico, actualizarNotas ? notas?.Trim() : patient.Notas, datosExtra, optInWhatsapp, optInSource);
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        return ToSummary(patient);
+        return patient.ToSummary();
     }
 
     public async Task<MutationResult> DeleteAsync(Guid patientId, CancellationToken cancellationToken)
@@ -103,7 +86,7 @@ public sealed class PatientsService(IPatientRepository patientRepository, IUserR
 
         patient.ConfigurePortal(portalHabilitado, portalHabilitado);
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        return ToSummary(patient);
+        return patient.ToSummary();
     }
 
     public async Task<PatientSummary> EnableResetAsync(Guid patientId, CancellationToken cancellationToken)
@@ -111,7 +94,7 @@ public sealed class PatientsService(IPatientRepository patientRepository, IUserR
         var patient = await patientRepository.GetByIdAsync(patientId, cancellationToken) ?? throw new NotFoundException("Paciente no encontrado");
         patient.MarkResetRequired();
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        return ToSummary(patient);
+        return patient.ToSummary();
     }
 
     public async Task<PatientSummary> UpdateMyDataAsync(Guid userId, string nombre, string? email, string telefono, CancellationToken cancellationToken)
@@ -130,7 +113,7 @@ public sealed class PatientsService(IPatientRepository patientRepository, IUserR
 
         patient.UpdateOwnData(nombre.Trim(), email?.Trim(), telefono.Trim());
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        return ToSummary(patient);
+        return patient.ToSummary();
     }
 
     private static void Validate(string nombre, string telefono, string documentoIdentidad, string? nacionalidad, int condicionIvaId, int? obraSocialId, string? numeroCredencialObraSocial, string datosExtra)
@@ -170,24 +153,4 @@ public sealed class PatientsService(IPatientRepository patientRepository, IUserR
     private static string? NormalizeOrNull(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim().ToLowerInvariant();
 
-    private static PatientSummary ToSummary(Patient x) =>
-        new(
-            x.Id,
-            x.Nombre,
-            x.Email,
-            x.Telefono,
-            x.DocumentoIdentidad,
-            x.DocumentoIdentidadNormalizado,
-            x.Nacionalidad,
-            x.CondicionIvaId,
-            x.ObraSocialId,
-            x.NumeroCredencialObraSocial,
-            x.PortalHabilitado,
-            x.RequiereResetPortal,
-            x.LoginIdentifier,
-            x.Claustrofobico,
-            x.Notas,
-            x.DatosExtra,
-            x.OptInWhatsapp,
-            x.OptInSource);
-}
+    }

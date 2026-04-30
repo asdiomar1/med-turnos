@@ -2,6 +2,7 @@ using MedicalCenter.Application.Abstractions.Common;
 using MedicalCenter.Application.Abstractions.Persistence;
 using MedicalCenter.Application.DTOs;
 using MedicalCenter.Application.Exceptions;
+using MedicalCenter.Application.Mappings;
 using MedicalCenter.Domain.Entities;
 using DomainClinicalHistory = MedicalCenter.Domain.Entities.ClinicalHistory;
 
@@ -20,7 +21,7 @@ public sealed class ClinicalHistoryService(
     public async Task<ClinicalHistorySummary> GetAsync(Guid patientId, CancellationToken cancellationToken)
     {
         var history = await EnsureHistoryAsync(patientId, cancellationToken);
-        return Map(history);
+        return history.ToSummary();
     }
 
     public async Task<ClinicalHistorySummary> UpdateAsync(Guid actorUserId, Guid patientId, string? antecedentes, string? alergias, string? medicacionActual, string? observacionesRelevantes, CancellationToken cancellationToken)
@@ -29,7 +30,7 @@ public sealed class ClinicalHistoryService(
         var history = await EnsureHistoryAsync(patientId, cancellationToken);
         history.Update(antecedentes, alergias, medicacionActual, observacionesRelevantes);
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        return Map(history);
+        return history.ToSummary();
     }
 
     public async Task<ClinicalHistorySummary> UpdateNumeroAsync(Guid actorUserId, Guid patientId, long numero, CancellationToken cancellationToken)
@@ -49,7 +50,7 @@ public sealed class ClinicalHistoryService(
 
         history.SetNumero(numero);
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        return Map(history);
+        return history.ToSummary();
     }
 
     public async Task<IReadOnlyCollection<ClinicalEvolutionSummary>> GetEvolutionsAsync(Guid patientId, CancellationToken cancellationToken)
@@ -61,7 +62,7 @@ public sealed class ClinicalHistoryService(
         return evolutions.Select(x =>
         {
             medicoLookup.TryGetValue(x.MedicoId, out var medico);
-            return Map(x, medico?.Nombre, medico?.Activo ?? false);
+            return x.ToSummary(medico?.Nombre, medico?.Activo ?? false);
         }).ToArray();
     }
 
@@ -104,7 +105,7 @@ public sealed class ClinicalHistoryService(
 
         await clinicalHistoryRepository.AddEvolutionAsync(evolution, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        return Map(evolution, medico.Nombre, medico.Activo);
+        return evolution.ToSummary(medico.Nombre, medico.Activo);
     }
 
     private async Task<DomainClinicalHistory> EnsureHistoryAsync(Guid patientId, CancellationToken cancellationToken)
@@ -137,9 +138,4 @@ public sealed class ClinicalHistoryService(
         }
     }
 
-    private static ClinicalHistorySummary Map(DomainClinicalHistory history) =>
-        new(history.PatientId, history.Numero, history.Antecedentes, history.Alergias, history.MedicacionActual, history.ObservacionesRelevantes, history.CreatedAt, history.UpdatedAt);
-
-    private static ClinicalEvolutionSummary Map(ClinicalEvolution evolution, string? medicoNombre, bool medicoActivo) =>
-        new(evolution.Id, evolution.PatientId, evolution.ConsultaSlotId, evolution.MedicoId, evolution.AuthorProfileId, evolution.FechaClinica, evolution.Titulo, evolution.Nota, evolution.DiagnosticoImpresion, evolution.Indicaciones, evolution.CreatedAt, evolution.UpdatedAt, medicoNombre, medicoActivo);
-}
+    }
