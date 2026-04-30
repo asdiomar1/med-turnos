@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddApplication().AddInfrastructure(builder.Configuration);
-builder.ConfigureJwtValidation();
+builder.ConfigureCredentialValidation();
 builder.Services.AddApiConfiguration();
 builder.Services.AddValidation();
 builder.Services.AddSecurityEvents();

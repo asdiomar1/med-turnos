@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 using FluentValidation;
 using FluentValidation.AspNetCore;
@@ -89,18 +90,89 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    public static WebApplicationBuilder ConfigureJwtValidation(this WebApplicationBuilder builder)
+    public static WebApplicationBuilder ConfigureCredentialValidation(this WebApplicationBuilder builder)
     {
+        var logger = LoggerFactory.Create(config => config.AddConsole()).CreateLogger<CredentialValidator>();
+        var isProduction = !builder.Environment.IsDevelopment();
+        var issues = new List<string>();
+
+        // 1. Validate JWT SecretKey
         var jwtOptions = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>() ?? new JwtOptions();
-        if (jwtOptions.SecretKey.Length < 32 || jwtOptions.SecretKey.Contains("change-this-secret"))
+        if (string.IsNullOrWhiteSpace(jwtOptions.SecretKey) || 
+            jwtOptions.SecretKey.Length < 32 || 
+            jwtOptions.SecretKey.Contains("change-this-secret"))
         {
-            builder.Logging.AddConsole();
-            var logger = LoggerFactory.Create(config => config.AddConsole()).CreateLogger<Program>();
-            logger.LogCritical("JWT SecretKey is weak or uses default value. Change it immediately in production!");
+            issues.Add("JWT SecretKey is weak, empty, or uses default value (minimum 32 chars required)");
+        }
+
+        // 2. Validate ApiKey
+        var apiKeyOptions = builder.Configuration.GetSection(ApiKeyOptions.SectionName).Get<ApiKeyOptions>() ?? new ApiKeyOptions();
+        if (string.IsNullOrWhiteSpace(apiKeyOptions.Key) || apiKeyOptions.Key.Contains("change-this"))
+        {
+            issues.Add("API Key is missing or uses default value");
+        }
+
+        // 3. Validate R2 credentials
+        var r2Options = builder.Configuration.GetSection(R2Options.SectionName).Get<R2Options>() ?? new R2Options();
+        if (string.IsNullOrWhiteSpace(r2Options.AccountId) || r2Options.AccountId == "set-via-env")
+        {
+            issues.Add("R2 AccountId is missing or not configured");
+        }
+        if (string.IsNullOrWhiteSpace(r2Options.AccessKeyId) || r2Options.AccessKeyId == "set-via-env")
+        {
+            issues.Add("R2 AccessKeyId is missing or not configured");
+        }
+        if (string.IsNullOrWhiteSpace(r2Options.SecretAccessKey) || r2Options.SecretAccessKey == "set-via-env")
+        {
+            issues.Add("R2 SecretAccessKey is missing or not configured");
+        }
+
+        // 4. Validate WhatsApp secrets
+        var whatsAppOptions = builder.Configuration.GetSection(WhatsAppOptions.SectionName).Get<WhatsAppOptions>() ?? new WhatsAppOptions();
+        if (string.IsNullOrWhiteSpace(whatsAppOptions.WebhookVerifyToken) || whatsAppOptions.WebhookVerifyToken.Contains("change-this"))
+        {
+            issues.Add("WhatsApp WebhookVerifyToken uses default value");
+        }
+        if (string.IsNullOrWhiteSpace(whatsAppOptions.DispatchInternalSecret) || whatsAppOptions.DispatchInternalSecret.Contains("change-this"))
+        {
+            issues.Add("WhatsApp DispatchInternalSecret uses default value");
+        }
+
+        // Report findings
+        if (issues.Count > 0)
+        {
+            if (isProduction)
+            {
+                // In production, fail hard on ANY credential issue
+                foreach (var issue in issues)
+                {
+                    logger.LogCritical("SECURITY: {Issue}", issue);
+                }
+                logger.LogCritical("SECURITY: Application starting with {Count} credential issue(s) in PRODUCTION mode. Fix immediately!", issues.Count);
+                
+                // Optionally throw to prevent startup in production with bad credentials
+                // Uncomment below to enforce fail-fast:
+                // throw new InvalidOperationException($"Credential validation failed: {string.Join("; ", issues)}");
+            }
+            else
+            {
+                // In development, warn but allow startup
+                foreach (var issue in issues)
+                {
+                    logger.LogWarning("DEV WARNING: {Issue}", issue);
+                }
+                logger.LogWarning("DEV WARNING: {Count} credential issue(s) detected. OK for development, fix before production!", issues.Count);
+            }
+        }
+        else
+        {
+            logger.LogInformation("Credential validation passed: all secrets configured");
         }
 
         return builder;
     }
+
+    private sealed class CredentialValidator { }
 }
 
 public static class ApplicationBuilderExtensions
