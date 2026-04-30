@@ -1,8 +1,9 @@
-using MedicalCenter.Application.Abstractions.Persistence;
 using MedicalCenter.Application.Abstractions.Common;
+using MedicalCenter.Application.Abstractions.Persistence;
 using MedicalCenter.Application.DTOs;
 using MedicalCenter.Application.Exceptions;
 using MedicalCenter.Application.Features.AdminEventFeed;
+using MedicalCenter.Application.Mappings;
 using MedicalCenter.Domain.Entities;
 
 namespace MedicalCenter.Application.Features.Catalogs;
@@ -14,10 +15,10 @@ public sealed class CatalogsService(
     IUnitOfWork unitOfWork) : ICatalogsService
 {
     public async Task<IReadOnlyCollection<CondicionIvaSummaryDto>> GetCondicionesIvaAsync(bool includeInactive, CancellationToken cancellationToken) =>
-        (await condicionIvaRepository.GetAllAsync(includeInactive, cancellationToken)).Select(Map).ToArray();
+        (await condicionIvaRepository.GetAllAsync(includeInactive, cancellationToken)).Select(x => x.ToSummary()).ToArray();
 
     public async Task<IReadOnlyCollection<ObraSocialSummaryDto>> GetObrasSocialesAsync(CancellationToken cancellationToken) =>
-        (await obraSocialRepository.GetAllAsync(cancellationToken)).Select(Map).ToArray();
+        (await obraSocialRepository.GetAllAsync(cancellationToken)).Select(x => x.ToSummary()).ToArray();
 
     public async Task<ObraSocialSummaryDto> CreateObraSocialAsync(Guid actorUserId, string nombre, bool tieneConvenio, string? abreviatura, CancellationToken cancellationToken)
     {
@@ -36,7 +37,7 @@ public sealed class CatalogsService(
             $"Se creó la obra social \"{obraSocial.Nombre}\".",
             cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        return Map(obraSocial);
+        return obraSocial.ToSummary();
     }
 
     public async Task<ObraSocialSummaryDto> UpdateObraSocialAsync(Guid actorUserId, int obraSocialId, string nombre, bool tieneConvenio, string? abreviatura, CancellationToken cancellationToken)
@@ -55,7 +56,7 @@ public sealed class CatalogsService(
             $"Se actualizó la obra social \"{previousNombre}\" → \"{obraSocial.Nombre}\".",
             cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        return Map(obraSocial);
+        return obraSocial.ToSummary();
     }
 
     public async Task<ObraSocialSummaryDto> SetObraSocialActiveAsync(Guid actorUserId, int obraSocialId, bool activa, CancellationToken cancellationToken)
@@ -70,7 +71,7 @@ public sealed class CatalogsService(
             $"La obra social \"{obraSocial.Nombre}\" quedó {(obraSocial.Activa ? "activa" : "inactiva")}.",
             cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        return Map(obraSocial);
+        return obraSocial.ToSummary();
     }
 
     public async Task<ObraSocialSummaryDto> SetObraSocialConvenioAsync(Guid actorUserId, int obraSocialId, bool tieneConvenio, CancellationToken cancellationToken)
@@ -85,7 +86,7 @@ public sealed class CatalogsService(
             $"La obra social \"{obraSocial.Nombre}\" quedó con convenio={(obraSocial.TieneConvenio ? "sí" : "no")}.",
             cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        return Map(obraSocial);
+        return obraSocial.ToSummary();
     }
 
     private async Task EnsureUniqueNameAsync(string normalizedName, int? exceptId, CancellationToken cancellationToken)
@@ -138,8 +139,4 @@ public sealed class CatalogsService(
 
         await adminEventFeedRepository.AddAsync(entry, cancellationToken);
     }
-
-    private static CondicionIvaSummaryDto Map(CondicionIva x) => new(x.Id, x.Nombre, x.Activo, x.Orden, x.CreatedAt);
-
-    private static ObraSocialSummaryDto Map(ObraSocial x) => new(x.Id, x.Nombre, x.Activa, x.TieneConvenio, x.Orden, x.Abreviatura, x.CreatedAt);
 }
