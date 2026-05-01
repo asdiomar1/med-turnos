@@ -7,14 +7,18 @@ public static class AdminEventFeedConstants
     public const string ActionFamilyCatalog = "catalog";
     public const string ActionFamilyImport = "import";
 
+    public const string ActionFamilyPatient = "patient";
+
     public static class EntityTypes
     {
         public const string Camera = "camara";
         public const string ObraSocial = "obra_social";
+        public const string CondicionIva = "condicion_iva";
         public const string Medico = "medico";
         public const string Referente = "referente";
         public const string CampoConfig = "campo_config";
         public const string Importacion = "importacion";
+        public const string Paciente = "paciente";
     }
 
     public static class ActionCodes
@@ -32,6 +36,10 @@ public static class AdminEventFeedConstants
         public const string ObraSocialStatusUpdated = "obra_social.status_updated";
         public const string ObraSocialConvenioUpdated = "obra_social.convenio_updated";
 
+        public const string CondicionIvaCreated = "condicion_iva.created";
+        public const string CondicionIvaUpdated = "condicion_iva.updated";
+        public const string CondicionIvaStatusUpdated = "condicion_iva.status_updated";
+
         public const string MedicoCreated = "medico.created";
         public const string MedicoUpdated = "medico.updated";
         public const string MedicoStatusUpdated = "medico.status_updated";
@@ -43,6 +51,9 @@ public static class AdminEventFeedConstants
         public const string CampoConfigCreated = "campo_config.created";
         public const string CampoConfigUpdated = "campo_config.updated";
         public const string CampoConfigDeleted = "campo_config.deleted";
+
+        public const string PacienteCreated = "paciente.created";
+        public const string PacienteUpdated = "paciente.updated";
     }
 
     public static IReadOnlyCollection<AdminEventActionDefinition> CatalogActionDefinitions { get; } =
@@ -55,6 +66,10 @@ public static class AdminEventFeedConstants
         new(ActionCodes.ObraSocialUpdated, ActionFamilyCatalog, EntityTypes.ObraSocial, "Obra social actualizada"),
         new(ActionCodes.ObraSocialStatusUpdated, ActionFamilyCatalog, EntityTypes.ObraSocial, "Estado de obra social actualizado"),
         new(ActionCodes.ObraSocialConvenioUpdated, ActionFamilyCatalog, EntityTypes.ObraSocial, "Convenio de obra social actualizado"),
+
+        new(ActionCodes.CondicionIvaCreated, ActionFamilyCatalog, EntityTypes.CondicionIva, "Condición IVA creada"),
+        new(ActionCodes.CondicionIvaUpdated, ActionFamilyCatalog, EntityTypes.CondicionIva, "Condición IVA actualizada"),
+        new(ActionCodes.CondicionIvaStatusUpdated, ActionFamilyCatalog, EntityTypes.CondicionIva, "Estado de condición IVA actualizado"),
 
         new(ActionCodes.MedicoCreated, ActionFamilyCatalog, EntityTypes.Medico, "Médico creado"),
         new(ActionCodes.MedicoUpdated, ActionFamilyCatalog, EntityTypes.Medico, "Médico actualizado"),

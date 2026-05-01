@@ -1,15 +1,32 @@
+using System.IO;
 using MedicalCenter.Application.Abstractions.Common;
 using MedicalCenter.Domain.Entities;
 using MedicalCenter.Infrastructure.Options;
 using MedicalCenter.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
 namespace MedicalCenter.Infrastructure.Seed;
 
 public static class DatabaseInitializer
 {
+    // Project root - used to locate seed files
+    private static readonly string ProjectRoot = FindProjectRoot();
+
+    private static string FindProjectRoot()
+    {
+        var current = AppDomain.CurrentDomain.BaseDirectory;
+        while (current != null && !File.Exists(Path.Combine(current, "MedicalCenter.sln")))
+        {
+            var parent = Directory.GetParent(current);
+            if (parent == null) break;
+            current = parent.FullName;
+        }
+        return current ?? Directory.GetCurrentDirectory();
+    }
+
     private static readonly (long Id, string Key, string Nombre, string? Descripcion, string Modulo)[] Permissions =
     [
         (1, "app.admin_panel.access", "Acceso panel interno", "Permite ingresar al panel de administración", "app"),
@@ -188,11 +205,203 @@ public static class DatabaseInitializer
         var dbContext = scope.ServiceProvider.GetRequiredService<MedicalCenterDbContext>();
         var seedOptions = scope.ServiceProvider.GetRequiredService<IOptions<SeedOptions>>().Value;
         var passwordHasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
+        var environment = scope.ServiceProvider.GetRequiredService<IHostEnvironment>();
 
+        await SquashMigrationsAsync(dbContext, cancellationToken);
         await dbContext.Database.MigrateAsync(cancellationToken);
         await EnsureRbacSchemaAsync(dbContext, cancellationToken);
         await ResetAndSeedRbacAsync(dbContext, cancellationToken);
+        await EnsureCatalogDataAsync(dbContext, cancellationToken);
         await SeedAdminUserAsync(dbContext, seedOptions, passwordHasher, cancellationToken);
+
+        // Load development data if in Development mode
+        Console.WriteLine($"[DEBUG] Environment: {environment.EnvironmentName}, IsDevelopment: {environment.IsDevelopment()}");
+        
+        if (environment.IsDevelopment())
+        {
+            await LoadDevDataAsync(dbContext, cancellationToken);
+        }
+    }
+
+    /// <summary>
+    /// Loads development data from schema/dev-data-only-YYYYMMDD-HHMMSS.sql
+    /// Only runs in Development mode.
+    /// </summary>
+    private static async Task LoadDevDataAsync(MedicalCenterDbContext dbContext, CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Search multiple candidate paths to support both local and Docker environments
+            var candidateDirs = new List<string>
+            {
+                Path.Combine(ProjectRoot, "schema"),
+                "/app/schema", // Docker volume mount location
+            };
+
+            // Fallback for when ProjectRoot resolves to root in Docker
+            if (ProjectRoot != "/app")
+            {
+                candidateDirs.Add("/schema");
+            }
+
+            string? schemaDir = null;
+            foreach (var candidate in candidateDirs)
+            {
+                Console.WriteLine($"[DEBUG] Checking schema candidate: {candidate} - Exists: {Directory.Exists(candidate)}");
+                if (Directory.Exists(candidate))
+                {
+                    schemaDir = candidate;
+                    break;
+                }
+            }
+
+            if (schemaDir == null)
+            {
+                Console.WriteLine($"[DEBUG] No schema directory found in any candidate location");
+                return;
+            }
+
+            var devDataFile = Directory.GetFiles(schemaDir, "dev-data-only-*.sql")
+                .OrderByDescending(f => f)
+                .FirstOrDefault();
+
+            if (devDataFile == null)
+            {
+                Console.WriteLine($"[DEBUG] No dev data file found in {schemaDir}/");
+                return;
+            }
+
+            Console.WriteLine($"Loading development data from {Path.GetFileName(devDataFile)}...");
+
+            var executed = await ExecuteSqlScriptAsync(dbContext, devDataFile, cancellationToken);
+
+            Console.WriteLine($"Development data loaded successfully ({executed} statements executed)");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Warning: Failed to load dev data: {ex.Message}");
+            // Don't fail - dev data is optional
+        }
+    }
+
+    /// <summary>
+    /// Executes a pg_dump plain-text SQL file line-by-line, skipping metadata/comments
+    /// and grouping multi-line statements terminated by a semicolon at end-of-line.
+    /// Uses the underlying Npgsql connection to bypass EF Core parameter formatting,
+    /// which breaks on JSON strings containing '{' and '}'.
+    /// </summary>
+    private static async Task<int> ExecuteSqlScriptAsync(
+        MedicalCenterDbContext dbContext,
+        string filePath,
+        CancellationToken cancellationToken)
+    {
+        var executed = 0;
+        var skipped = 0;
+        var buffer = new System.Text.StringBuilder();
+
+        await using var stream = File.OpenRead(filePath);
+        using var reader = new StreamReader(stream);
+
+        // Ensure connection is open
+        await dbContext.Database.OpenConnectionAsync(cancellationToken);
+        var connection = dbContext.Database.GetDbConnection();
+
+        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+
+        while (await reader.ReadLineAsync(cancellationToken) is { } line)
+        {
+            var trimmed = line.Trim();
+
+            // Skip empty lines and SQL comments
+            if (string.IsNullOrEmpty(trimmed) || trimmed.StartsWith("--"))
+                continue;
+
+            // Skip pg_dump metadata lines (e.g. "Type: TABLE DATA; Schema: auth; Owner: ...")
+            if (IsPgDumpMetadataLine(trimmed))
+                continue;
+
+            buffer.AppendLine(line);
+
+            // A statement ends when the line itself ends with a semicolon.
+            if (trimmed.EndsWith(";"))
+            {
+                var statement = buffer.ToString().Trim();
+                buffer.Clear();
+
+                if (string.IsNullOrEmpty(statement))
+                    continue;
+
+                try
+                {
+                    await using var cmd = connection.CreateCommand();
+                    cmd.Transaction = transaction;
+                    cmd.CommandText = statement;
+                    await cmd.ExecuteNonQueryAsync(cancellationToken);
+                    executed++;
+                }
+                catch (Exception ex)
+                {
+                    skipped++;
+                    // Only log non-duplicate errors to reduce noise
+                    var msg = ex.Message.Trim();
+                    if (!msg.Contains("duplicate key", StringComparison.OrdinalIgnoreCase))
+                    {
+                        Console.WriteLine($"[DEBUG] SQL statement skipped: {msg}");
+                    }
+                }
+            }
+        }
+
+        await transaction.CommitAsync(cancellationToken);
+        Console.WriteLine($"[DEBUG] Dev data summary: {executed} executed, {skipped} skipped");
+        return executed;
+    }
+
+    /// <summary>
+    /// Detects lines produced by pg_dump that look like metadata but are not commented out.
+    /// Examples: "Type: TABLE DATA;", "Schema: public;", "Owner: postgres;"
+    /// </summary>
+    private static bool IsPgDumpMetadataLine(string line)
+    {
+        // Fast path: if it doesn't contain a colon it's not metadata
+        if (!line.Contains(':'))
+            return false;
+
+        // These are common pg_dump metadata tokens that appear as standalone pseudo-statements
+        var metadataTokens = new[] { "Type:", "Schema:", "Owner:" };
+        return metadataTokens.Any(token => line.StartsWith(token, StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// Handles the migration squash on existing databases.
+    /// Clears __EFMigrationsHistory and marks the squashed migration as applied.
+    /// This is idempotent — safe to run multiple times.
+    /// </summary>
+    private static async Task SquashMigrationsAsync(MedicalCenterDbContext dbContext, CancellationToken cancellationToken)
+    {
+        // Get EF Core version dynamically from the executing assembly
+        var efCoreVersion = typeof(Microsoft.EntityFrameworkCore.DbContext).Assembly.GetName().Version?.ToString() ?? "8.0.11";
+        
+        try
+        {
+            // Unconditionally clear old migrations and insert the squashed migration.
+            // This works because if the table doesn't exist, it throws and we catch it.
+            // If the squashed migration is already there, the DELETE removes it and we re-insert.
+            // Using parameterized query to avoid SQL injection (EF will use the value as a literal since it's a string)
+            await dbContext.Database.ExecuteSqlRawAsync(
+                """
+                DELETE FROM "__EFMigrationsHistory";
+                INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+                VALUES ('20260430180403_InitialCreate', @p0);
+                """,
+                cancellationToken,
+                efCoreVersion);
+        }
+        catch (Exception ex) when (ex is Npgsql.PostgresException { SqlState: "42P01" } or InvalidOperationException)
+        {
+            // Table doesn't exist yet (42P01 = undefined_table) or other expected error.
+            // MigrateAsync will create the table and apply InitialCreate normally.
+        }
     }
 
     private static async Task EnsureRbacSchemaAsync(MedicalCenterDbContext dbContext, CancellationToken cancellationToken)
@@ -378,6 +587,53 @@ public static class DatabaseInitializer
         {
             await transaction.RollbackAsync(cancellationToken);
             throw;
+        }
+    }
+
+    private static async Task EnsureCatalogDataAsync(MedicalCenterDbContext dbContext, CancellationToken cancellationToken)
+    {
+        var condicionesIva = new (int Id, string Nombre)[]
+        {
+            (1, "Consumidor final"),
+            (2, "Responsable inscripto"),
+            (3, "Monotributista"),
+            (4, "Exento"),
+            (5, "No responsable"),
+            (6, "Sujeto no categorizado"),
+            (7, "Consumidor final extranjero")
+        };
+
+        foreach (var (id, nombre) in condicionesIva)
+        {
+            try
+            {
+                await dbContext.Database.ExecuteSqlRawAsync("""
+                    insert into public.condiciones_iva (id, nombre, activo, orden, created_at)
+                    values ({0}, {1}, true, {0}, now())
+                    on conflict (id) do update set
+                        nombre = excluded.nombre,
+                        activo = excluded.activo,
+                        orden = excluded.orden;
+                    """,
+                    new object[] { id, nombre },
+                    cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DEBUG] Failed to seed condicion_iva {id}: {ex.Message}");
+            }
+        }
+
+        // Reset sequence if table exists and has a serial/auto-increment column
+        try
+        {
+            await dbContext.Database.ExecuteSqlRawAsync("""
+                select setval('public.condiciones_iva_id_seq', (select coalesce(max(id), 1) from public.condiciones_iva), true);
+                """, cancellationToken);
+        }
+        catch
+        {
+            // Sequence may not exist — ignore
         }
     }
 

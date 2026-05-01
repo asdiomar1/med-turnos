@@ -19,4 +19,12 @@ public sealed class CondicionIva : Entity<int>
     public bool Activo { get; private set; } = true;
     public int Orden { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
+
+    public void Update(string nombre, int orden)
+    {
+        Nombre = nombre;
+        Orden = orden;
+    }
+
+    public void SetActive(bool activo) => Activo = activo;
 }

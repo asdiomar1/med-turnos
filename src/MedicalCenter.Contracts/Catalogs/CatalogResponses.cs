@@ -79,3 +79,24 @@ public sealed class ToggleObraSocialConvenioRequest
     [JsonPropertyName("tiene_convenio")]
     public bool TieneConvenio { get; init; }
 }
+
+public sealed class CreateCondicionIvaRequest
+{
+    [JsonPropertyName("nombre")]
+    public string Nombre { get; init; } = string.Empty;
+}
+
+public sealed class UpdateCondicionIvaRequest
+{
+    [JsonPropertyName("nombre")]
+    public string Nombre { get; init; } = string.Empty;
+
+    [JsonPropertyName("orden")]
+    public int Orden { get; init; }
+}
+
+public sealed class ToggleCondicionIvaActiveRequest
+{
+    [JsonPropertyName("activo")]
+    public bool Activo { get; init; }
+}

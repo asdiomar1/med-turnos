@@ -1,5 +1,47 @@
 # Guía Completa de Debugging Local — MedicalCenter
 
+---
+
+## 0. Desarrollo Local Automatizado (RECOMENDADO)
+
+### MedicalCenter.Launcher
+
+Este proyecto incluye un launcher que automatiza todo el setup:
+
+```powershell
+# Desde la raíz del proyecto
+dotnet run --project tools/MedicalCenter.Launcher
+```
+
+**Modos disponibles:**
+
+| Opción | Descripción |
+|--------|-------------|
+| `1` o `full` | Full Docker Compose - Inicia API + Postgres + Redis en contenedores |
+| `2` or `infra` | Infra Only - Postgres + Redis en Docker, API con `dotnet run` |
+| `3` or `local` | Local Run - Asume infraestructura local, ejecuta con `dotnet run` |
+
+**Qué hace el launcher:**
+1. Verifica prerequisites (.NET 8.0, Docker, puertos disponibles)
+2. Genera `.vscode/launch.json` y `appsettings.Development.json` si no existen
+3. Muestra estado de migraciones pendientes
+4. Inicia la infraestructura y espera a que esté lista
+5. Ejecuta la API
+
+> **Nota:** Si el launcher detecta que ya tienes `appsettings.Development.json` con valores personalizados, NO lo sobreescribe.
+
+---
+
+**Flujo recomendado:**
+```powershell
+# Opción 1: Usar launcher (recomendado)
+dotnet run --project tools/MedicalCenter.Launcher
+
+# Opción 2: Manual (deprecated - ver abajo)
+```
+
+---
+
 ## 1. Prerequisites
 
 ### 1.1 Software Requerido

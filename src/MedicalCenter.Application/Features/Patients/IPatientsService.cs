@@ -6,6 +6,7 @@ public interface IPatientsService
 {
     Task<IReadOnlyCollection<PatientSummary>> GetAsync(string? search, bool includeInactive, CancellationToken cancellationToken);
     Task<CreatedPatientResult> CreateAsync(
+        Guid actorUserId,
         string nombre,
         string? email,
         string telefono,
@@ -23,6 +24,7 @@ public interface IPatientsService
         string datosExtra,
         CancellationToken cancellationToken);
     Task<PatientSummary> UpdateAsync(
+        Guid actorUserId,
         Guid patientId,
         string? email,
         string telefono,

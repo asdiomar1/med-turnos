@@ -7,6 +7,9 @@ services:
       TZ: America/Argentina/Buenos_Aires
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=medical_center;Username=postgres;Password=postgres
+      Redis__Host: redis
+      Redis__Port: 6379
+      ConnectionStrings__Redis: redis:6379
       Jwt__Issuer: MedicalCenter
       Jwt__Audience: MedicalCenter.Client
       Jwt__SecretKey: change-this-secret-in-production-with-at-least-32-chars
@@ -23,7 +26,9 @@ services:
       Imports__MaxFileSizeBytes: ${IMPORTS_MAX_FILE_SIZE_BYTES:-10485760}
       Imports__StorageBucket: ${R2_BUCKET:-medicalcenter-imports-dev}
     ports:
-      - "8080:8080"
+      - "8090:8080"
+    volumes:
+      - ./schema:/app/schema:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -37,7 +42,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
@@ -49,7 +54,7 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      - "6380:6379"
     volumes:
       - redis-data:/data
     healthcheck:
