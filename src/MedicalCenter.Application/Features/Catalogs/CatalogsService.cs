@@ -17,6 +17,68 @@ public sealed class CatalogsService(
     public async Task<IReadOnlyCollection<CondicionIvaSummaryDto>> GetCondicionesIvaAsync(bool includeInactive, CancellationToken cancellationToken) =>
         (await condicionIvaRepository.GetAllAsync(includeInactive, cancellationToken)).Select(x => x.ToSummary()).ToArray();
 
+    public async Task<CondicionIvaSummaryDto> CreateCondicionIvaAsync(Guid actorUserId, string nombre, CancellationToken cancellationToken)
+    {
+        var normalizedName = Normalize(nombre);
+        EnsureName(normalizedName);
+        await EnsureUniqueCondicionIvaNameAsync(normalizedName, null, cancellationToken);
+
+        var condicionIva = new CondicionIva(0, normalizedName, true, await condicionIvaRepository.GetNextOrderAsync(cancellationToken));
+        await condicionIvaRepository.AddAsync(condicionIva, cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+        await RegisterCatalogEventAsync(
+            actorUserId,
+            AdminEventFeedConstants.ActionCodes.CondicionIvaCreated,
+            condicionIva.Id.ToString(),
+            AdminEventFeedConstants.EntityTypes.CondicionIva,
+            "condicion_iva",
+            "Condición IVA creada",
+            $"Se creó la condición IVA \"{condicionIva.Nombre}\".",
+            cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+        return condicionIva.ToSummary();
+    }
+
+    public async Task<CondicionIvaSummaryDto> UpdateCondicionIvaAsync(Guid actorUserId, int condicionIvaId, string nombre, int orden, CancellationToken cancellationToken)
+    {
+        var condicionIva = await condicionIvaRepository.GetByIdAsync(condicionIvaId, cancellationToken) ?? throw new NotFoundException("Condición IVA no encontrada.");
+        var previousNombre = condicionIva.Nombre;
+        var normalizedName = Normalize(nombre);
+        EnsureName(normalizedName);
+        await EnsureUniqueCondicionIvaNameAsync(normalizedName, condicionIvaId, cancellationToken);
+        condicionIva.Update(normalizedName, orden);
+        await RegisterCatalogEventAsync(
+            actorUserId,
+            AdminEventFeedConstants.ActionCodes.CondicionIvaUpdated,
+            condicionIva.Id.ToString(),
+            AdminEventFeedConstants.EntityTypes.CondicionIva,
+            "condicion_iva",
+            "Condición IVA actualizada",
+            $"Se actualizó la condición IVA \"{previousNombre}\" → \"{condicionIva.Nombre}\".",
+            cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+        await condicionIvaRepository.InvalidateCacheAsync(cancellationToken);
+        return condicionIva.ToSummary();
+    }
+
+    public async Task<CondicionIvaSummaryDto> SetCondicionIvaActiveAsync(Guid actorUserId, int condicionIvaId, bool activo, CancellationToken cancellationToken)
+    {
+        var condicionIva = await condicionIvaRepository.GetByIdAsync(condicionIvaId, cancellationToken) ?? throw new NotFoundException("Condición IVA no encontrada.");
+        condicionIva.SetActive(activo);
+        await RegisterCatalogEventAsync(
+            actorUserId,
+            AdminEventFeedConstants.ActionCodes.CondicionIvaStatusUpdated,
+            condicionIva.Id.ToString(),
+            AdminEventFeedConstants.EntityTypes.CondicionIva,
+            "condicion_iva",
+            "Estado de condición IVA actualizado",
+            $"La condición IVA \"{condicionIva.Nombre}\" quedó {(condicionIva.Activo ? "activa" : "inactiva")}.",
+            cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+        await condicionIvaRepository.InvalidateCacheAsync(cancellationToken);
+        return condicionIva.ToSummary();
+    }
+
     public async Task<IReadOnlyCollection<ObraSocialSummaryDto>> GetObrasSocialesAsync(CancellationToken cancellationToken) =>
         (await obraSocialRepository.GetAllAsync(cancellationToken)).Select(x => x.ToSummary()).ToArray();
 
@@ -33,6 +95,8 @@ public sealed class CatalogsService(
             actorUserId,
             AdminEventFeedConstants.ActionCodes.ObraSocialCreated,
             obraSocial.Id.ToString(),
+            AdminEventFeedConstants.EntityTypes.ObraSocial,
+            "obra_social",
             "Obra social creada",
             $"Se creó la obra social \"{obraSocial.Nombre}\".",
             cancellationToken);
@@ -52,6 +116,8 @@ public sealed class CatalogsService(
             actorUserId,
             AdminEventFeedConstants.ActionCodes.ObraSocialUpdated,
             obraSocial.Id.ToString(),
+            AdminEventFeedConstants.EntityTypes.ObraSocial,
+            "obra_social",
             "Obra social actualizada",
             $"Se actualizó la obra social \"{previousNombre}\" → \"{obraSocial.Nombre}\".",
             cancellationToken);
@@ -67,6 +133,8 @@ public sealed class CatalogsService(
             actorUserId,
             AdminEventFeedConstants.ActionCodes.ObraSocialStatusUpdated,
             obraSocial.Id.ToString(),
+            AdminEventFeedConstants.EntityTypes.ObraSocial,
+            "obra_social",
             "Estado de obra social actualizado",
             $"La obra social \"{obraSocial.Nombre}\" quedó {(obraSocial.Activa ? "activa" : "inactiva")}.",
             cancellationToken);
@@ -82,6 +150,8 @@ public sealed class CatalogsService(
             actorUserId,
             AdminEventFeedConstants.ActionCodes.ObraSocialConvenioUpdated,
             obraSocial.Id.ToString(),
+            AdminEventFeedConstants.EntityTypes.ObraSocial,
+            "obra_social",
             "Convenio de obra social actualizado",
             $"La obra social \"{obraSocial.Nombre}\" quedó con convenio={(obraSocial.TieneConvenio ? "sí" : "no")}.",
             cancellationToken);
@@ -98,11 +168,20 @@ public sealed class CatalogsService(
         }
     }
 
+    private async Task EnsureUniqueCondicionIvaNameAsync(string normalizedName, int? exceptId, CancellationToken cancellationToken)
+    {
+        var exists = await condicionIvaRepository.GetByNormalizedNameAsync(normalizedName, exceptId, cancellationToken);
+        if (exists is not null)
+        {
+            throw new ConflictException("Ya existe una condición IVA con ese nombre.");
+        }
+    }
+
     private static void EnsureName(string? nombre)
     {
         if (string.IsNullOrWhiteSpace(nombre))
         {
-            throw new ValidationException("Nombre requerido.");
+            throw new ValidationException("El nombre es requerido.");
         }
     }
 
@@ -113,6 +192,8 @@ public sealed class CatalogsService(
         Guid actorUserId,
         string actionCode,
         string entityId,
+        string entityType,
+        string sourcePrefix,
         string title,
         string summary,
         CancellationToken cancellationToken)
@@ -124,7 +205,7 @@ public sealed class CatalogsService(
             AdminEventFeedConstants.DefaultActorLabel,
             actionCode,
             AdminEventFeedConstants.ActionFamilyCatalog,
-            AdminEventFeedConstants.EntityTypes.ObraSocial,
+            entityType,
             entityId,
             null,
             null,
@@ -134,7 +215,7 @@ public sealed class CatalogsService(
             title,
             summary,
             AdminEventFeedConstants.SourceSystemApi,
-            $"obra_social:{actionCode}:{entityId}:{Guid.NewGuid():N}",
+            $"{sourcePrefix}:{actionCode}:{entityId}:{Guid.NewGuid():N}",
             "{}");
 
         await adminEventFeedRepository.AddAsync(entry, cancellationToken);

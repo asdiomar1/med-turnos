@@ -37,4 +37,36 @@ public sealed class CondicionIvaRepository : ICondicionIvaRepository
             CacheTtl,
             cancellationToken);
     }
+
+    public Task<CondicionIva?> GetByIdAsync(int id, CancellationToken cancellationToken) =>
+        _dbContext.CondicionesIva.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+
+    public Task<CondicionIva?> GetByNormalizedNameAsync(string normalizedName, int? exceptId, CancellationToken cancellationToken)
+    {
+        var query = _dbContext.CondicionesIva.AsQueryable();
+        if (exceptId.HasValue)
+        {
+            query = query.Where(x => x.Id != exceptId.Value);
+        }
+
+        return query.FirstOrDefaultAsync(x => x.Nombre.ToLower() == normalizedName.ToLower(), cancellationToken);
+    }
+
+    public async Task<int> GetNextOrderAsync(CancellationToken cancellationToken)
+    {
+        var max = await _dbContext.CondicionesIva.Select(x => (int?)x.Orden).MaxAsync(cancellationToken);
+        return (max ?? 0) + 1;
+    }
+
+    public async Task AddAsync(CondicionIva condicionIva, CancellationToken cancellationToken)
+    {
+        await _dbContext.CondicionesIva.AddAsync(condicionIva, cancellationToken);
+        await InvalidateCacheAsync(cancellationToken);
+    }
+
+    public async Task InvalidateCacheAsync(CancellationToken cancellationToken)
+    {
+        await _cache.RemoveAsync(CacheKey, cancellationToken);
+        await _cache.RemoveAsync($"{CacheKey}:all", cancellationToken);
+    }
 }

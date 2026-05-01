@@ -28,6 +28,7 @@ public sealed class PatientsController(IPatientsService patientsService, ISecuri
     public async Task<IActionResult> Create([FromBody] CreatePatientRequest request, CancellationToken cancellationToken)
     {
         var result = await patientsService.CreateAsync(
+            User.GetUserId(),
             request.Nombre,
             request.Email,
             request.Telefono,
@@ -58,6 +59,7 @@ public sealed class PatientsController(IPatientsService patientsService, ISecuri
     public async Task<IActionResult> Update(Guid pacienteId, [FromBody] UpdatePatientRequest request, CancellationToken cancellationToken)
     {
         var result = await patientsService.UpdateAsync(
+            User.GetUserId(),
             pacienteId,
             request.Email,
             request.Telefono,

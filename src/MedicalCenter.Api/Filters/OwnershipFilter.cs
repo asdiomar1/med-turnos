@@ -9,7 +9,8 @@ public sealed class OwnershipFilter(ISecurityAuditLogger auditLogger) : IAsyncAc
 {
     public Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
     {
-        if (context.ActionArguments.TryGetValue("pacienteId", out var value) && value is Guid pacienteId)
+        var canEditPatients = context.HttpContext.User.HasClaim("permission", "pacientes.editar");
+        if (!canEditPatients && context.ActionArguments.TryGetValue("pacienteId", out var value) && value is Guid pacienteId)
         {
             var userId = context.HttpContext.User.GetUserId();
             if (pacienteId != userId)

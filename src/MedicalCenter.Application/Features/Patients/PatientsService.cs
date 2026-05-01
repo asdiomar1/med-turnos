@@ -2,13 +2,14 @@ using MedicalCenter.Application.Abstractions.Persistence;
 using MedicalCenter.Application.Abstractions.Common;
 using MedicalCenter.Application.DTOs;
 using MedicalCenter.Application.Exceptions;
+using MedicalCenter.Application.Features.AdminEventFeed;
 using MedicalCenter.Application.Mappings;
 using MedicalCenter.Domain.Entities;
 using System.Text.Json;
 
 namespace MedicalCenter.Application.Features.Patients;
 
-public sealed class PatientsService(IPatientRepository patientRepository, IUserRepository userRepository, IUnitOfWork unitOfWork) : IPatientsService
+public sealed class PatientsService(IPatientRepository patientRepository, IUserRepository userRepository, IAdminEventFeedRepository adminEventFeedRepository, IUnitOfWork unitOfWork) : IPatientsService
 {
     public async Task<IReadOnlyCollection<PatientSummary>> GetAsync(string? search, bool includeInactive, CancellationToken cancellationToken)
     {
@@ -17,6 +18,7 @@ public sealed class PatientsService(IPatientRepository patientRepository, IUserR
     }
 
     public async Task<CreatedPatientResult> CreateAsync(
+        Guid actorUserId,
         string nombre,
         string? email,
         string telefono,
@@ -56,15 +58,55 @@ public sealed class PatientsService(IPatientRepository patientRepository, IUserR
 
         await patientRepository.AddAsync(patient, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        var entry = new AdminEventFeedEntry(
+            0,
+            DateTimeOffset.UtcNow,
+            actorUserId,
+            AdminEventFeedConstants.DefaultActorLabel,
+            AdminEventFeedConstants.ActionCodes.PacienteCreated,
+            AdminEventFeedConstants.ActionFamilyPatient,
+            AdminEventFeedConstants.EntityTypes.Paciente,
+            patient.Id.ToString(),
+            null, null, null, null, null,
+            "Paciente creado",
+            $"Se creó el paciente \"{patient.Nombre}\".",
+            AdminEventFeedConstants.SourceSystemApi,
+            $"paciente:{AdminEventFeedConstants.ActionCodes.PacienteCreated}:{patient.Id}:{Guid.NewGuid():N}",
+            "{}");
+
+        await adminEventFeedRepository.AddAsync(entry, cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+
         return new CreatedPatientResult(patient.Id, patient.Nombre);
     }
 
-    public async Task<PatientSummary> UpdateAsync(Guid patientId, string? email, string telefono, string documentoIdentidad, string? nacionalidad, int condicionIvaId, int? obraSocialId, string? numeroCredencialObraSocial, bool claustrofobico, string? notas, string datosExtra, bool actualizarNotas, bool optInWhatsapp, string? optInSource, CancellationToken cancellationToken)
+    public async Task<PatientSummary> UpdateAsync(Guid actorUserId, Guid patientId, string? email, string telefono, string documentoIdentidad, string? nacionalidad, int condicionIvaId, int? obraSocialId, string? numeroCredencialObraSocial, bool claustrofobico, string? notas, string datosExtra, bool actualizarNotas, bool optInWhatsapp, string? optInSource, CancellationToken cancellationToken)
     {
         var patient = await patientRepository.GetByIdAsync(patientId, cancellationToken) ?? throw new NotFoundException("Paciente no encontrado");
         Validate(patient.Nombre, telefono, documentoIdentidad, nacionalidad, condicionIvaId, obraSocialId, numeroCredencialObraSocial, datosExtra);
         patient.UpdateAdministrativeData(email?.Trim(), telefono.Trim(), documentoIdentidad.Trim(), NormalizeDocumento(documentoIdentidad), nacionalidad?.Trim(), condicionIvaId, obraSocialId, numeroCredencialObraSocial?.Trim(), claustrofobico, actualizarNotas ? notas?.Trim() : patient.Notas, datosExtra, optInWhatsapp, optInSource);
         await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        var entry = new AdminEventFeedEntry(
+            0,
+            DateTimeOffset.UtcNow,
+            actorUserId,
+            AdminEventFeedConstants.DefaultActorLabel,
+            AdminEventFeedConstants.ActionCodes.PacienteUpdated,
+            AdminEventFeedConstants.ActionFamilyPatient,
+            AdminEventFeedConstants.EntityTypes.Paciente,
+            patientId.ToString(),
+            null, null, null, null, null,
+            "Paciente actualizado",
+            $"Se actualizaron los datos del paciente \"{patient.Nombre}\".",
+            AdminEventFeedConstants.SourceSystemApi,
+            $"paciente:{AdminEventFeedConstants.ActionCodes.PacienteUpdated}:{patientId}:{Guid.NewGuid():N}",
+            "{}");
+
+        await adminEventFeedRepository.AddAsync(entry, cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+
         return patient.ToSummary();
     }
 

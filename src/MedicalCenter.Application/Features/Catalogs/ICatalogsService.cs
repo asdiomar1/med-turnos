@@ -5,6 +5,10 @@ namespace MedicalCenter.Application.Features.Catalogs;
 public interface ICatalogsService
 {
     Task<IReadOnlyCollection<CondicionIvaSummaryDto>> GetCondicionesIvaAsync(bool includeInactive, CancellationToken cancellationToken);
+    Task<CondicionIvaSummaryDto> CreateCondicionIvaAsync(Guid actorUserId, string nombre, CancellationToken cancellationToken);
+    Task<CondicionIvaSummaryDto> UpdateCondicionIvaAsync(Guid actorUserId, int condicionIvaId, string nombre, int orden, CancellationToken cancellationToken);
+    Task<CondicionIvaSummaryDto> SetCondicionIvaActiveAsync(Guid actorUserId, int condicionIvaId, bool activo, CancellationToken cancellationToken);
+
     Task<IReadOnlyCollection<ObraSocialSummaryDto>> GetObrasSocialesAsync(CancellationToken cancellationToken);
     Task<ObraSocialSummaryDto> CreateObraSocialAsync(Guid actorUserId, string nombre, bool tieneConvenio, string? abreviatura, CancellationToken cancellationToken);
     Task<ObraSocialSummaryDto> UpdateObraSocialAsync(Guid actorUserId, int obraSocialId, string nombre, bool tieneConvenio, string? abreviatura, CancellationToken cancellationToken);
