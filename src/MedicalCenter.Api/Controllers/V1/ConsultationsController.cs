@@ -92,7 +92,7 @@ public sealed class ConsultationsController(IConsultationsService consultationsS
     [HttpPost("{slotId:guid}/asignaciones")]
     public async Task<IActionResult> Assign(Guid slotId, [FromBody] AssignConsultationRequest request, CancellationToken cancellationToken)
     {
-        var item = await consultationsService.AssignAsync(User.GetUserId(), slotId, GetRequiredIdempotencyKey(), new AssignConsultationCommand(request.PacienteId, request.MedicoId, request.ObservacionesAdmin), cancellationToken);
+        var item = await consultationsService.AssignAsync(User.GetUserId(), slotId, GetRequiredIdempotencyKey(), new AssignConsultationCommand(request.PacienteId, request.MedicoId, request.ObservacionesAdmin, request.MedicoUserId), cancellationToken);
         return Ok(item.ToResponse());
     }
 
@@ -106,7 +106,7 @@ public sealed class ConsultationsController(IConsultationsService consultationsS
     [HttpPost("{slotId:guid}/reprogramaciones")]
     public async Task<IActionResult> Reschedule(Guid slotId, [FromBody] RescheduleConsultationRequest request, CancellationToken cancellationToken)
     {
-        var item = await consultationsService.RescheduleAsync(User.GetUserId(), slotId, GetRequiredIdempotencyKey(), new RescheduleConsultationCommand(request.TargetSlotId, request.MedicoId), cancellationToken);
+        var item = await consultationsService.RescheduleAsync(User.GetUserId(), slotId, GetRequiredIdempotencyKey(), new RescheduleConsultationCommand(request.TargetSlotId, request.MedicoId, request.MedicoUserId), cancellationToken);
         return Ok(item.ToResponse());
     }
 

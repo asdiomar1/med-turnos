@@ -145,10 +145,23 @@ public sealed class ConsultationsService(
                     throw new ConflictException("El paciente no se encuentra activo.");
                 }
 
-                var medico = await medicoRepository.GetByIdAsync(command.MedicoId, cancellationToken) ?? throw new NotFoundException("Médico no encontrado.");
-                if (!medico.Activo)
+                if (command.MedicoUserId.HasValue)
                 {
-                    throw new ConflictException("El médico no se encuentra activo.");
+                    var medicoUser = await userRepository.GetByIdAsync(command.MedicoUserId.Value, cancellationToken) ?? throw new NotFoundException("Médico no encontrado.");
+                    if (!medicoUser.IsActive)
+                        throw new ConflictException("El médico no se encuentra activo.");
+                    if (!medicoUser.Roles.Any(r => r.Code == "medico"))
+                        throw new ConflictException("El usuario no tiene rol de médico.");
+                }
+                else if (command.MedicoId.HasValue)
+                {
+                    var medico = await medicoRepository.GetByIdAsync(command.MedicoId.Value, cancellationToken) ?? throw new NotFoundException("Médico no encontrado.");
+                    if (!medico.Activo)
+                        throw new ConflictException("El médico no se encuentra activo.");
+                }
+                else
+                {
+                    throw new ValidationException("Médico requerido.");
                 }
 
                 var slot = await consultationRepository.GetByIdAsync(slotId, cancellationToken) ?? throw new NotFoundException("Consulta no encontrada.");
@@ -157,7 +170,7 @@ public sealed class ConsultationsService(
 
                 try
                 {
-                    slot.Assign(command.PacienteId, command.MedicoId, command.ObservacionesAdmin, actorUserId, clock.UtcNow);
+                    slot.Assign(command.PacienteId, command.MedicoId, command.ObservacionesAdmin, actorUserId, clock.UtcNow, command.MedicoUserId);
                 }
                 catch (InvalidOperationException exception)
                 {
@@ -226,12 +239,15 @@ public sealed class ConsultationsService(
                 var patientId = source.PacienteId ?? throw new ConflictException("Consulta origen invalida.");
                 await EnsurePatientHasNoConsecutiveConsultationsAsync(patientId, target.Fecha, target.Hora, source.Id, cancellationToken);
 
-                var medicoId = command.MedicoId ?? source.MedicoId ?? throw new ConflictException("Médico requerido.");
+                var medicoUserId = command.MedicoUserId ?? source.MedicoUserId;
+                var medicoId = command.MedicoId ?? (medicoUserId.HasValue ? null : source.MedicoId);
+                if (medicoUserId is null && medicoId is null)
+                    throw new ConflictException("Médico requerido.");
 
                 try
                 {
                     source.RescheduleToFreeSlot();
-                    target.Assign(patientId, medicoId, null, actorUserId, clock.UtcNow);
+                    target.Assign(patientId, medicoId, null, actorUserId, clock.UtcNow, medicoUserId);
                 }
                 catch (InvalidOperationException exception)
                 {
@@ -278,7 +294,8 @@ public sealed class ConsultationsService(
                         command.Titulo,
                         command.Nota.Trim(),
                         command.DiagnosticoImpresion,
-                        command.Indicaciones);
+                        command.Indicaciones,
+                        medicoUserId: slot.MedicoUserId);
                     await clinicalHistoryRepository.AddEvolutionAsync(evolution, cancellationToken);
                 }
 
@@ -291,13 +308,14 @@ public sealed class ConsultationsService(
     public async Task<IReadOnlyCollection<ConsultationSessionSummary>> GetCompletedSessionsAsync(Guid patientId, CancellationToken cancellationToken) =>
         (await consultationRepository.GetSessionsByPatientIdAsync(patientId, cancellationToken)).Select(x => x.ToSummary()).ToArray();
 
-    private ConsultationSlotSummary Map(ConsultationSlot slot, GuidLookupSummary? patient, IntLookupSummary? medico, GuidLookupSummary? confirmadoPor, GuidLookupSummary? cerradoPor) =>
-        new(slot.Id, slot.Fecha, slot.Hora, slot.Estado.ToString().ToLowerInvariant(), slot.PacienteId, slot.MedicoId, slot.MotivoCancelacion, slot.ObservacionesAdmin, slot.ConfirmadoPor, slot.ConfirmadoAt, slot.CerradoPor, slot.CerradoAt, slot.CreatedAt, slot.UpdatedAt, patient, medico, confirmadoPor, cerradoPor);
+    private ConsultationSlotSummary Map(ConsultationSlot slot, GuidLookupSummary? patient, IntLookupSummary? medico, GuidLookupSummary? medicoUser, GuidLookupSummary? confirmadoPor, GuidLookupSummary? cerradoPor) =>
+        new(slot.Id, slot.Fecha, slot.Hora, slot.Estado.ToString().ToLowerInvariant(), slot.PacienteId, slot.MedicoId, slot.MedicoUserId, slot.MotivoCancelacion, slot.ObservacionesAdmin, slot.ConfirmadoPor, slot.ConfirmadoAt, slot.CerradoPor, slot.CerradoAt, slot.CreatedAt, slot.UpdatedAt, patient, medico, medicoUser, confirmadoPor, cerradoPor);
 
     private async Task<ConsultationSlotSummary> MapAsync(ConsultationSlot slot, CancellationToken cancellationToken)
     {
         var patient = slot.PacienteId.HasValue ? await patientRepository.GetByIdAsync(slot.PacienteId.Value, cancellationToken) : null;
-        var medico = slot.MedicoId.HasValue ? await medicoRepository.GetByIdAsync(slot.MedicoId.Value, cancellationToken) : null;
+        var medico = (slot.MedicoId.HasValue && !slot.MedicoUserId.HasValue) ? await medicoRepository.GetByIdAsync(slot.MedicoId.Value, cancellationToken) : null;
+        var medicoUser = slot.MedicoUserId.HasValue ? await userRepository.GetByIdAsync(slot.MedicoUserId.Value, cancellationToken) : null;
         var confirmedBy = slot.ConfirmadoPor.HasValue ? await userRepository.GetByIdAsync(slot.ConfirmadoPor.Value, cancellationToken) : null;
         var closedBy = slot.CerradoPor.HasValue ? await userRepository.GetByIdAsync(slot.CerradoPor.Value, cancellationToken) : null;
 
@@ -305,6 +323,7 @@ public sealed class ConsultationsService(
             slot,
             patient is null ? null : new GuidLookupSummary(patient.Id, patient.Nombre, patient.DocumentoIdentidad, patient.Email, patient.IsActive),
             medico is null ? null : new IntLookupSummary(medico.Id, medico.Nombre, null, medico.Activo),
+            medicoUser is null ? null : new GuidLookupSummary(medicoUser.Id, medicoUser.Nombre ?? medicoUser.Identifier, null, medicoUser.Email, medicoUser.IsActive),
             confirmedBy is null ? null : new GuidLookupSummary(confirmedBy.Id, confirmedBy.Nombre ?? confirmedBy.Identifier, null, confirmedBy.Email, confirmedBy.IsActive),
             closedBy is null ? null : new GuidLookupSummary(closedBy.Id, closedBy.Nombre ?? closedBy.Identifier, null, closedBy.Email, closedBy.IsActive));
     }

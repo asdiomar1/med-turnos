@@ -18,7 +18,7 @@ public static class AppointmentResponseMappings
             ModalidadCobro = x.ModalidadCobro, ObraSocialId = x.ObraSocialId,
             NumeroAutorizacion = x.NumeroAutorizacion, SesionesAutorizadas = x.SesionesAutorizadas,
             CicloObraSocialId = x.CicloObraSocialId, IniciarNuevoCicloObraSocial = x.IniciarNuevoCicloObraSocial,
-            ConvenioCorroborado = x.ConvenioCorroborado, MedicoId = x.MedicoId,
+            ConvenioCorroborado = x.ConvenioCorroborado, MedicoId = x.MedicoId, MedicoUserId = x.MedicoUserId,
             EsNuevoIngreso = x.EsNuevoIngreso, EsMonoxido = x.EsMonoxido,
             MonoxidoOrdenMedica = x.MonoxidoOrdenMedica, MonoxidoResumenClinico = x.MonoxidoResumenClinico,
         };
@@ -34,7 +34,7 @@ public static class AppointmentResponseMappings
             ModalidadCobro = x.ModalidadCobro, ObraSocialId = x.ObraSocialId,
             NumeroAutorizacion = x.NumeroAutorizacion, SesionesAutorizadas = x.SesionesAutorizadas,
             CicloObraSocialId = x.CicloObraSocialId, IniciarNuevoCicloObraSocial = x.IniciarNuevoCicloObraSocial,
-            ConvenioCorroborado = x.ConvenioCorroborado, MedicoId = x.MedicoId,
+            ConvenioCorroborado = x.ConvenioCorroborado, MedicoId = x.MedicoId, MedicoUserId = x.MedicoUserId,
             EsNuevoIngreso = x.EsNuevoIngreso, EsMonoxido = x.EsMonoxido,
             MonoxidoOrdenMedica = x.MonoxidoOrdenMedica, MonoxidoResumenClinico = x.MonoxidoResumenClinico,
             Camara = x.CamaraId.HasValue && cameras.TryGetValue(x.CamaraId.Value, out var found) ? found : null,

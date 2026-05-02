@@ -5,40 +5,10 @@ namespace MedicalCenter.Contracts.Professionals;
 public sealed class MedicoResponse
 {
     [JsonPropertyName("id")]
-    public int Id { get; init; }
+    public Guid Id { get; init; }
 
     [JsonPropertyName("nombre")]
     public string Nombre { get; init; } = string.Empty;
-
-    [JsonPropertyName("activo")]
-    public bool Activo { get; init; }
-
-    [JsonPropertyName("orden")]
-    public int Orden { get; init; }
-
-    [JsonPropertyName("created_at")]
-    public DateTimeOffset CreatedAt { get; init; }
-
-    [JsonPropertyName("perfil_id")]
-    public Guid? PerfilId { get; init; }
-}
-
-public sealed class CreateMedicoRequest
-{
-    [JsonPropertyName("nombre")]
-    public string Nombre { get; init; } = string.Empty;
-}
-
-public sealed class UpdateMedicoRequest
-{
-    [JsonPropertyName("nombre")]
-    public string Nombre { get; init; } = string.Empty;
-}
-
-public sealed class UpdateMedicoStatusRequest
-{
-    [JsonPropertyName("activo")]
-    public bool Activo { get; init; }
 }
 
 public sealed class ReferenteResponse

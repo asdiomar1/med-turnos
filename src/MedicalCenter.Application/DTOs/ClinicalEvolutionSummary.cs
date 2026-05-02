@@ -5,6 +5,7 @@ public sealed record ClinicalEvolutionSummary(
     Guid PatientId,
     Guid? ConsultaSlotId,
     int MedicoId,
+    Guid? MedicoUserId,
     Guid AuthorProfileId,
     DateOnly FechaClinica,
     string? Titulo,

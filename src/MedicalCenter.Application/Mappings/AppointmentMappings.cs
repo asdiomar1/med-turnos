@@ -34,6 +34,7 @@ public static class AppointmentMappings
             a.IniciarNuevoCicloObraSocial,
             a.ConvenioCorroborado,
             a.MedicoId,
+            a.MedicoUserId,
             a.EsNuevoIngreso,
             a.EsMonoxido,
             a.MonoxidoOrdenMedica,

@@ -18,6 +18,7 @@ public sealed class ConsultationSlotConfiguration : IEntityTypeConfiguration<Con
         builder.Property(x => x.CreatedAt).HasDefaultValueSql("now()");
         builder.Property(x => x.UpdatedAt).HasDefaultValueSql("now()");
         builder.HasIndex(x => new { x.Fecha, x.Hora }).IsUnique();
+        builder.Property(x => x.MedicoUserId).HasColumnName("medico_user_id");
         builder.HasIndex(x => x.PacienteId);
         builder.HasIndex(x => x.MedicoId);
         builder.HasIndex(x => x.Estado);

@@ -13,6 +13,7 @@ public sealed record HoldAppointmentCommand(
     bool IniciarNuevoCicloObraSocial,
     bool ConvenioCorroborado,
     int? MedicoId,
+    Guid? MedicoUserId,
     bool EsNuevoIngreso,
     bool MonoxidoOrdenMedica,
     bool MonoxidoResumenClinico);

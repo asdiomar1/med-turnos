@@ -91,6 +91,7 @@ public sealed class AppointmentsController(
                 request.IniciarNuevoCicloObraSocial,
                 request.ConvenioCorroborado,
                 request.MedicoId,
+                request.MedicoUserId,
                 request.EsNuevoIngreso,
                 request.EsMonoxido,
                 request.MonoxidoOrdenMedica,
@@ -140,6 +141,7 @@ public sealed class AppointmentsController(
                 request.IniciarNuevoCicloObraSocial,
                 request.ConvenioCorroborado,
                 request.MedicoId,
+                request.MedicoUserId,
                 request.EsNuevoIngreso,
                 request.MonoxidoOrdenMedica,
                 request.MonoxidoResumenClinico),
@@ -168,6 +170,7 @@ public sealed class AppointmentsController(
                 request.IniciarNuevoCicloObraSocial,
                 request.ConvenioCorroborado,
                 request.MedicoId,
+                request.MedicoUserId,
                 request.EsNuevoIngreso,
                 request.MonoxidoOrdenMedica,
                 request.MonoxidoResumenClinico),
@@ -206,6 +209,7 @@ public sealed class AppointmentsController(
                 request.IniciarNuevoCicloObraSocial,
                 request.ConvenioCorroborado,
                 request.MedicoId,
+                request.MedicoUserId,
                 request.EsNuevoIngreso,
                 request.EsMonoxido,
                 request.MonoxidoOrdenMedica,
@@ -315,7 +319,8 @@ public sealed class AppointmentsController(
                 request.EsNuevoIngreso,
                 request.EsMonoxido,
                 request.MonoxidoOrdenMedica,
-                request.MonoxidoResumenClinico),
+                request.MonoxidoResumenClinico,
+                request.MedicoUserId),
             cancellationToken);
 
         return Ok(item.ToResponse());

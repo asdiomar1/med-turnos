@@ -14,7 +14,8 @@ public sealed record AppointmentOperativeCommand(
     bool EsNuevoIngreso,
     bool EsMonoxido,
     bool MonoxidoOrdenMedica,
-    bool MonoxidoResumenClinico);
+    bool MonoxidoResumenClinico,
+    Guid? MedicoUserId = null);
 
 public sealed record TandaAvailabilitySummary(
     DateOnly Fecha,

@@ -10,5 +10,6 @@ public interface IUserRepository
     Task<User?> GetByPatientIdAsync(Guid patientId, CancellationToken cancellationToken);
     Task<Guid?> GetProfileIdByAuthUserIdAsync(Guid authUserId, CancellationToken cancellationToken);
     Task<IReadOnlyCollection<User>> GetStaffAsync(bool includeInactive, CancellationToken cancellationToken);
+    Task<IReadOnlyCollection<User>> GetByRoleAsync(string roleCode, bool onlyActive, CancellationToken cancellationToken);
     Task AddAsync(User user, CancellationToken cancellationToken);
 }

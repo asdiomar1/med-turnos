@@ -17,6 +17,7 @@ public sealed record AssignBlockAppointmentsCommand(
     bool IniciarNuevoCicloObraSocial,
     bool ConvenioCorroborado,
     int? MedicoId,
+    Guid? MedicoUserId,
     bool EsNuevoIngreso,
     bool EsMonoxido,
     bool MonoxidoOrdenMedica,

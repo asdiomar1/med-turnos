@@ -56,6 +56,9 @@ public sealed class ConsultationSlotResponse
     [JsonPropertyName("medico_id")]
     public int? MedicoId { get; init; }
 
+    [JsonPropertyName("medico_user_id")]
+    public Guid? MedicoUserId { get; init; }
+
     [JsonPropertyName("motivo_cancelacion")]
     public string? MotivoCancelacion { get; init; }
 
@@ -85,6 +88,9 @@ public sealed class ConsultationSlotResponse
 
     [JsonPropertyName("medico")]
     public IntLookupResponse? Medico { get; init; }
+
+    [JsonPropertyName("medico_user")]
+    public GuidLookupResponse? MedicoUser { get; init; }
 
     [JsonPropertyName("confirmado_por_perfil")]
     public GuidLookupResponse? ConfirmadoPorPerfil { get; init; }
@@ -315,7 +321,10 @@ public sealed class AssignConsultationRequest
     public Guid PacienteId { get; init; }
 
     [JsonPropertyName("medico_id")]
-    public int MedicoId { get; init; }
+    public int? MedicoId { get; init; }
+
+    [JsonPropertyName("medico_user_id")]
+    public Guid? MedicoUserId { get; init; }
 
     [JsonPropertyName("observaciones_admin")]
     public string? ObservacionesAdmin { get; init; }
@@ -334,6 +343,9 @@ public sealed class RescheduleConsultationRequest
 
     [JsonPropertyName("medico_id")]
     public int? MedicoId { get; init; }
+
+    [JsonPropertyName("medico_user_id")]
+    public Guid? MedicoUserId { get; init; }
 }
 
 public sealed class CloseConsultationRequest
@@ -382,6 +394,9 @@ public sealed class OutOfHoursTurnCreateRequest
 
     [JsonPropertyName("monoxido_medico_id")]
     public int? MonoxidoMedicoId { get; init; }
+
+    [JsonPropertyName("monoxido_medico_user_id")]
+    public Guid? MonoxidoMedicoUserId { get; init; }
 }
 
 public sealed class OutOfHoursTurnResponse
@@ -422,11 +437,17 @@ public sealed class OutOfHoursTurnResponse
     [JsonPropertyName("monoxido_medico_id")]
     public int? MonoxidoMedicoId { get; init; }
 
+    [JsonPropertyName("monoxido_medico_user_id")]
+    public Guid? MonoxidoMedicoUserId { get; init; }
+
     [JsonPropertyName("paciente")]
     public GuidLookupResponse? Paciente { get; init; }
 
     [JsonPropertyName("monoxido_medico")]
     public IntLookupResponse? MonoxidoMedico { get; init; }
+
+    [JsonPropertyName("monoxido_medico_user")]
+    public GuidLookupResponse? MonoxidoMedicoUser { get; init; }
 
     [JsonPropertyName("operador_camara")]
     public GuidLookupResponse? OperadorCamara { get; init; }

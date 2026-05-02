@@ -73,6 +73,9 @@ public sealed class ClinicalEvolutionResponse
     [JsonPropertyName("medico_id")]
     public int MedicoId { get; init; }
 
+    [JsonPropertyName("medico_user_id")]
+    public Guid? MedicoUserId { get; init; }
+
     [JsonPropertyName("autor_perfil_id")]
     public Guid AuthorProfileId { get; init; }
 
@@ -107,7 +110,10 @@ public sealed class ClinicalEvolutionResponse
 public sealed class CreateClinicalEvolutionRequest
 {
     [JsonPropertyName("medico_id")]
-    public int MedicoId { get; init; }
+    public int? MedicoId { get; init; }
+
+    [JsonPropertyName("medico_user_id")]
+    public Guid? MedicoUserId { get; init; }
 
     [JsonPropertyName("fecha_clinica")]
     public DateOnly FechaClinica { get; init; }

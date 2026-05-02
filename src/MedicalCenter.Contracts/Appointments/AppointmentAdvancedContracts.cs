@@ -34,6 +34,9 @@ public sealed class AppointmentOperativeRequest
     [JsonPropertyName("medico_id")]
     public int? MedicoId { get; init; }
 
+    [JsonPropertyName("medico_user_id")]
+    public Guid? MedicoUserId { get; init; }
+
     [JsonPropertyName("es_nuevo_ingreso")]
     public bool EsNuevoIngreso { get; init; }
 
