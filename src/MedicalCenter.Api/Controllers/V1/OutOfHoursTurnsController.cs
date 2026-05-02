@@ -25,7 +25,7 @@ public sealed class OutOfHoursTurnsController(IOutOfHoursTurnsService outOfHours
     {
         var item = await outOfHoursTurnsService.CreateAsync(
             User.GetUserId(),
-            new OutOfHoursTurnCreateCommand(request.Fecha, request.Hora, request.PacienteId, request.OperadorCamaraId, request.Notas, request.EsMonoxido, request.MonoxidoOrdenMedica, request.MonoxidoResumenClinico, request.MonoxidoMedicoId),
+            new OutOfHoursTurnCreateCommand(request.Fecha, request.Hora, request.PacienteId, request.OperadorCamaraId, request.Notas, request.EsMonoxido, request.MonoxidoOrdenMedica, request.MonoxidoResumenClinico, request.MonoxidoMedicoId, request.MonoxidoMedicoUserId),
             GetRequiredIdempotencyKey(),
             cancellationToken);
 

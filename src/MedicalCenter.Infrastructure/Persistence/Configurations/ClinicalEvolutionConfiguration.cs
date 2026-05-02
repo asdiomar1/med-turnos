@@ -13,6 +13,7 @@ public sealed class ClinicalEvolutionConfiguration : IEntityTypeConfiguration<Cl
         builder.Property(x => x.PatientId).HasColumnName("paciente_id");
         builder.Property(x => x.ConsultaSlotId).HasColumnName("consulta_slot_id");
         builder.Property(x => x.MedicoId).HasColumnName("medico_id");
+        builder.Property(x => x.MedicoUserId).HasColumnName("medico_user_id");
         builder.Property(x => x.AuthorProfileId).HasColumnName("autor_perfil_id");
         builder.Property(x => x.FechaClinica).HasColumnName("fecha_clinica");
         builder.Property(x => x.Titulo).HasColumnName("titulo");

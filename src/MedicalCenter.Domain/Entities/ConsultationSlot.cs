@@ -22,6 +22,7 @@ public sealed class ConsultationSlot : Entity<Guid>
     public ConsultationStatus Estado { get; private set; }
     public Guid? PacienteId { get; private set; }
     public int? MedicoId { get; private set; }
+    public Guid? MedicoUserId { get; private set; }
     public string? MotivoCancelacion { get; private set; }
     public string? ObservacionesAdmin { get; private set; }
     public DateTimeOffset? ConfirmadoAt { get; private set; }
@@ -37,7 +38,7 @@ public sealed class ConsultationSlot : Entity<Guid>
 
     public bool IsClosable() => Estado == ConsultationStatus.Confirmada;
 
-    public void Assign(Guid pacienteId, int medicoId, string? observacionesAdmin, Guid actorProfileId, DateTimeOffset now)
+    public void Assign(Guid pacienteId, int? medicoId, string? observacionesAdmin, Guid actorProfileId, DateTimeOffset now, Guid? medicoUserId = null)
     {
         if (!IsReservable())
         {
@@ -47,6 +48,7 @@ public sealed class ConsultationSlot : Entity<Guid>
         Estado = ConsultationStatus.Confirmada;
         PacienteId = pacienteId;
         MedicoId = medicoId;
+        MedicoUserId = medicoUserId;
         ObservacionesAdmin = string.IsNullOrWhiteSpace(observacionesAdmin) ? null : observacionesAdmin.Trim();
         MotivoCancelacion = null;
         ConfirmadoAt = now;
@@ -67,6 +69,7 @@ public sealed class ConsultationSlot : Entity<Guid>
         MotivoCancelacion = string.IsNullOrWhiteSpace(motivo) ? null : motivo.Trim();
         PacienteId = null;
         MedicoId = null;
+        MedicoUserId = null;
         ObservacionesAdmin = null;
         ConfirmadoAt = null;
         ConfirmadoPor = null;
@@ -80,6 +83,7 @@ public sealed class ConsultationSlot : Entity<Guid>
         Estado = ConsultationStatus.Libre;
         PacienteId = null;
         MedicoId = null;
+        MedicoUserId = null;
         MotivoCancelacion = null;
         ObservacionesAdmin = null;
         ConfirmadoAt = null;
@@ -108,9 +112,10 @@ public sealed class ConsultationSlot : Entity<Guid>
         UpdatedAt = now;
     }
 
-    public void UpdateMedico(int medicoId)
+    public void UpdateMedico(int? medicoId, Guid? medicoUserId = null)
     {
         MedicoId = medicoId;
+        MedicoUserId = medicoUserId;
         UpdatedAt = DateTimeOffset.UtcNow;
     }
 }

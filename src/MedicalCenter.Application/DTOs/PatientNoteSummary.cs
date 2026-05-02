@@ -5,4 +5,5 @@ public sealed record PatientNoteSummary(
     Guid PatientId,
     Guid AuthorId,
     string Message,
-    DateTimeOffset CreatedAt);
+    DateTimeOffset CreatedAt,
+    string? AuthorNombre = null);

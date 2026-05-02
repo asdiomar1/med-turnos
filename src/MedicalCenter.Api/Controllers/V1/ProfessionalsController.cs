@@ -17,21 +17,6 @@ public sealed class ProfessionalsController(IProfessionalsService professionalsS
     public async Task<IActionResult> GetMedicos(CancellationToken cancellationToken) =>
         Ok((await professionalsService.GetMedicosAsync(cancellationToken)).Select(x => x.ToResponse()));
 
-    [HttpPost("medicos")]
-    [Authorize(Policy = "ConfigCatalogsManage")]
-    public async Task<IActionResult> CreateMedico([FromBody] CreateMedicoRequest request, CancellationToken cancellationToken) =>
-        Ok((await professionalsService.CreateMedicoAsync(User.GetUserId(), request.Nombre, cancellationToken)).ToResponse());
-
-    [HttpPatch("medicos/{id:int}")]
-    [Authorize(Policy = "ConfigCatalogsManage")]
-    public async Task<IActionResult> UpdateMedico(int id, [FromBody] UpdateMedicoRequest request, CancellationToken cancellationToken) =>
-        Ok((await professionalsService.UpdateMedicoAsync(User.GetUserId(), id, request.Nombre, cancellationToken)).ToResponse());
-
-    [HttpPatch("medicos/{id:int}/estado")]
-    [Authorize(Policy = "ConfigCatalogsManage")]
-    public async Task<IActionResult> UpdateMedicoEstado(int id, [FromBody] UpdateMedicoStatusRequest request, CancellationToken cancellationToken) =>
-        Ok((await professionalsService.SetMedicoActiveAsync(User.GetUserId(), id, request.Activo, cancellationToken)).ToResponse());
-
     [HttpGet("referentes")]
     [Authorize(Policy = "ConfigRead")]
     public async Task<IActionResult> GetReferentes(CancellationToken cancellationToken) =>

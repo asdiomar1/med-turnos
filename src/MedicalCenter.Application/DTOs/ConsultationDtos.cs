@@ -33,6 +33,7 @@ public sealed record ConsultationSlotSummary(
     string Estado,
     Guid? PacienteId,
     int? MedicoId,
+    Guid? MedicoUserId,
     string? MotivoCancelacion,
     string? ObservacionesAdmin,
     Guid? ConfirmadoPor,
@@ -43,6 +44,7 @@ public sealed record ConsultationSlotSummary(
     DateTimeOffset UpdatedAt,
     GuidLookupSummary? Paciente,
     IntLookupSummary? Medico,
+    GuidLookupSummary? MedicoUser,
     GuidLookupSummary? ConfirmadoPorPerfil,
     GuidLookupSummary? CerradoPorPerfil);
 
@@ -125,9 +127,9 @@ public sealed record ConsultationOperativeCommand(
     bool MonoxidoResumenClinico);
 
 public sealed record ConsultationScheduleHourUpsertCommand(string Hora, int Orden);
-public sealed record AssignConsultationCommand(Guid PacienteId, int MedicoId, string? ObservacionesAdmin);
+public sealed record AssignConsultationCommand(Guid PacienteId, int? MedicoId, string? ObservacionesAdmin, Guid? MedicoUserId = null);
 public sealed record CancelConsultationCommand(string? Motivo);
-public sealed record RescheduleConsultationCommand(Guid TargetSlotId, int? MedicoId);
+public sealed record RescheduleConsultationCommand(Guid TargetSlotId, int? MedicoId, Guid? MedicoUserId = null);
 public sealed record CloseConsultationCommand(string Estado, string? Titulo, string? Nota, string? DiagnosticoImpresion, string? Indicaciones);
 public sealed record GenerateConsultationsCommand(DateOnly Fecha);
 public sealed record RepairConsultationsRangeCommand(DateOnly FechaInicio, DateOnly FechaFin);
@@ -140,7 +142,8 @@ public sealed record OutOfHoursTurnCreateCommand(
     bool EsMonoxido,
     bool MonoxidoOrdenMedica,
     bool MonoxidoResumenClinico,
-    int? MonoxidoMedicoId);
+    int? MonoxidoMedicoId,
+    Guid? MonoxidoMedicoUserId = null);
 
 public sealed record OutOfHoursTurnSummary(
     Guid Id,
@@ -155,6 +158,8 @@ public sealed record OutOfHoursTurnSummary(
     bool MonoxidoOrdenMedica,
     bool MonoxidoResumenClinico,
     int? MonoxidoMedicoId,
+    Guid? MonoxidoMedicoUserId,
     GuidLookupSummary? Paciente,
     IntLookupSummary? MonoxidoMedico,
+    GuidLookupSummary? MonoxidoMedicoUser,
     GuidLookupSummary? OperadorCamara);

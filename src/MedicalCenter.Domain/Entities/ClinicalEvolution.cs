@@ -18,12 +18,14 @@ public sealed class ClinicalEvolution : Entity<Guid>
         string? diagnosticoImpresion,
         string? indicaciones,
         DateTimeOffset? createdAt = null,
-        DateTimeOffset? updatedAt = null)
+        DateTimeOffset? updatedAt = null,
+        Guid? medicoUserId = null)
     {
         Id = id;
         PatientId = patientId;
         ConsultaSlotId = consultaSlotId;
         MedicoId = medicoId;
+        MedicoUserId = medicoUserId;
         AuthorProfileId = authorProfileId;
         FechaClinica = fechaClinica;
         Titulo = titulo;
@@ -37,6 +39,7 @@ public sealed class ClinicalEvolution : Entity<Guid>
     public Guid PatientId { get; private set; }
     public Guid? ConsultaSlotId { get; private set; }
     public int MedicoId { get; private set; }
+    public Guid? MedicoUserId { get; private set; }
     public Guid AuthorProfileId { get; private set; }
     public DateOnly FechaClinica { get; private set; }
     public string? Titulo { get; private set; }

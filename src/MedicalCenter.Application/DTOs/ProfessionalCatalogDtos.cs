@@ -1,6 +1,6 @@
 namespace MedicalCenter.Application.DTOs;
 
-public sealed record MedicoSummaryDto(int Id, string Nombre, bool Activo, int Orden, DateTimeOffset CreatedAt, Guid? PerfilId);
+public sealed record MedicoSummaryDto(Guid Id, string Nombre);
 
 public sealed record ReferenteSummaryDto(int Id, string Nombre, string Tipo, bool Activo, int Orden, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt);
 

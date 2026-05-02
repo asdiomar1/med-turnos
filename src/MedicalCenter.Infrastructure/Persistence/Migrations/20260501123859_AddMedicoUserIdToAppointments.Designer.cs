@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using MedicalCenter.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MedicalCenter.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(MedicalCenterDbContext))]
-    partial class MedicalCenterDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260501123859_AddMedicoUserIdToAppointments")]
+    partial class AddMedicoUserIdToAppointments
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -464,10 +467,6 @@ namespace MedicalCenter.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("medico_id");
 
-                    b.Property<Guid?>("MedicoUserId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("medico_user_id");
-
                     b.Property<string>("Nota")
                         .IsRequired()
                         .HasColumnType("text")
@@ -695,10 +694,6 @@ namespace MedicalCenter.Infrastructure.Persistence.Migrations
 
                     b.Property<int?>("MedicoId")
                         .HasColumnType("integer");
-
-                    b.Property<Guid?>("MedicoUserId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("medico_user_id");
 
                     b.Property<string>("MotivoCancelacion")
                         .HasMaxLength(500)
@@ -1112,10 +1107,6 @@ namespace MedicalCenter.Infrastructure.Persistence.Migrations
 
                     b.Property<int?>("MonoxidoMedicoId")
                         .HasColumnType("integer");
-
-                    b.Property<Guid?>("MonoxidoMedicoUserId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("monoxido_medico_user_id");
 
                     b.Property<bool>("MonoxidoOrdenMedica")
                         .HasColumnType("boolean");

@@ -22,6 +22,7 @@ public sealed class AppointmentConfiguration : IEntityTypeConfiguration<Appointm
         builder.Property(x => x.EsMonoxido);
         builder.Property(x => x.MonoxidoOrdenMedica);
         builder.Property(x => x.MonoxidoResumenClinico);
+        builder.Property(x => x.MedicoUserId).HasColumnName("medico_user_id");
         builder.Property(x => x.UpdatedAt).HasColumnName("updated_at");
         builder.HasIndex(x => new { x.ScheduleId, x.Fecha, x.Hora, x.Lugar }).IsUnique();
         builder.HasIndex(x => new { x.PatientId, x.Fecha, x.Hora });

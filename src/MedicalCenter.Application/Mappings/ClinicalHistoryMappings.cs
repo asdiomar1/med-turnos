@@ -22,6 +22,7 @@ public static class ClinicalHistoryMappings
             x.PatientId,
             x.ConsultaSlotId,
             x.MedicoId,
+            x.MedicoUserId,
             x.AuthorProfileId,
             x.FechaClinica,
             x.Titulo,

@@ -17,7 +17,8 @@ public sealed class OutOfHoursTurn : Entity<Guid>
         bool esMonoxido,
         bool monoxidoOrdenMedica,
         bool monoxidoResumenClinico,
-        int? monoxidoMedicoId)
+        int? monoxidoMedicoId,
+        Guid? monoxidoMedicoUserId = null)
     {
         Id = id;
         Fecha = fecha;
@@ -30,6 +31,7 @@ public sealed class OutOfHoursTurn : Entity<Guid>
         MonoxidoOrdenMedica = monoxidoOrdenMedica;
         MonoxidoResumenClinico = monoxidoResumenClinico;
         MonoxidoMedicoId = monoxidoMedicoId;
+        MonoxidoMedicoUserId = monoxidoMedicoUserId;
         CreatedAt = DateTimeOffset.UtcNow;
     }
 
@@ -44,4 +46,5 @@ public sealed class OutOfHoursTurn : Entity<Guid>
     public bool MonoxidoOrdenMedica { get; private set; }
     public bool MonoxidoResumenClinico { get; private set; }
     public int? MonoxidoMedicoId { get; private set; }
+    public Guid? MonoxidoMedicoUserId { get; private set; }
 }

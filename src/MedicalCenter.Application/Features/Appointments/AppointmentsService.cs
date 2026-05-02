@@ -92,6 +92,8 @@ public sealed class AppointmentsService(
                 if (!patient.IsActive)
                     throw new ConflictException("El paciente no se encuentra activo.");
 
+                await ValidateMedicoUserAsync(command.MedicoUserId, cancellationToken);
+
                 var appointment = await appointmentRepository.GetByIdAsync(slotId, cancellationToken)
                     ?? throw new NotFoundException("Turno no encontrado.");
 
@@ -781,6 +783,17 @@ public sealed class AppointmentsService(
         return [source];
     }
 
+    private async Task ValidateMedicoUserAsync(Guid? medicoUserId, CancellationToken cancellationToken)
+    {
+        if (!medicoUserId.HasValue) return;
+        var medico = await userRepository.GetByIdAsync(medicoUserId.Value, cancellationToken)
+            ?? throw new NotFoundException("Médico no encontrado.");
+        if (!medico.IsActive)
+            throw new ConflictException("El médico no se encuentra activo.");
+        if (!medico.Roles.Any(r => r.Code == "medico"))
+            throw new ConflictException("El usuario no tiene rol de médico.");
+    }
+
     private static AppointmentOperativeData BuildOperativeData(AssignAppointmentCommand command) =>
         new(
             command.ReferidoTercero,
@@ -796,7 +809,8 @@ public sealed class AppointmentsService(
             command.EsNuevoIngreso,
             command.EsMonoxido,
             command.MonoxidoOrdenMedica,
-            command.MonoxidoResumenClinico);
+            command.MonoxidoResumenClinico,
+            command.MedicoUserId);
 
     private static AppointmentOperativeData BuildOperativeData(HoldAppointmentCommand command) =>
         new(
@@ -813,7 +827,8 @@ public sealed class AppointmentsService(
             command.EsNuevoIngreso,
             command.EsMonoxido,
             command.MonoxidoOrdenMedica,
-            command.MonoxidoResumenClinico);
+            command.MonoxidoResumenClinico,
+            command.MedicoUserId);
 
     private static AppointmentOperativeData BuildOperativeData(AssignBlockAppointmentsCommand command) =>
         new(
@@ -830,7 +845,8 @@ public sealed class AppointmentsService(
             command.EsNuevoIngreso,
             command.EsMonoxido,
             command.MonoxidoOrdenMedica,
-            command.MonoxidoResumenClinico);
+            command.MonoxidoResumenClinico,
+            command.MedicoUserId);
 
     private static AppointmentOperativeData CopyOperativeData(Appointment appointment) =>
         new(
@@ -847,7 +863,8 @@ public sealed class AppointmentsService(
             appointment.EsNuevoIngreso,
             appointment.EsMonoxido,
             appointment.MonoxidoOrdenMedica,
-            appointment.MonoxidoResumenClinico);
+            appointment.MonoxidoResumenClinico,
+            appointment.MedicoUserId);
 
     private async Task<IReadOnlyCollection<AppointmentSummary>> FilterAndMapAsync(IEnumerable<Appointment> appointments, CancellationToken cancellationToken)
     {
@@ -1236,7 +1253,8 @@ public sealed class AppointmentsService(
             command.EsNuevoIngreso,
             command.EsMonoxido,
             command.MonoxidoOrdenMedica,
-            command.MonoxidoResumenClinico);
+            command.MonoxidoResumenClinico,
+            command.MedicoUserId);
 
     /// <summary>
     /// Stages a single slot history entry in the DbContext without persisting.

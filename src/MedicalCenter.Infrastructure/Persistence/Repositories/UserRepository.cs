@@ -71,6 +71,37 @@ public sealed class UserRepository(MedicalCenterDbContext dbContext) : IUserRepo
         return await query.OrderBy(x => x.Nombre ?? x.Identifier).ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyCollection<User>> GetByRoleAsync(string roleCode, bool onlyActive, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(roleCode))
+            return [];
+
+        var users = await dbContext.Users
+            .FromSqlRaw(
+                """
+                SELECT DISTINCT
+                       u."Id",
+                       u."Identifier",
+                       u."Email",
+                       u."PasswordHash",
+                       u."IsActive",
+                       u."IsStaff",
+                       u."PatientId",
+                       u."Nombre"
+                FROM public.users u
+                JOIN public.perfiles pf ON pf.auth_user_id = u."Id" OR pf.id = u."Id"
+                JOIN public.rbac_user_roles ur ON ur.user_id = pf.id AND ur.expires_at IS NULL
+                JOIN public.rbac_roles r ON r.id = ur.role_id AND r.activo = true
+                WHERE r.slug = {0}
+                """,
+                roleCode.Trim())
+            .Where(u => !onlyActive || u.IsActive)
+            .OrderBy(u => u.Nombre ?? u.Identifier)
+            .ToListAsync(cancellationToken);
+
+        return users;
+    }
+
     public Task AddAsync(User user, CancellationToken cancellationToken) =>
         dbContext.Users.AddAsync(user, cancellationToken).AsTask();
 

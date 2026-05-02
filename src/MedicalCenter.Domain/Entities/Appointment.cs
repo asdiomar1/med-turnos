@@ -37,6 +37,7 @@ public sealed class Appointment : Entity<Guid>
     public bool IniciarNuevoCicloObraSocial { get; private set; }
     public bool ConvenioCorroborado { get; private set; }
     public int? MedicoId { get; private set; }
+    public Guid? MedicoUserId { get; private set; }
     public bool EsNuevoIngreso { get; private set; }
     public bool EsMonoxido { get; private set; }
     public bool MonoxidoOrdenMedica { get; private set; }
@@ -185,6 +186,7 @@ public sealed class Appointment : Entity<Guid>
         IniciarNuevoCicloObraSocial = operative.IniciarNuevoCicloObraSocial;
         ConvenioCorroborado = operative.ConvenioCorroborado;
         MedicoId = operative.MedicoId;
+        MedicoUserId = operative.MedicoUserId;
         EsNuevoIngreso = operative.EsNuevoIngreso;
         EsMonoxido = operative.EsMonoxido;
         MonoxidoOrdenMedica = operative.MonoxidoOrdenMedica;

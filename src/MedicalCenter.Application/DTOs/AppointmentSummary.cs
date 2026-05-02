@@ -24,6 +24,7 @@ public sealed record AppointmentSummary(
     bool IniciarNuevoCicloObraSocial,
     bool ConvenioCorroborado,
     int? MedicoId,
+    Guid? MedicoUserId,
     bool EsNuevoIngreso,
     bool EsMonoxido,
     bool MonoxidoOrdenMedica,
