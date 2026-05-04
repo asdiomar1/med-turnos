@@ -47,7 +47,20 @@ jobs:
           dotnet tool update --global dotnet-sonarscanner
           echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
 
+      - name: Validate Sonar configuration
+        shell: bash
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
+          SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
+        run: |
+          set -euo pipefail
+          [ -n "${SONAR_TOKEN:-}" ] || (echo "Missing secret: SONAR_TOKEN" && exit 1)
+          [ -n "${SONAR_PROJECT_KEY:-}" ] || (echo "Missing variable: SONAR_PROJECT_KEY" && exit 1)
+          [ -n "${SONAR_ORGANIZATION:-}" ] || (echo "Missing variable: SONAR_ORGANIZATION" && exit 1)
+
       - name: Sonar begin
+        id: sonar_begin
         shell: bash
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -90,7 +103,7 @@ jobs:
           --collect:"XPlat Code Coverage;Format=opencover"
 
       - name: Sonar end
-        if: ${{ always() }}
+        if: ${{ always() && steps.sonar_begin.outcome == 'success' }}
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: dotnet sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
