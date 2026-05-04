@@ -60,6 +60,32 @@ public sealed class UserRepository(MedicalCenterDbContext dbContext) : IUserRepo
         return profileId == Guid.Empty ? null : profileId;
     }
 
+    public async Task<string?> GetDisplayNameByUserIdAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        var profileName = await dbContext.Database.SqlQueryRaw<string>(
+            """
+            select p.nombre as "Value"
+            from public.perfiles p
+            where p.auth_user_id = {0} or p.id = {0}
+            order by case when p.auth_user_id = {0} then 0 else 1 end
+            limit 1
+            """,
+            userId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (!string.IsNullOrWhiteSpace(profileName))
+        {
+            return profileName;
+        }
+
+        var user = await dbContext.Users
+            .Where(x => x.Id == userId)
+            .Select(x => new { x.Nombre, x.Identifier })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return user?.Nombre ?? user?.Identifier;
+    }
+
     public async Task<IReadOnlyCollection<User>> GetStaffAsync(bool includeInactive, CancellationToken cancellationToken)
     {
         var query = dbContext.Users.Where(x => x.IsStaff);
@@ -104,6 +130,20 @@ public sealed class UserRepository(MedicalCenterDbContext dbContext) : IUserRepo
 
     public Task AddAsync(User user, CancellationToken cancellationToken) =>
         dbContext.Users.AddAsync(user, cancellationToken).AsTask();
+
+    public async Task<IReadOnlyCollection<User>> GetBasicByIdsAsync(IEnumerable<Guid> ids, CancellationToken cancellationToken)
+    {
+        var distinctIds = ids.Where(x => x != Guid.Empty).Distinct().ToArray();
+        if (distinctIds.Length == 0)
+        {
+            return [];
+        }
+
+        // Plain ToListAsync without role loading — keeps the query lightweight
+        return await dbContext.Users
+            .Where(x => distinctIds.Contains(x.Id))
+            .ToListAsync(cancellationToken);
+    }
 
     private async Task<IReadOnlyCollection<Role>> LoadRolesAsync(Guid userId, CancellationToken cancellationToken)
     {

@@ -33,4 +33,17 @@ public sealed class ReferenteRepository(MedicalCenterDbContext dbContext) : IRef
 
     public Task AddAsync(Referente referente, CancellationToken cancellationToken) =>
         dbContext.Referentes.AddAsync(referente, cancellationToken).AsTask();
+
+    public async Task<IReadOnlyCollection<Referente>> GetByIdsAsync(IEnumerable<int> ids, CancellationToken cancellationToken)
+    {
+        var distinctIds = ids.Distinct().ToArray();
+        if (distinctIds.Length == 0)
+        {
+            return [];
+        }
+
+        return await dbContext.Referentes
+            .Where(x => distinctIds.Contains(x.Id))
+            .ToListAsync(cancellationToken);
+    }
 }

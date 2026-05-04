@@ -9,7 +9,9 @@ public interface IAppointmentRepository
     Task<bool> TryReserveAppointmentAsync(Guid appointmentId, Guid patientId, CancellationToken cancellationToken);
     Task<bool> TryCommitAsync(CancellationToken cancellationToken);
     Task<IReadOnlyCollection<Appointment>> GetByDateAsync(DateOnly fecha, CancellationToken cancellationToken);
-    Task<IReadOnlyCollection<Appointment>> GetByRangeAsync(DateOnly fechaInicio, DateOnly fechaFin, CancellationToken cancellationToken);
+    Task<IReadOnlyCollection<Appointment>> GetByRangeAsync(DateOnly fechaInicio, DateOnly fechaFin, int? offset, int? limit, CancellationToken cancellationToken);
+    Task<int> CountByRangeAsync(DateOnly fechaInicio, DateOnly fechaFin, CancellationToken cancellationToken);
+    Task<IReadOnlyCollection<BlockHistory>> GetBlockHistoryByRangeAsync(DateOnly fechaInicio, DateOnly fechaFin, CancellationToken cancellationToken);
     Task<IReadOnlyCollection<Appointment>> GetActivosByPacienteAsync(Guid pacienteId, DateOnly fromDate, CancellationToken cancellationToken);
     Task<IReadOnlyCollection<Appointment>> GetOccupiedByPacienteOnDateAsync(Guid pacienteId, DateOnly fecha, CancellationToken cancellationToken);
     Task<IReadOnlyCollection<Appointment>> GetByBlockAsync(DateOnly fecha, TimeOnly hora, int cameraId, CancellationToken cancellationToken);

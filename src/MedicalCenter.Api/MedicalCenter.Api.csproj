@@ -4,6 +4,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\MedicalCenter.Infrastructure\MedicalCenter.Infrastructure.csproj" />
+    <ProjectReference Include="..\MedicalCenter.Contracts\MedicalCenter.Contracts.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Analyzers" Version="8.0.11" PrivateAssets="all" />

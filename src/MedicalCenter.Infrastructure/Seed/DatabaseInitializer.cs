@@ -289,6 +289,9 @@ public static class DatabaseInitializer
     /// and grouping multi-line statements terminated by a semicolon at end-of-line.
     /// Uses the underlying Npgsql connection to bypass EF Core parameter formatting,
     /// which breaks on JSON strings containing '{' and '}'.
+    /// 
+    /// Uses SAVEPOINTS to isolate each statement - if one fails, PostgreSQL rolls back
+    /// only that statement and continues with the rest (instead of aborting the entire transaction).
     /// </summary>
     private static async Task<int> ExecuteSqlScriptAsync(
         MedicalCenterDbContext dbContext,
@@ -298,6 +301,7 @@ public static class DatabaseInitializer
         var executed = 0;
         var skipped = 0;
         var buffer = new System.Text.StringBuilder();
+        var savepointIndex = 0;
 
         await using var stream = File.OpenRead(filePath);
         using var reader = new StreamReader(stream);
@@ -331,19 +335,53 @@ public static class DatabaseInitializer
                 if (string.IsNullOrEmpty(statement))
                     continue;
 
+                var savepointName = $"sp_{savepointIndex++}";
+
                 try
                 {
+                    // Create savepoint before each statement
+                    await using (var savepointCmd = connection.CreateCommand())
+                    {
+                        savepointCmd.Transaction = transaction;
+                        savepointCmd.CommandText = $"SAVEPOINT {savepointName}";
+                        await savepointCmd.ExecuteNonQueryAsync(cancellationToken);
+                    }
+
                     await using var cmd = connection.CreateCommand();
                     cmd.Transaction = transaction;
                     cmd.CommandText = statement;
                     await cmd.ExecuteNonQueryAsync(cancellationToken);
                     executed++;
+
+                    // Release savepoint on success
+                    await using (var releaseCmd = connection.CreateCommand())
+                    {
+                        releaseCmd.Transaction = transaction;
+                        releaseCmd.CommandText = $"RELEASE SAVEPOINT {savepointName}";
+                        await releaseCmd.ExecuteNonQueryAsync(cancellationToken);
+                    }
                 }
                 catch (Exception ex)
                 {
                     skipped++;
-                    // Only log non-duplicate errors to reduce noise
                     var msg = ex.Message.Trim();
+
+                    // Rollback to savepoint to restore transaction state
+                    try
+                    {
+                        await using (var rollbackCmd = connection.CreateCommand())
+                        {
+                            rollbackCmd.Transaction = transaction;
+                            rollbackCmd.CommandText = $"ROLLBACK TO SAVEPOINT {savepointName}";
+                            await rollbackCmd.ExecuteNonQueryAsync(cancellationToken);
+                        }
+                    }
+                    catch (Exception rollbackEx)
+                    {
+                        Console.WriteLine($"[DEBUG] Failed to rollback savepoint: {rollbackEx.Message}");
+                    }
+
+                    // Only log non-duplicate errors to reduce noise
                     if (!msg.Contains("duplicate key", StringComparison.OrdinalIgnoreCase))
                     {
                         Console.WriteLine($"[DEBUG] SQL statement skipped: {msg}");

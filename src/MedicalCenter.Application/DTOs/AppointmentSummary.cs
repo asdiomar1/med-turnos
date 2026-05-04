@@ -28,4 +28,14 @@ public sealed record AppointmentSummary(
     bool EsNuevoIngreso,
     bool EsMonoxido,
     bool MonoxidoOrdenMedica,
-    bool MonoxidoResumenClinico);
+    bool MonoxidoResumenClinico,
+    DateTimeOffset? CreatedAt = null,
+    DateTimeOffset? UpdatedAt = null,
+    Guid? ObraSocialValidadaPor = null,
+    DateTimeOffset? ObraSocialValidadaAt = null,
+    GuidLookupSummary? Paciente = null,
+    IntLookupSummary? Medico = null,
+    IntLookupSummary? Referente = null,
+    ObraSocialSummaryDto? ObraSocial = null,
+    GuidLookupSummary? ApartadoPorPerfil = null,
+    GuidLookupSummary? ObraSocialValidadaPorPerfil = null);

@@ -122,7 +122,7 @@ public sealed class SchedulesService(
     {
         ValidateHour(hora, orden);
         var scheduleHour = await scheduleHourRepository.GetByIdAsync(id, cancellationToken) ?? throw new NotFoundException("Horario no encontrado");
-        var futureSlots = await appointmentRepository.GetByRangeAsync(DateOnly.FromDateTime(DateTime.UtcNow.Date), DateOnly.FromDateTime(DateTime.UtcNow.Date.AddYears(2)), cancellationToken);
+        var futureSlots = await appointmentRepository.GetByRangeAsync(DateOnly.FromDateTime(DateTime.UtcNow.Date), DateOnly.FromDateTime(DateTime.UtcNow.Date.AddYears(2)), null, null, cancellationToken);
         if (!string.Equals(scheduleHour.Hora, hora.Trim(), StringComparison.Ordinal) && futureSlots.Any(x => x.Hora == TimeOnly.Parse(scheduleHour.Hora)))
         {
             throw new ConflictException("No se puede cambiar la hora de un horario con slots futuros existentes");
@@ -144,7 +144,7 @@ public sealed class SchedulesService(
     public async Task<int> GetHorarioDeletionPreviewAsync(int id, CancellationToken cancellationToken)
     {
         var scheduleHour = await scheduleHourRepository.GetByIdAsync(id, cancellationToken) ?? throw new NotFoundException("Horario no encontrado");
-        var futureSlots = await appointmentRepository.GetByRangeAsync(DateOnly.FromDateTime(DateTime.UtcNow.Date), DateOnly.FromDateTime(DateTime.UtcNow.Date.AddYears(2)), cancellationToken);
+        var futureSlots = await appointmentRepository.GetByRangeAsync(DateOnly.FromDateTime(DateTime.UtcNow.Date), DateOnly.FromDateTime(DateTime.UtcNow.Date.AddYears(2)), null, null, cancellationToken);
         return futureSlots.Count(x => x.Hora == TimeOnly.Parse(scheduleHour.Hora));
     }
 

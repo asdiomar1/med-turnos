@@ -13,6 +13,7 @@ public static class ApiRunner
 {
     /// <summary>
     /// Runs the API project using dotnet run.
+    /// Shows detailed error output on build failure.
     /// </summary>
     public static async Task<ProcessResult> RunDotNetAsync(
         string projectPath,
@@ -28,11 +29,12 @@ public static class ApiRunner
             timeoutMs: 120000,
             cancellationToken: cancellationToken,
             onOutput: line => Console.WriteLine(line),
-            onError: line => ConsoleWriter.Error(line));
+            onError: line => Console.WriteLine(line));
 
         if (buildResult.ExitCode != 0)
         {
-            ConsoleWriter.Error("Build failed.");
+            ConsoleWriter.Error("✗ Build failed.");
+            PrintBuildFailureDetails(buildResult);
             return buildResult;
         }
 
@@ -41,6 +43,7 @@ public static class ApiRunner
         ConsoleWriter.Info("  - HTTP:  http://localhost:8090");
         ConsoleWriter.Info("  - HTTPS: https://localhost:7012");
         ConsoleWriter.Info("Press Ctrl+C to stop...");
+        Console.WriteLine();
 
         // Then run
         return await ProcessRunner.RunAsync(
@@ -49,7 +52,7 @@ public static class ApiRunner
             timeoutMs: 0, // No timeout - run until user Ctrl+C
             cancellationToken: cancellationToken,
             onOutput: line => Console.WriteLine(line),
-            onError: line => Console.Error.WriteLine(line));
+            onError: line => Console.WriteLine(line));
     }
 
     /// <summary>
@@ -64,5 +67,25 @@ public static class ApiRunner
             "api",
             composeFile,
             workingDirectory);
+    }
+
+    /// <summary>
+    /// Prints detailed build failure information.
+    /// </summary>
+    private static void PrintBuildFailureDetails(ProcessResult result)
+    {
+        ConsoleWriter.Warning($"Exit code: {result.ExitCode}");
+        
+        if (!string.IsNullOrWhiteSpace(result.Stderr))
+        {
+            ConsoleWriter.Warning("Captured stderr:");
+            ConsoleWriter.PrintBox(result.Stderr.Trim());
+        }
+        
+        if (!string.IsNullOrWhiteSpace(result.Stdout) && result.Stdout != result.Stderr)
+        {
+            ConsoleWriter.Warning("Captured stdout:");
+            ConsoleWriter.PrintBox(result.Stdout.Trim());
+        }
     }
 }

@@ -25,6 +25,8 @@ public enum LaunchMode
     Stop,
     /// <summary>Dump development data from running postgres into a compatible SQL file.</summary>
     DumpData,
+    /// <summary>Restore all development data backups into the database (merge).</summary>
+    RestoreData,
     /// <summary>Rebuild the Docker image for the API service.</summary>
     Rebuild,
     /// <summary>Quit the launcher.</summary>

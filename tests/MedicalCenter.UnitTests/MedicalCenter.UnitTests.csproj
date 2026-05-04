@@ -13,11 +13,13 @@
     <PackageReference Include="Microsoft.Extensions.Primitives" Version="10.0.0" />
     <PackageReference Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="8.0.1" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="NSubstitute" Version="5.1.0" />
     <PackageReference Include="System.Reflection.Metadata" Version="9.0.0" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\src\MedicalCenter.Application\MedicalCenter.Application.csproj" SkipGetTargetFrameworkProperties="true" SetTargetFramework="TargetFramework=net8.0" />
     <ProjectReference Include="..\..\src\MedicalCenter.Domain\MedicalCenter.Domain.csproj" SkipGetTargetFrameworkProperties="true" SetTargetFramework="TargetFramework=net8.0" />
     <ProjectReference Include="..\..\src\MedicalCenter.Infrastructure\MedicalCenter.Infrastructure.csproj" SkipGetTargetFrameworkProperties="true" SetTargetFramework="TargetFramework=net8.0" />
     <ProjectReference Include="..\..\src\MedicalCenter.Api\MedicalCenter.Api.csproj" SkipGetTargetFrameworkProperties="true" SetTargetFramework="TargetFramework=net8.0" />

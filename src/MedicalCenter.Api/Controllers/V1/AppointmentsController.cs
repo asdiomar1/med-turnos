@@ -21,7 +21,16 @@ public sealed class AppointmentsController(
     public async Task<IActionResult> GetByDate([FromQuery] DateOnly? fecha, CancellationToken cancellationToken)
     {
         var items = await appointmentsService.GetByDateAsync(fecha, cancellationToken);
-        return Ok(items.Select(x => x.ToResponse()));
+        var cameras = (await cameraRepository.GetAsync(cancellationToken))
+            .ToDictionary(x => x.Id, x => new AppointmentCameraResponse
+            {
+                Id = x.Id,
+                Nombre = x.Nombre,
+                Capacidad = x.Capacidad,
+                Activa = x.Activa,
+            });
+
+        return Ok(items.Select(x => x.ToResponse(cameras)));
     }
 
     [HttpGet("disponibles-portal")]
@@ -33,22 +42,42 @@ public sealed class AppointmentsController(
             {
                 Id = x.Id,
                 Nombre = x.Nombre,
-                Capacidad = x.Capacidad
+                Capacidad = x.Capacidad,
+                Activa = x.Activa,
             });
 
         return Ok(items.Select(x => x.ToResponse(cameras)));
     }
 
     [HttpGet("rango")]
-    public async Task<IActionResult> GetByRange([FromQuery(Name = "fecha_inicio")] DateOnly fechaInicio, [FromQuery(Name = "fecha_fin")] DateOnly fechaFin, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetByRange(
+        [FromQuery(Name = "fecha_inicio")] DateOnly fechaInicio,
+        [FromQuery(Name = "fecha_fin")] DateOnly fechaFin,
+        CancellationToken cancellationToken,
+        [FromQuery] int offset = 0,
+        [FromQuery] int limit = 5000)
     {
-        var items = await appointmentsService.GetByRangeAsync(fechaInicio, fechaFin, cancellationToken);
-        return Ok(items.Select(x => x.ToResponse()));
+        if (limit < 1) limit = 1;
+        if (limit > 50000) limit = 50000;
+        if (offset < 0) offset = 0;
+        var result = await appointmentsService.GetEnrichedByRangeAsync(fechaInicio, fechaFin, offset, limit, cancellationToken);
+        return Ok(new
+        {
+            items = result.Items.Select(x => x.ToTurnoEnrichedResponse()).ToArray(),
+            total = result.Total,
+        });
+    }
+
+    [HttpGet("fecha")]
+    public async Task<IActionResult> GetByFecha([FromQuery] DateOnly fecha, CancellationToken cancellationToken)
+    {
+        var items = await appointmentsService.GetEnrichedByDateAsync(fecha, cancellationToken);
+        return Ok(items.Select(x => x.ToTurnoEnrichedResponse()).ToArray());
     }
 
     [HttpPost("generar")]
     [Authorize(Policy = "ConsultasManage")]
-    public async Task<IActionResult> Generate([FromBody] GenerateConsultationsRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> Generate([FromBody] GenerateAppointmentsRequest request, CancellationToken cancellationToken)
     {
         var total = await appointmentsService.GenerateAsync(request.Fecha, cancellationToken);
         return Ok(new { total });
@@ -248,7 +277,7 @@ public sealed class AppointmentsController(
     [HttpGet("tandas/disponibilidad/detalle")]
     public async Task<IActionResult> GetTandaAvailabilityDetail([FromQuery(Name = "fecha_inicio")] DateOnly fechaInicio, [FromQuery(Name = "fecha_fin")] DateOnly fechaFin, [FromQuery(Name = "paciente_id")] Guid? pacienteId, CancellationToken cancellationToken)
     {
-        var items = await appointmentsService.GetTandaAvailabilityDetailAsync(fechaInicio, fechaFin, pacienteId, cancellationToken);
+        var items = await appointmentsService.GetTandaAvailabilityAggregatedAsync(fechaInicio, fechaFin, pacienteId, cancellationToken);
         return Ok(items.Select(x => x.ToResponse()));
     }
 
