@@ -21,8 +21,7 @@ public sealed class PatientNotesService(
         var authors = new Dictionary<Guid, string?>();
         foreach (var id in authorIds)
         {
-            var user = await userRepository.GetByIdAsync(id, cancellationToken);
-            authors[id] = user?.Nombre ?? user?.Identifier;
+            authors[id] = await userRepository.GetDisplayNameByUserIdAsync(id, cancellationToken);
         }
 
         return notes.Select(n => n.ToSummary(authors.GetValueOrDefault(n.AuthorId))).ToArray();

@@ -116,4 +116,33 @@ public static class ConsoleWriter
             Console.WriteLine();
         }
     }
+
+    /// <summary>
+    /// Prints a message inside a bordered box for emphasis (useful for error details).
+    /// </summary>
+    public static void PrintBox(string message)
+    {
+        if (string.IsNullOrWhiteSpace(message)) return;
+
+        lock (_lock)
+        {
+            var lines = message.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            var maxLength = Math.Min(lines.Max(l => l.Length) + 4, Console.WindowWidth - 2);
+            
+            // Top border
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.WriteLine("┌" + new string('─', maxLength) + "┐");
+            
+            // Content
+            foreach (var line in lines)
+            {
+                var trimmed = line.Length > maxLength - 4 ? line.Substring(0, maxLength - 4) : line;
+                Console.WriteLine($"│ {trimmed.PadRight(maxLength - 3)} │");
+            }
+            
+            // Bottom border
+            Console.WriteLine("└" + new string('─', maxLength) + "┘");
+            Console.ResetColor();
+        }
+    }
 }

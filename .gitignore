@@ -387,3 +387,9 @@ skills-lock.json
 tools/*/publish/
 tools/*/bin/
 tools/*/obj/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+tmp-fix-author-name.sql

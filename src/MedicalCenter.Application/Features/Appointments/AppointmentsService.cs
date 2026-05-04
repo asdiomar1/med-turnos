@@ -59,7 +59,7 @@ public sealed class AppointmentsService(
 
     public async Task<IReadOnlyCollection<AppointmentGroupSummary>> GetByRangeAsync(DateOnly fechaInicio, DateOnly fechaFin, CancellationToken cancellationToken)
     {
-        var appointments = await appointmentRepository.GetByRangeAsync(fechaInicio, fechaFin, cancellationToken);
+        var appointments = await appointmentRepository.GetByRangeAsync(fechaInicio, fechaFin, null, null, cancellationToken);
         var activeHours = await GetActiveHoursAsync(cancellationToken);
         return appointments
             .Where(x => activeHours.Contains(x.Hora.ToString("HH:mm")))
@@ -67,6 +67,155 @@ public sealed class AppointmentsService(
             .OrderBy(x => x.Key)
             .Select(group => new AppointmentGroupSummary(group.Key, group.Select(x => x.ToSummary()).ToArray()))
             .ToArray();
+    }
+
+    public async Task<EnrichedPagedResult> GetEnrichedByRangeAsync(
+        DateOnly fechaInicio, DateOnly fechaFin, int offset, int limit, CancellationToken cancellationToken)
+    {
+        var appointments = await appointmentRepository.GetByRangeAsync(fechaInicio, fechaFin, offset, limit, cancellationToken);
+        if (appointments.Count == 0)
+        {
+            return new EnrichedPagedResult([], 0);
+        }
+
+        // Filter by active schedule hours (same pattern as GetByRangeAsync)
+        var activeHours = await GetActiveHoursAsync(cancellationToken);
+        appointments = appointments
+            .Where(x => activeHours.Contains(x.Hora.ToString("HH:mm")))
+            .ToArray();
+
+        // Collect distinct IDs for batch loading
+        var patientIds = appointments
+            .Where(a => a.PatientId.HasValue)
+            .Select(a => a.PatientId!.Value)
+            .Distinct()
+            .ToArray();
+        var medicoIds = appointments
+            .Where(a => a.MedicoId.HasValue)
+            .Select(a => a.MedicoId!.Value)
+            .Distinct()
+            .ToArray();
+        var referenteIds = appointments
+            .Where(a => a.ReferenteId.HasValue)
+            .Select(a => a.ReferenteId!.Value)
+            .Distinct()
+            .ToArray();
+        var obraSocialIds = appointments
+            .Where(a => a.ObraSocialId.HasValue)
+            .Select(a => a.ObraSocialId!.Value)
+            .Distinct()
+            .ToArray();
+        var cameraIds = appointments
+            .Where(a => a.CameraId.HasValue)
+            .Select(a => a.CameraId!.Value)
+            .Distinct()
+            .ToArray();
+
+        // NOTE: these repositories share the same scoped DbContext, so they must run sequentially.
+        var total = await appointmentRepository.CountByRangeAsync(fechaInicio, fechaFin, cancellationToken);
+        var patients = patientIds.Length > 0
+            ? await patientRepository.GetByIdsAsync(patientIds, cancellationToken)
+            : [];
+        var medicos = medicoIds.Length > 0
+            ? await medicoRepository.GetByIdsAsync(medicoIds, cancellationToken)
+            : [];
+        var referentes = referenteIds.Length > 0
+            ? await referenteRepository.GetByIdsAsync(referenteIds, cancellationToken)
+            : [];
+        var obrasSociales = obraSocialIds.Length > 0
+            ? await obraSocialRepository.GetByIdsAsync(obraSocialIds, cancellationToken)
+            : [];
+        var cameras = cameraIds.Length > 0
+            ? await cameraRepository.GetAsync(cancellationToken)
+            : [];
+        // Block history for ObraSocial validation from the full date range
+        var blockHistory = await appointmentRepository.GetBlockHistoryByRangeAsync(fechaInicio, fechaFin, cancellationToken);
+
+        var patientDict = patients.ToDictionary(p => p.Id);
+        var medicoDict = medicos.ToDictionary(m => m.Id);
+        var referenteDict = referentes.ToDictionary(r => r.Id);
+        var obraSocialDict = obrasSociales.ToDictionary(o => o.Id);
+        var cameraDict = cameras.Where(c => c.Activa).ToDictionary(c => c.Id);
+
+        // Collect user IDs from block history for profile lookup
+        var userProfileIds = blockHistory
+            .Where(b => b.ObraSocialValidadaPor.HasValue)
+            .Select(b => b.ObraSocialValidadaPor!.Value)
+            .Distinct()
+            .ToArray();
+
+        var users = userProfileIds.Length > 0
+            ? userRepository.GetBasicByIdsAsync(userProfileIds, cancellationToken)
+            : Task.FromResult<IReadOnlyCollection<User>>([]);
+
+        // Also collect user IDs from appointment ObraSocialValidadaPor (if we carried it on appointments)
+        // — currently we don't, but we need to look up the user for each appointment's latest validation
+
+        var userDict = (await users).ToDictionary(u => u.Id);
+
+        // Build latest validation per slot from block history
+        var latestValidationBySlot = blockHistory
+            .Where(b => b.SlotId.HasValue && (b.ObraSocialValidadaPor.HasValue || b.ObraSocialValidadaAt.HasValue))
+            .GroupBy(b => b.SlotId!.Value)
+            .ToDictionary(
+                g => g.Key,
+                g => g.OrderByDescending(b => b.ObraSocialValidadaAt ?? b.CreatedAt).First());
+
+        var results = appointments.Select(a =>
+        {
+            var hasValidation = latestValidationBySlot.TryGetValue(a.Id, out var validation);
+            var v = validation; // local copy for the null-forgiving operator below
+
+            return new TurnoEnrichedSummary(
+                Id: a.Id,
+                Fecha: a.Fecha,
+                Hora: a.Hora,
+                CamaraId: a.CameraId,
+                Lugar: a.Lugar,
+                Estado: a.Status.ToString().ToLowerInvariant(),
+                PacienteId: a.PatientId,
+                EsTanda: a.EsTanda,
+                TandaId: a.TandaId,
+                EsBloqueCompleto: a.EsBloqueCompleto,
+                ReferidoTercero: a.ReferidoTercero,
+                ReferenteId: a.ReferenteId,
+                ModalidadCobro: a.ModalidadCobro == "particular" ? null : a.ModalidadCobro,
+                ObraSocialId: a.ObraSocialId,
+                NumeroAutorizacion: a.NumeroAutorizacion,
+                SesionesAutorizadas: a.SesionesAutorizadas is null or 0 ? null : a.SesionesAutorizadas,
+                CicloObraSocialId: a.CicloObraSocialId,
+                MedicoId: a.MedicoId,
+                EsNuevoIngreso: a.EsNuevoIngreso,
+                ObraSocialValidadaPor: hasValidation ? v!.ObraSocialValidadaPor : null,
+                ObraSocialValidadaAt: hasValidation ? v!.ObraSocialValidadaAt : null,
+                Paciente: a.PatientId.HasValue && patientDict.TryGetValue(a.PatientId.Value, out var p)
+                    ? new PacienteEnrichedSummary(p.Id, p.Nombre, p.Email, p.ObraSocialId)
+                    : null,
+                Medico: a.MedicoId.HasValue && medicoDict.TryGetValue(a.MedicoId.Value, out var m)
+                    ? new MedicoEnrichedSummary(m.Id, m.Nombre, m.Activo)
+                    : null,
+                Referente: a.ReferenteId.HasValue && referenteDict.TryGetValue(a.ReferenteId.Value, out var r)
+                    ? new ReferenteEnrichedSummary(r.Id, r.Nombre, r.Tipo, r.Activo)
+                    : null,
+                Camara: a.CameraId.HasValue && cameraDict.TryGetValue(a.CameraId.Value, out var c)
+                    ? new CamaraEnrichedSummary(c.Id, c.Nombre, c.Capacidad)
+                    : null,
+                ObraSocial: a.ObraSocialId.HasValue && obraSocialDict.TryGetValue(a.ObraSocialId.Value, out var o)
+                    ? new ObraSocialEnrichedSummary(o.Id, o.Nombre, o.Activa, o.TieneConvenio)
+                    : null,
+                ObraSocialValidadaPorPerfil: hasValidation && v!.ObraSocialValidadaPor.HasValue && userDict.TryGetValue(v.ObraSocialValidadaPor.Value, out var u)
+                    ? new UserBasicLookupSummary(u.Id, u.Nombre)
+                    : null);
+        }).ToArray();
+
+        return new EnrichedPagedResult(results, total);
+    }
+
+    public async Task<IReadOnlyCollection<TurnoEnrichedSummary>> GetEnrichedByDateAsync(
+        DateOnly fecha, CancellationToken cancellationToken)
+    {
+        var result = await GetEnrichedByRangeAsync(fecha, fecha, 0, int.MaxValue, cancellationToken);
+        return result.Items;
     }
 
     public async Task<IReadOnlyCollection<AppointmentSummary>> GetActivosByPacienteAsync(Guid pacienteId, CancellationToken cancellationToken)
@@ -869,10 +1018,81 @@ public sealed class AppointmentsService(
     private async Task<IReadOnlyCollection<AppointmentSummary>> FilterAndMapAsync(IEnumerable<Appointment> appointments, CancellationToken cancellationToken)
     {
         var activeHours = await GetActiveHoursAsync(cancellationToken);
-        return appointments
+        var filtered = appointments
             .Where(x => activeHours.Contains(x.Hora.ToString("HH:mm")))
-            .Select(x => x.ToSummary())
             .ToArray();
+
+        if (filtered.Length == 0)
+        {
+            return [];
+        }
+
+        var minFecha = filtered.Min(x => x.Fecha);
+        var maxFecha = filtered.Max(x => x.Fecha);
+        var historyBySlot = (await blockHistoryRepository.GetByRangeAsync(minFecha, maxFecha, null, cancellationToken))
+            .Where(x => x.SlotId.HasValue)
+            .GroupBy(x => x.SlotId!.Value)
+            .ToDictionary(x => x.Key, x => x.ToArray());
+
+        var userCache = new Dictionary<Guid, GuidLookupSummary?>();
+        async Task<GuidLookupSummary?> GetUserSummaryAsync(Guid? userId)
+        {
+            if (!userId.HasValue)
+            {
+                return null;
+            }
+
+            if (userCache.TryGetValue(userId.Value, out var cached))
+            {
+                return cached;
+            }
+
+            var user = await userRepository.GetByIdAsync(userId.Value, cancellationToken);
+            var summary = user is null ? null : new GuidLookupSummary(user.Id, user.Nombre ?? string.Empty);
+            userCache[userId.Value] = summary;
+            return summary;
+        }
+
+        var summaries = new List<AppointmentSummary>(filtered.Length);
+        foreach (var appointment in filtered)
+        {
+            var patient = appointment.PatientId.HasValue
+                ? await patientRepository.GetByIdAsync(appointment.PatientId.Value, cancellationToken)
+                : null;
+            var medico = appointment.MedicoId.HasValue
+                ? await medicoRepository.GetByIdAsync(appointment.MedicoId.Value, cancellationToken)
+                : null;
+            var referente = appointment.ReferenteId.HasValue
+                ? await referenteRepository.GetByIdAsync(appointment.ReferenteId.Value, cancellationToken)
+                : null;
+            var obraSocial = appointment.ObraSocialId.HasValue
+                ? await obraSocialRepository.GetByIdAsync(appointment.ObraSocialId.Value, cancellationToken)
+                : null;
+            var apartadoPorPerfil = await GetUserSummaryAsync(appointment.ApartadoPorUserId);
+            historyBySlot.TryGetValue(appointment.Id, out var slotHistory);
+            var createdAt = slotHistory?.Min(x => x.CreatedAt);
+            var obraSocialValidated = slotHistory?
+                .Where(x => x.ObraSocialValidadaPor.HasValue || x.ObraSocialValidadaAt.HasValue)
+                .OrderByDescending(x => x.ObraSocialValidadaAt ?? x.CreatedAt)
+                .FirstOrDefault();
+            var obraSocialValidadaPorPerfil = await GetUserSummaryAsync(obraSocialValidated?.ObraSocialValidadaPor);
+
+            var baseSummary = appointment.ToSummary();
+            summaries.Add(baseSummary with
+            {
+                CreatedAt = createdAt,
+                ObraSocialValidadaPor = obraSocialValidated?.ObraSocialValidadaPor,
+                ObraSocialValidadaAt = obraSocialValidated?.ObraSocialValidadaAt,
+                Paciente = patient is null ? null : new GuidLookupSummary(patient.Id, patient.Nombre, patient.DocumentoIdentidad, patient.Email, patient.IsActive),
+                Medico = medico is null ? null : new IntLookupSummary(medico.Id, medico.Nombre, medico.Activo.ToString(), medico.Activo),
+                Referente = referente is null ? null : new IntLookupSummary(referente.Id, referente.Nombre, referente.Tipo, referente.Activo),
+                ObraSocial = obraSocial is null ? null : new ObraSocialSummaryDto(obraSocial.Id, obraSocial.Nombre, obraSocial.Activa, obraSocial.TieneConvenio, obraSocial.Orden, obraSocial.Abreviatura, obraSocial.CreatedAt),
+                ApartadoPorPerfil = apartadoPorPerfil,
+                ObraSocialValidadaPorPerfil = obraSocialValidadaPorPerfil,
+            });
+        }
+
+        return summaries;
     }
 
     private async Task<HashSet<string>> GetActiveHoursAsync(CancellationToken cancellationToken) =>
@@ -1020,7 +1240,7 @@ public sealed class AppointmentsService(
 
     public async Task<IReadOnlyCollection<TandaAvailabilitySummary>> GetTandaAvailabilityAsync(DateOnly fechaInicio, DateOnly fechaFin, Guid? patientId, CancellationToken cancellationToken)
     {
-        var appointments = await appointmentRepository.GetByRangeAsync(fechaInicio, fechaFin, cancellationToken);
+        var appointments = await appointmentRepository.GetByRangeAsync(fechaInicio, fechaFin, null, null, cancellationToken);
         if (patientId.HasValue)
         {
             appointments = appointments.Where(x => x.PatientId == patientId || x.PatientId is null).ToArray();
@@ -1039,7 +1259,7 @@ public sealed class AppointmentsService(
 
     public async Task<IReadOnlyCollection<TandaAvailabilityDetailSummary>> GetTandaAvailabilityDetailAsync(DateOnly fechaInicio, DateOnly fechaFin, Guid? patientId, CancellationToken cancellationToken)
     {
-        var appointments = await appointmentRepository.GetByRangeAsync(fechaInicio, fechaFin, cancellationToken);
+        var appointments = await appointmentRepository.GetByRangeAsync(fechaInicio, fechaFin, null, null, cancellationToken);
         if (patientId.HasValue)
         {
             appointments = appointments.Where(x => x.PatientId == patientId || x.PatientId is null).ToArray();
@@ -1052,6 +1272,99 @@ public sealed class AppointmentsService(
             .ThenBy(x => x.Lugar)
             .Select(x => new TandaAvailabilityDetailSummary(x.Fecha, x.Hora, x.CameraId ?? 0, x.Lugar, x.Status.ToString().ToLowerInvariant(), x.TandaId, x.PatientId, x.EsBloqueCompleto))
             .ToArray();
+    }
+
+    public async Task<IReadOnlyCollection<TandaAvailabilityAggregatedSummary>> GetTandaAvailabilityAggregatedAsync(
+        DateOnly fechaInicio, DateOnly fechaFin, Guid? patientId, CancellationToken cancellationToken)
+    {
+        // Fetch all appointments in date range
+        var appointments = await appointmentRepository.GetByRangeAsync(fechaInicio, fechaFin, null, null, cancellationToken);
+
+        // Get active cameras and hours
+        var activeCameras = await GetActiveCamerasAsync(cancellationToken);
+        var activeHours = await GetActiveHoursAsync(cancellationToken);
+
+        // Build blocked hours set for this patient: hora ocupada + H-1 + H+1 (mismo día)
+        var horasBloqueadasPorFecha = new Dictionary<DateOnly, HashSet<int>>();
+        if (patientId.HasValue)
+        {
+            var patientAppointments = await appointmentRepository.GetActivosByPacienteAsync(
+                patientId.Value, fechaInicio, cancellationToken);
+
+            foreach (var group in patientAppointments
+                .Where(x => x.Fecha >= fechaInicio && x.Fecha <= fechaFin && x.IsOccupied())
+                .GroupBy(x => x.Fecha))
+            {
+                var blockedHours = new HashSet<int>();
+                foreach (var apt in group)
+                {
+                    var h = apt.Hora.Hour;
+                    blockedHours.Add(h);              // hora ocupada/apartada
+                    if (h > 0) blockedHours.Add(h - 1);   // H-1 (mismo día)
+                    if (h < 23) blockedHours.Add(h + 1);  // H+1 (mismo día)
+                }
+                horasBloqueadasPorFecha[group.Key] = blockedHours;
+            }
+        }
+
+        // Index appointments by (fecha, hora, camara_id) for fast lookup
+        var slotsByCell = appointments
+            .Where(x => x.CameraId.HasValue && activeCameras.ContainsKey(x.CameraId.Value))
+            .GroupBy(x => (x.Fecha, Hora: x.Hora.Hour, CameraId: x.CameraId!.Value))
+            .ToDictionary(g => g.Key, g => g.ToArray());
+
+        // Cross-join: every (fecha × activeHour × activeCamera)
+        var results = new List<TandaAvailabilityAggregatedSummary>();
+        foreach (var fecha in EachDay(fechaInicio, fechaFin))
+        {
+            var blockedHoursForDate = horasBloqueadasPorFecha.TryGetValue(fecha, out var b) ? b : null;
+
+            foreach (var horaStr in activeHours)
+            {
+                var horaInt = int.Parse(horaStr[..2]);
+                var hora = new TimeOnly(horaInt, 0);
+                var isBlockedForPatient = blockedHoursForDate?.Contains(horaInt) == true;
+
+                foreach (var (camaraId, camara) in activeCameras)
+                {
+                    var key = (fecha, horaInt, camaraId);
+                    var cellSlots = slotsByCell.TryGetValue(key, out var slots) ? slots : [];
+
+                    // When blocked for patient: libres_count = 0
+                    var libresCount = isBlockedForPatient
+                        ? 0
+                        : cellSlots.Count(x => x.IsReservable());
+
+                    var tieneDisponibilidad = libresCount > 0;
+                    var tieneBloqueCompletoPosible = libresCount == camara.Capacidad && camara.Capacidad > 0;
+
+                    results.Add(new TandaAvailabilityAggregatedSummary(
+                        fecha, hora, camaraId, camara.Nombre, camara.Capacidad,
+                        libresCount,
+                        tieneDisponibilidad,
+                        tieneBloqueCompletoPosible,
+                        isBlockedForPatient));
+                }
+            }
+        }
+
+        return results
+            .OrderBy(x => x.Fecha)
+            .ThenBy(x => x.Hora)
+            .ThenBy(x => x.CamaraId)
+            .ToArray();
+    }
+
+    private static IEnumerable<DateOnly> EachDay(DateOnly from, DateOnly to)
+    {
+        for (var day = from; day <= to; day = day.AddDays(1))
+            yield return day;
+    }
+
+    private async Task<Dictionary<int, Camera>> GetActiveCamerasAsync(CancellationToken cancellationToken)
+    {
+        var cameras = await cameraRepository.GetAsync(cancellationToken);
+        return cameras.Where(x => x.Activa).ToDictionary(x => x.Id);
     }
 
     public async Task<IReadOnlyCollection<AppointmentSummary>> GetSlotsByTandaAsync(Guid tandaId, CancellationToken cancellationToken) =>
@@ -1322,6 +1635,11 @@ public sealed class AppointmentsService(
 
     public async Task<int> GenerateAsync(DateOnly fecha, CancellationToken cancellationToken)
     {
+        if (fecha == default)
+        {
+            throw new ValidationException("Fecha invalida.");
+        }
+
         var hours = (await scheduleHourRepository.GetAsync(cancellationToken))
             .Where(x => x.Activo)
             .OrderBy(x => x.Orden)
@@ -1343,7 +1661,7 @@ public sealed class AppointmentsService(
         {
             if (!TimeOnly.TryParse(hour.Hora, out var horaTime))
             {
-                continue;
+                throw new ValidationException($"Horario invalido en configuración: '{hour.Hora}'.");
             }
 
             foreach (var camera in cameras)

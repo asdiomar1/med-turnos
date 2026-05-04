@@ -7,6 +7,8 @@ public interface IAppointmentsService
     Task<IReadOnlyCollection<AppointmentSummary>> GetByDateAsync(DateOnly? fecha, CancellationToken cancellationToken);
     Task<IReadOnlyCollection<AppointmentSummary>> GetDisponiblesPortalByDateAsync(Guid userId, DateOnly fecha, CancellationToken cancellationToken);
     Task<IReadOnlyCollection<AppointmentGroupSummary>> GetByRangeAsync(DateOnly fechaInicio, DateOnly fechaFin, CancellationToken cancellationToken);
+    Task<EnrichedPagedResult> GetEnrichedByRangeAsync(DateOnly fechaInicio, DateOnly fechaFin, int offset, int limit, CancellationToken cancellationToken);
+    Task<IReadOnlyCollection<TurnoEnrichedSummary>> GetEnrichedByDateAsync(DateOnly fecha, CancellationToken cancellationToken);
     Task<IReadOnlyCollection<AppointmentSummary>> GetActivosByPacienteAsync(Guid pacienteId, CancellationToken cancellationToken);
     Task<AppointmentSummary> AssignAsync(Guid actorUserId, Guid slotId, string idempotencyKey, AssignAppointmentCommand command, CancellationToken cancellationToken);
     Task<AppointmentSummary> CancelAsync(Guid actorUserId, Guid slotId, string idempotencyKey, string? motivo, CancellationToken cancellationToken);
@@ -21,6 +23,10 @@ public interface IAppointmentsService
     Task<AppointmentSummary> CancelPortalAsync(Guid userId, Guid slotId, string? idempotencyKey, string? motivo, CancellationToken cancellationToken);
     Task<IReadOnlyCollection<TandaAvailabilitySummary>> GetTandaAvailabilityAsync(DateOnly fechaInicio, DateOnly fechaFin, Guid? patientId, CancellationToken cancellationToken);
     Task<IReadOnlyCollection<TandaAvailabilityDetailSummary>> GetTandaAvailabilityDetailAsync(DateOnly fechaInicio, DateOnly fechaFin, Guid? patientId, CancellationToken cancellationToken);
+    /// <summary>
+    /// Returns aggregated availability by fecha + hora + camara with availability counts and patient blocking info.
+    /// </summary>
+    Task<IReadOnlyCollection<TandaAvailabilityAggregatedSummary>> GetTandaAvailabilityAggregatedAsync(DateOnly fechaInicio, DateOnly fechaFin, Guid? patientId, CancellationToken cancellationToken);
     Task<IReadOnlyCollection<AppointmentSummary>> GetSlotsByTandaAsync(Guid tandaId, CancellationToken cancellationToken);
     Task<IReadOnlyCollection<AppointmentSummary>> GetActiveSlotsByTandaAsync(Guid tandaId, CancellationToken cancellationToken);
     Task<IReadOnlyCollection<BlockHistorySummary>> GetBlockHistoryAsync(DateOnly fecha, TimeOnly hora, int? camaraId, CancellationToken cancellationToken);

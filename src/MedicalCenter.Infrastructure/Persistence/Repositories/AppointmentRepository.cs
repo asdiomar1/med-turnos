@@ -139,13 +139,39 @@ public sealed class AppointmentRepository(
             .ThenBy(x => x.Lugar)
             .ToListAsync(cancellationToken);
 
-    public async Task<IReadOnlyCollection<Appointment>> GetByRangeAsync(DateOnly fechaInicio, DateOnly fechaFin, CancellationToken cancellationToken) =>
-        await dbContext.Appointments
+    public async Task<IReadOnlyCollection<Appointment>> GetByRangeAsync(DateOnly fechaInicio, DateOnly fechaFin, int? offset, int? limit, CancellationToken cancellationToken)
+    {
+        var query = dbContext.Appointments
             .Where(x => x.Fecha >= fechaInicio && x.Fecha <= fechaFin)
             .OrderBy(x => x.Fecha)
             .ThenBy(x => x.Hora)
             .ThenBy(x => x.CameraId)
             .ThenBy(x => x.Lugar)
+            .AsQueryable();
+
+        if (offset.HasValue)
+        {
+            query = query.Skip(offset.Value);
+        }
+
+        if (limit.HasValue)
+        {
+            query = query.Take(limit.Value);
+        }
+
+        return await query.ToListAsync(cancellationToken);
+    }
+
+    public async Task<int> CountByRangeAsync(DateOnly fechaInicio, DateOnly fechaFin, CancellationToken cancellationToken) =>
+        await dbContext.Appointments
+            .CountAsync(x => x.Fecha >= fechaInicio && x.Fecha <= fechaFin, cancellationToken);
+
+    public async Task<IReadOnlyCollection<BlockHistory>> GetBlockHistoryByRangeAsync(DateOnly fechaInicio, DateOnly fechaFin, CancellationToken cancellationToken) =>
+        await dbContext.BlockHistories
+            .Where(x => x.Fecha >= fechaInicio && x.Fecha <= fechaFin)
+            .OrderByDescending(x => x.Fecha)
+            .ThenByDescending(x => x.Hora)
+            .ThenByDescending(x => x.CreatedAt)
             .ToListAsync(cancellationToken);
 
     public async Task<IReadOnlyCollection<Appointment>> GetActivosByPacienteAsync(Guid pacienteId, DateOnly fromDate, CancellationToken cancellationToken) =>

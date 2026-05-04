@@ -43,3 +43,18 @@ public sealed record BlockHistoryWriteCommand(
     string Accion,
     Guid? PacienteId,
     string? Motivo);
+
+/// <summary>
+/// Aggregated availability summary for camera-based appointment blocks.
+/// Groups slots by fecha + hora + camara_id with availability counts and patient blocking info.
+/// </summary>
+public sealed record TandaAvailabilityAggregatedSummary(
+    DateOnly Fecha,
+    TimeOnly Hora,
+    int CamaraId,
+    string CamaraNombre,
+    int Capacidad,
+    int LibresCount,
+    bool TieneDisponibilidad,
+    bool TieneBloqueCompletoPosible,
+    bool BloqueadoPorPaciente);

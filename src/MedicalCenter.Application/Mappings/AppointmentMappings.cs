@@ -38,5 +38,7 @@ public static class AppointmentMappings
             a.EsNuevoIngreso,
             a.EsMonoxido,
             a.MonoxidoOrdenMedica,
-            a.MonoxidoResumenClinico);
+            a.MonoxidoResumenClinico,
+            null,
+            a.UpdatedAt);
 }

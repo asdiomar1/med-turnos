@@ -92,10 +92,10 @@ public sealed class PatientsControllerAuditTests
         public Task<IReadOnlyCollection<PatientSummary>> GetAsync(string? search, bool includeInactive, CancellationToken cancellationToken) =>
             Task.FromResult<IReadOnlyCollection<PatientSummary>>([]);
 
-        public Task<CreatedPatientResult> CreateAsync(string nombre, string? email, string telefono, string documentoIdentidad, string? loginIdentifier, string? nacionalidad, int condicionIvaId, int? obraSocialId, string? numeroCredencialObraSocial, bool portalHabilitado, bool optInWhatsapp, string? optInSource, bool claustrofobico, string? notas, string datosExtra, CancellationToken cancellationToken) =>
+        public Task<CreatedPatientResult> CreateAsync(Guid actorUserId, string nombre, string? email, string telefono, string documentoIdentidad, string? loginIdentifier, string? nacionalidad, int condicionIvaId, int? obraSocialId, string? numeroCredencialObraSocial, bool portalHabilitado, bool optInWhatsapp, string? optInSource, bool claustrofobico, string? notas, string datosExtra, CancellationToken cancellationToken) =>
             Task.FromResult(new CreatedPatientResult(Guid.NewGuid(), nombre));
 
-        public Task<PatientSummary> UpdateAsync(Guid patientId, string? email, string telefono, string documentoIdentidad, string? nacionalidad, int condicionIvaId, int? obraSocialId, string? numeroCredencialObraSocial, bool claustrofobico, string? notas, string datosExtra, bool actualizarNotas, bool optInWhatsapp, string? optInSource, CancellationToken cancellationToken) =>
+        public Task<PatientSummary> UpdateAsync(Guid actorUserId, Guid patientId, string? email, string telefono, string documentoIdentidad, string? nacionalidad, int condicionIvaId, int? obraSocialId, string? numeroCredencialObraSocial, bool claustrofobico, string? notas, string datosExtra, bool actualizarNotas, bool optInWhatsapp, string? optInSource, CancellationToken cancellationToken) =>
             Task.FromResult(new PatientSummary(patientId, "Test", null, telefono, documentoIdentidad, null, null, condicionIvaId, obraSocialId, null, false, false, null, false, null, "{}", false, null));
 
         public Task<MutationResult> DeleteAsync(Guid patientId, CancellationToken cancellationToken) =>

@@ -1,9 +1,12 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.0.31903.59
+# Visual Studio Version 18
+VisualStudioVersion = 18.5.11723.231 stable
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{73A4CB16-86AB-4298-891D-BEF4FF1A419A}"
+	ProjectSection(SolutionItems) = preProject
+		.env.local = .env.local
+	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MedicalCenter.Api", "src\MedicalCenter.Api\MedicalCenter.Api.csproj", "{92CE26BB-7C7F-4DB9-84B6-390977CFD6C7}"
 EndProject
@@ -31,9 +34,6 @@ Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
-	EndGlobalSection
-	GlobalSection(SolutionProperties) = preSolution
-		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{92CE26BB-7C7F-4DB9-84B6-390977CFD6C7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
@@ -73,6 +73,9 @@ Global
 		{57C11F5B-8CF6-4D15-A7E6-970B2D654EC0}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{57C11F5B-8CF6-4D15-A7E6-970B2D654EC0}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{92CE26BB-7C7F-4DB9-84B6-390977CFD6C7} = {73A4CB16-86AB-4298-891D-BEF4FF1A419A}
 		{B1E899C1-7C2E-403B-BBE5-755CEB93857B} = {73A4CB16-86AB-4298-891D-BEF4FF1A419A}
@@ -83,5 +86,8 @@ Global
 		{2C62FFDF-D203-43B3-A588-146A644489F3} = {734D382D-7315-4A72-8F4A-D58DA6F8846E}
 		{320BC53D-1A19-444F-B4E7-0B1591CDC22A} = {E7CA0DA8-6816-4102-AE3F-BFE1E7F90133}
 		{57C11F5B-8CF6-4D15-A7E6-970B2D654EC0} = {734D382D-7315-4A72-8F4A-D58DA6F8846E}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {4B2DB55F-C5CC-4C57-8C62-D0BE560DFD82}
 	EndGlobalSection
 EndGlobal

@@ -22,6 +22,7 @@ public static class DevDataDumper
         "rbac_effective_permissions",
         "perfiles",
         "users",
+        "user_preferences",
         "__EFMigrationsHistory"
     };
 

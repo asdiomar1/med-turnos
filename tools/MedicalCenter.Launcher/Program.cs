@@ -126,6 +126,7 @@ class Program
             LaunchMode.InfraOnly => await RunInfraOnlyMode(),
             LaunchMode.LocalRun => await RunLocalRunMode(),
             LaunchMode.DumpData => await RunDumpDataMode(),
+            LaunchMode.RestoreData => await RunRestoreDataMode(),
             LaunchMode.Stop => await RunStopMode(),
             LaunchMode.Rebuild => await RunRebuildMode(),
             LaunchMode.Quit => 0,
@@ -144,7 +145,8 @@ class Program
             "2" or "infra" => LaunchMode.InfraOnly,
             "3" or "local" => LaunchMode.LocalRun,
             "4" or "dump" => LaunchMode.DumpData,
-            "5" or "rebuild" => LaunchMode.Rebuild,
+            "5" or "restore" => LaunchMode.RestoreData,
+            "6" or "rebuild" => LaunchMode.Rebuild,
             "s" or "stop" => LaunchMode.Stop,
             "q" or "quit" => LaunchMode.Quit,
             _ => ShowInvalidOption()
@@ -161,7 +163,8 @@ Modes:
   2, infra   - Infra Only (postgres + redis, then dotnet run)
   3, local   - Local Run (skip Docker, dotnet run)
   4, dump    - Dump dev data from running postgres to schema/
-  5, rebuild - Rebuild Docker image for the API service
+  5, restore - Restore all dev data backups (merge into database)
+  6, rebuild - Rebuild Docker image for the API service
   s, stop    - Stop docker containers + kill local API process
   q, quit    - Quit the launcher
 
@@ -176,7 +179,7 @@ If no mode is provided, an interactive menu will be shown.
         return null;
     }
 
-    private static LaunchMode ShowInteractiveMenu()
+private static LaunchMode ShowInteractiveMenu()
     {
         Console.WriteLine(@"
 Select launch mode:
@@ -185,7 +188,8 @@ Select launch mode:
   [2] Infra Only             - Start postgres + redis, then dotnet run
   [3] Local Run              - Skip Docker, run with dotnet (assumes local infra)
   [4] Dump Dev Data          - Export dev data from running postgres to schema/
-  [5] Rebuild Docker Image   - Rebuild the API Docker image
+  [5] Restore Dev Data       - Restore all backups (merge into database)
+  [6] Rebuild Docker Image   - Rebuild the API Docker image
 
   [S] Stop all               - Stop docker containers + kill local API process
   [Q] Quit
@@ -202,11 +206,12 @@ Select launch mode:
                 case "2": return LaunchMode.InfraOnly;
                 case "3": return LaunchMode.LocalRun;
                 case "4": return LaunchMode.DumpData;
-                case "5": return LaunchMode.Rebuild;
+                case "5": return LaunchMode.RestoreData;
+                case "6": return LaunchMode.Rebuild;
                 case "s": return LaunchMode.Stop;
                 case "q": return LaunchMode.Quit;
                 default:
-                    ConsoleWriter.Warning("Invalid option. Enter 1, 2, 3, 4, 5, S, or Q.");
+                    ConsoleWriter.Warning("Invalid option. Enter 1, 2, 3, 4, 5, 6, S, or Q.");
                     break;
             }
         }
@@ -227,7 +232,6 @@ Select launch mode:
 
         if (upResult.ExitCode != 0)
         {
-            ConsoleWriter.Error($"Failed to start services: {upResult.Stderr}");
             return 1;
         }
 
@@ -255,7 +259,6 @@ Select launch mode:
 
         if (upResult.ExitCode != 0)
         {
-            ConsoleWriter.Error($"Failed to start infra: {upResult.Stderr}");
             return 1;
         }
 
@@ -312,27 +315,27 @@ Select launch mode:
         return await DevDataDumper.DumpAsync(ProjectRoot, ComposeFile);
     }
 
+    private static async Task<int> RunRestoreDataMode()
+    {
+        return await DevDataRestorer.RestoreAsync(ProjectRoot);
+    }
+
     private static async Task<int> RunRebuildMode()
     {
         ConsoleWriter.Info("Mode: Rebuild Docker Image");
         ConsoleWriter.Info("Rebuilding API Docker image...");
+        Console.WriteLine();
 
-        // Docker Compose sends progress messages (including "Built" success) to stderr.
-        // We print both stdout and stderr as plain text to avoid showing ✗ on progress lines.
-        var result = await ProcessRunner.RunAsync(
-            "docker", "compose build api",
+        var result = await DockerComposeRunner.BuildAsync(
+            service: "api",
             workingDirectory: ProjectRoot,
-            timeoutMs: 300000,
-            onOutput: line => Console.WriteLine(line),
-            onError: line => Console.WriteLine(line));
+            timeoutMs: 300000);
+
+        Console.WriteLine();
 
         if (result.ExitCode == 0)
         {
-            ConsoleWriter.Success("Docker image rebuilt successfully.");
-        }
-        else
-        {
-            ConsoleWriter.Error($"Docker build failed with exit code {result.ExitCode}.");
+            ConsoleWriter.Success("✓ Docker image rebuilt successfully.");
         }
 
         return result.ExitCode;
@@ -351,9 +354,10 @@ Select launch mode:
             timeoutMs: 60000);
 
         if (downResult.ExitCode == 0)
+        {
             ConsoleWriter.Success("Docker containers stopped.");
-        else
-            ConsoleWriter.Warning($"docker compose down exited with code {downResult.ExitCode} — containers may not have been running.");
+        }
+        // DockerComposeRunner already printed the error details
 
         ConsoleWriter.Info("Checking local processes on known ports...");
         var killed = false;
