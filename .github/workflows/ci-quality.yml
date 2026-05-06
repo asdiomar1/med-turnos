@@ -96,6 +96,8 @@ jobs:
             /o:"${SONAR_ORGANIZATION}" \
             /d:sonar.host.url="${SONAR_HOST_URL}" \
             /d:sonar.token="${SONAR_TOKEN}" \
+            /d:sonar.qualitygate.wait=true \
+            /d:sonar.qualitygate.timeout=600 \
             /d:sonar.exclusions="**/Migrations/**" \
             /d:sonar.cs.vstest.reportsPaths="TestResults/sonar/**/*.trx" \
             /d:sonar.cs.opencover.reportsPaths="TestResults/sonar/**/coverage.opencover.xml" \
