@@ -2,32 +2,34 @@ using MedicalCenter.Domain.Common;
 
 namespace MedicalCenter.Domain.Entities;
 
+public sealed record WhatsappMessageCreateParams(
+    Guid Id,
+    Guid PatientId,
+    Guid? SlotId,
+    Guid? TandaId,
+    long? TemplateId,
+    string Kind,
+    string PhoneE164,
+    string IdempotencyKey,
+    string? TriggerSource,
+    string RequestPayload);
+
 public sealed class WhatsappMessage : Entity<Guid>
 {
     private WhatsappMessage() { }
 
-    public WhatsappMessage(
-        Guid id,
-        Guid patientId,
-        Guid? slotId,
-        Guid? tandaId,
-        long? templateId,
-        string kind,
-        string phoneE164,
-        string idempotencyKey,
-        string? triggerSource,
-        string requestPayload)
+    public WhatsappMessage(WhatsappMessageCreateParams p)
     {
-        Id = id;
-        PatientId = patientId;
-        SlotId = slotId;
-        TandaId = tandaId;
-        TemplateId = templateId;
-        Kind = kind;
-        PhoneE164 = phoneE164;
-        IdempotencyKey = idempotencyKey;
-        TriggerSource = triggerSource;
-        RequestPayload = requestPayload;
+        Id = p.Id;
+        PatientId = p.PatientId;
+        SlotId = p.SlotId;
+        TandaId = p.TandaId;
+        TemplateId = p.TemplateId;
+        Kind = p.Kind;
+        PhoneE164 = p.PhoneE164;
+        IdempotencyKey = p.IdempotencyKey;
+        TriggerSource = p.TriggerSource;
+        RequestPayload = p.RequestPayload;
         Status = "queued";
         CreatedAt = DateTimeOffset.UtcNow;
         UpdatedAt = CreatedAt;

@@ -4,6 +4,7 @@ using FluentValidation;
 using FluentValidation.AspNetCore;
 using MedicalCenter.Api.Filters;
 using MedicalCenter.Api.Middleware;
+using MedicalCenter.Api.ModelBinding;
 using MedicalCenter.Contracts.Validation.Auth;
 using MedicalCenter.Infrastructure.Options;
 using MedicalCenter.Infrastructure.Persistence;
@@ -12,6 +13,7 @@ using MedicalCenter.Infrastructure.Seed;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -28,6 +30,7 @@ public static class ServiceCollectionExtensions
         services.AddControllers(options =>
         {
             options.Filters.AddService<GlobalAuthorizeFilter>();
+            options.ValueProviderFactories.Add(new IdempotencyKeyValueProviderFactory());
         }).AddJsonOptions(options =>
         {
             options.JsonSerializerOptions.PropertyNamingPolicy = null;
@@ -92,87 +95,110 @@ public static class ServiceCollectionExtensions
 
     public static WebApplicationBuilder ConfigureCredentialValidation(this WebApplicationBuilder builder)
     {
-        var logger = LoggerFactory.Create(config => config.AddConsole()).CreateLogger<CredentialValidator>();
+        var logger = LoggerFactory.Create(config => config.AddConsole()).CreateLogger("CredentialValidation");
         var isProduction = !builder.Environment.IsDevelopment();
-        var issues = new List<string>();
-
-        // 1. Validate JWT SecretKey
-        var jwtOptions = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>() ?? new JwtOptions();
-        if (string.IsNullOrWhiteSpace(jwtOptions.SecretKey) || 
-            jwtOptions.SecretKey.Length < 32 || 
-            jwtOptions.SecretKey.Contains("change-this-secret"))
-        {
-            issues.Add("JWT SecretKey is weak, empty, or uses default value (minimum 32 chars required)");
-        }
-
-        // 2. Validate ApiKey
-        var apiKeyOptions = builder.Configuration.GetSection(ApiKeyOptions.SectionName).Get<ApiKeyOptions>() ?? new ApiKeyOptions();
-        if (string.IsNullOrWhiteSpace(apiKeyOptions.Key) || apiKeyOptions.Key.Contains("change-this"))
-        {
-            issues.Add("API Key is missing or uses default value");
-        }
-
-        // 3. Validate R2 credentials
-        var r2Options = builder.Configuration.GetSection(R2Options.SectionName).Get<R2Options>() ?? new R2Options();
-        if (string.IsNullOrWhiteSpace(r2Options.AccountId) || r2Options.AccountId == "set-via-env")
-        {
-            issues.Add("R2 AccountId is missing or not configured");
-        }
-        if (string.IsNullOrWhiteSpace(r2Options.AccessKeyId) || r2Options.AccessKeyId == "set-via-env")
-        {
-            issues.Add("R2 AccessKeyId is missing or not configured");
-        }
-        if (string.IsNullOrWhiteSpace(r2Options.SecretAccessKey) || r2Options.SecretAccessKey == "set-via-env")
-        {
-            issues.Add("R2 SecretAccessKey is missing or not configured");
-        }
-
-        // 4. Validate WhatsApp secrets
-        var whatsAppOptions = builder.Configuration.GetSection(WhatsAppOptions.SectionName).Get<WhatsAppOptions>() ?? new WhatsAppOptions();
-        if (string.IsNullOrWhiteSpace(whatsAppOptions.WebhookVerifyToken) || whatsAppOptions.WebhookVerifyToken.Contains("change-this"))
-        {
-            issues.Add("WhatsApp WebhookVerifyToken uses default value");
-        }
-        if (string.IsNullOrWhiteSpace(whatsAppOptions.DispatchInternalSecret) || whatsAppOptions.DispatchInternalSecret.Contains("change-this"))
-        {
-            issues.Add("WhatsApp DispatchInternalSecret uses default value");
-        }
-
-        // Report findings
-        if (issues.Count > 0)
-        {
-            if (isProduction)
-            {
-                // In production, fail hard on ANY credential issue
-                foreach (var issue in issues)
-                {
-                    logger.LogCritical("SECURITY: {Issue}", issue);
-                }
-                logger.LogCritical("SECURITY: Application starting with {Count} credential issue(s) in PRODUCTION mode. Fix immediately!", issues.Count);
-                
-                // Optionally throw to prevent startup in production with bad credentials
-                // Uncomment below to enforce fail-fast:
-                // throw new InvalidOperationException($"Credential validation failed: {string.Join("; ", issues)}");
-            }
-            else
-            {
-                // In development, warn but allow startup
-                foreach (var issue in issues)
-                {
-                    logger.LogWarning("DEV WARNING: {Issue}", issue);
-                }
-                logger.LogWarning("DEV WARNING: {Count} credential issue(s) detected. OK for development, fix before production!", issues.Count);
-            }
-        }
-        else
-        {
-            logger.LogInformation("Credential validation passed: all secrets configured");
-        }
+        var issues = CollectCredentialIssues(builder.Configuration);
+        LogCredentialIssues(issues, isProduction, logger);
 
         return builder;
     }
 
-    private sealed class CredentialValidator { }
+    private static List<string> CollectCredentialIssues(IConfiguration configuration)
+    {
+        var issues = new List<string>();
+
+        ValidateJwtOptions(configuration, issues);
+        ValidateApiKeyOptions(configuration, issues);
+        ValidateR2Options(configuration, issues);
+        ValidateWhatsAppOptions(configuration, issues);
+
+        return issues;
+    }
+
+    private static void ValidateJwtOptions(IConfiguration configuration, List<string> issues)
+    {
+        var jwtOptions = configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>() ?? new JwtOptions();
+        if (string.IsNullOrWhiteSpace(jwtOptions.SecretKey) ||
+            jwtOptions.SecretKey.Length < 32 ||
+            jwtOptions.SecretKey.Contains("change-this-secret", StringComparison.OrdinalIgnoreCase))
+        {
+            issues.Add("JWT SecretKey is weak, empty, or uses default value (minimum 32 chars required)");
+        }
+    }
+
+    private static void ValidateApiKeyOptions(IConfiguration configuration, List<string> issues)
+    {
+        var apiKeyOptions = configuration.GetSection(ApiKeyOptions.SectionName).Get<ApiKeyOptions>() ?? new ApiKeyOptions();
+        if (string.IsNullOrWhiteSpace(apiKeyOptions.Key) || apiKeyOptions.Key.Contains("change-this", StringComparison.OrdinalIgnoreCase))
+        {
+            issues.Add("API Key is missing or uses default value");
+        }
+    }
+
+    private static void ValidateR2Options(IConfiguration configuration, List<string> issues)
+    {
+        var r2Options = configuration.GetSection(R2Options.SectionName).Get<R2Options>() ?? new R2Options();
+
+        AddIssueIfMissing(r2Options.AccountId, "R2 AccountId is missing or not configured", issues);
+        AddIssueIfMissing(r2Options.AccessKeyId, "R2 AccessKeyId is missing or not configured", issues);
+        AddIssueIfMissing(r2Options.SecretAccessKey, "R2 SecretAccessKey is missing or not configured", issues);
+    }
+
+    private static void ValidateWhatsAppOptions(IConfiguration configuration, List<string> issues)
+    {
+        var whatsAppOptions = configuration.GetSection(WhatsAppOptions.SectionName).Get<WhatsAppOptions>() ?? new WhatsAppOptions();
+
+        if (string.IsNullOrWhiteSpace(whatsAppOptions.WebhookVerifyToken) ||
+            whatsAppOptions.WebhookVerifyToken.Contains("change-this", StringComparison.OrdinalIgnoreCase))
+        {
+            issues.Add("WhatsApp WebhookVerifyToken uses default value");
+        }
+
+        if (string.IsNullOrWhiteSpace(whatsAppOptions.DispatchInternalSecret) ||
+            whatsAppOptions.DispatchInternalSecret.Contains("change-this", StringComparison.OrdinalIgnoreCase))
+        {
+            issues.Add("WhatsApp DispatchInternalSecret uses default value");
+        }
+    }
+
+    private static void AddIssueIfMissing(string? value, string issue, List<string> issues)
+    {
+        if (string.IsNullOrWhiteSpace(value) || value.Equals("set-via-env", StringComparison.OrdinalIgnoreCase))
+        {
+            issues.Add(issue);
+        }
+    }
+
+    private static void LogCredentialIssues(IReadOnlyCollection<string> issues, bool isProduction, ILogger logger)
+    {
+        if (issues.Count == 0)
+        {
+            logger.LogInformation("Credential validation passed: all secrets configured");
+            return;
+        }
+
+        foreach (var issue in issues)
+        {
+            if (isProduction)
+            {
+                logger.LogCritical("SECURITY: {Issue}", issue);
+            }
+            else
+            {
+                logger.LogWarning("DEV WARNING: {Issue}", issue);
+            }
+        }
+
+        if (isProduction)
+        {
+            logger.LogCritical("SECURITY: Application starting with {Count} credential issue(s) in PRODUCTION mode. Fix immediately!", issues.Count);
+            return;
+        }
+
+        logger.LogWarning("DEV WARNING: {Count} credential issue(s) detected. OK for development, fix before production!", issues.Count);
+    }
+
+
 }
 
 public static class ApplicationBuilderExtensions
@@ -186,7 +212,11 @@ public static class ApplicationBuilderExtensions
             app.UseHsts();
         }
 
-        app.UseHttpsRedirection();
+        // Only use HTTPS redirection in production
+        if (!app.Environment.IsDevelopment())
+        {
+            app.UseHttpsRedirection();
+        }
 
         if (app.Environment.IsDevelopment())
         {

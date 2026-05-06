@@ -3,36 +3,38 @@ using MedicalCenter.Domain.Constants;
 
 namespace MedicalCenter.Domain.Entities;
 
+public sealed record ConsultationSessionCreateParams(
+    Guid Id,
+    Guid? PacienteId,
+    Guid? SlotId,
+    DateOnly Fecha,
+    TimeOnly Hora,
+    int? CamaraId,
+    string ModalidadCobro,
+    int? ObraSocialId,
+    Guid? CierreId,
+    string? NumeroAutorizacion,
+    int? SesionesAutorizadas,
+    Guid? CicloObraSocialId);
+
 public sealed class ConsultationSession : Entity<Guid>
 {
     private ConsultationSession() { }
 
-    public ConsultationSession(
-        Guid id,
-        Guid? pacienteId,
-        Guid? slotId,
-        DateOnly fecha,
-        TimeOnly hora,
-        int? camaraId,
-        string modalidadCobro,
-        int? obraSocialId,
-        Guid? cierreId,
-        string? numeroAutorizacion,
-        int? sesionesAutorizadas,
-        Guid? cicloObraSocialId)
+    public ConsultationSession(ConsultationSessionCreateParams p)
     {
-        Id = id;
-        PacienteId = pacienteId;
-        SlotId = slotId;
-        Fecha = fecha;
-        Hora = hora;
-        CamaraId = camaraId;
-        ModalidadCobro = modalidadCobro;
-        ObraSocialId = obraSocialId;
-        CierreId = cierreId;
-        NumeroAutorizacion = numeroAutorizacion;
-        SesionesAutorizadas = sesionesAutorizadas;
-        CicloObraSocialId = cicloObraSocialId;
+        Id = p.Id;
+        PacienteId = p.PacienteId;
+        SlotId = p.SlotId;
+        Fecha = p.Fecha;
+        Hora = p.Hora;
+        CamaraId = p.CamaraId;
+        ModalidadCobro = p.ModalidadCobro;
+        ObraSocialId = p.ObraSocialId;
+        CierreId = p.CierreId;
+        NumeroAutorizacion = p.NumeroAutorizacion;
+        SesionesAutorizadas = p.SesionesAutorizadas;
+        CicloObraSocialId = p.CicloObraSocialId;
         CreatedAt = DateTimeOffset.UtcNow;
     }
 

@@ -17,6 +17,7 @@ public sealed class Appointment : Entity<Guid>
         Lugar = lugar;
         CameraId = cameraId;
         Status = AppointmentStatus.Libre;
+        UpdatedAt = DateTimeOffset.UtcNow;
     }
 
     public Guid ScheduleId { get; private set; }
@@ -37,6 +38,7 @@ public sealed class Appointment : Entity<Guid>
     public bool IniciarNuevoCicloObraSocial { get; private set; }
     public bool ConvenioCorroborado { get; private set; }
     public int? MedicoId { get; private set; }
+    public Guid? MedicoUserId { get; private set; }
     public bool EsNuevoIngreso { get; private set; }
     public bool EsMonoxido { get; private set; }
     public bool MonoxidoOrdenMedica { get; private set; }
@@ -69,6 +71,7 @@ public sealed class Appointment : Entity<Guid>
         ApartadoPorUserId = null;
         ApartadoTs = null;
         ApplyOperativeData(operative);
+        Touch();
     }
 
     public void Hold(Guid? patientId, Guid userId, DateTimeOffset apartadoTs, string? notes = null, bool esMonoxido = false, Guid? tandaId = null, AppointmentOperativeData? operative = null)
@@ -87,6 +90,7 @@ public sealed class Appointment : Entity<Guid>
         TandaId = tandaId;
         EsTanda = tandaId.HasValue;
         ApplyOperativeData(operative);
+        Touch();
     }
 
     public void ConfirmHold(Guid? patientId = null, string? notes = null, AppointmentOperativeData? operative = null)
@@ -108,6 +112,7 @@ public sealed class Appointment : Entity<Guid>
         ApartadoPorUserId = null;
         ApartadoTs = null;
         ApplyOperativeData(operative);
+        Touch();
     }
 
     public void ReleaseHold(string? notes = null)
@@ -125,6 +130,7 @@ public sealed class Appointment : Entity<Guid>
         EsBloqueCompleto = false;
         EsTanda = false;
         TandaId = null;
+        Touch();
     }
 
     public void Cancel(string? notes = null)
@@ -144,11 +150,13 @@ public sealed class Appointment : Entity<Guid>
         Notes = notes;
         ApartadoPorUserId = null;
         ApartadoTs = null;
+        Touch();
     }
 
     public void UpdateNotes(string? notes)
     {
         Notes = notes;
+        Touch();
     }
 
     public void AssignBlock(Guid blockId, bool esTanda = false, Guid? tandaId = null, AppointmentOperativeData? operative = null)
@@ -158,17 +166,20 @@ public sealed class Appointment : Entity<Guid>
         EsTanda = esTanda || tandaId.HasValue;
         TandaId = tandaId;
         ApplyOperativeData(operative);
+        Touch();
     }
 
     public void AssignTanda(Guid? tandaId)
     {
         TandaId = tandaId;
         EsTanda = tandaId.HasValue;
+        Touch();
     }
 
     public void UpdateOperativeData(AppointmentOperativeData operative)
     {
         ApplyOperativeData(operative);
+        Touch();
     }
 
     private void ApplyOperativeData(AppointmentOperativeData? operative)
@@ -185,9 +196,12 @@ public sealed class Appointment : Entity<Guid>
         IniciarNuevoCicloObraSocial = operative.IniciarNuevoCicloObraSocial;
         ConvenioCorroborado = operative.ConvenioCorroborado;
         MedicoId = operative.MedicoId;
+        MedicoUserId = operative.MedicoUserId;
         EsNuevoIngreso = operative.EsNuevoIngreso;
         EsMonoxido = operative.EsMonoxido;
         MonoxidoOrdenMedica = operative.MonoxidoOrdenMedica;
         MonoxidoResumenClinico = operative.MonoxidoResumenClinico;
     }
+
+    private void Touch() => UpdatedAt = DateTimeOffset.UtcNow;
 }

@@ -55,7 +55,7 @@ public sealed class OutOfHoursTurnsService(
                 }
 
                 var operadorCamaraId = command.OperadorCamaraId ?? actor.Id;
-                var turno = new OutOfHoursTurn(
+                var turno = new OutOfHoursTurn(new OutOfHoursTurnCreateParams(
                     Guid.NewGuid(),
                     command.Fecha,
                     command.Hora,
@@ -66,7 +66,8 @@ public sealed class OutOfHoursTurnsService(
                     command.EsMonoxido,
                     command.MonoxidoOrdenMedica,
                     command.MonoxidoResumenClinico,
-                    command.MonoxidoMedicoId);
+                    command.MonoxidoMedicoId,
+                    command.MonoxidoMedicoUserId));
 
                 await outOfHoursTurnRepository.AddAsync(turno, cancellationToken);
                 await unitOfWork.SaveChangesAsync(cancellationToken);
@@ -97,7 +98,12 @@ public sealed class OutOfHoursTurnsService(
     private async Task<OutOfHoursTurnSummary> MapAsync(OutOfHoursTurn turno, CancellationToken cancellationToken)
     {
         var patient = await patientRepository.GetByIdAsync(turno.PacienteId, cancellationToken);
-        var medicos = turno.MonoxidoMedicoId.HasValue ? await medicoRepository.GetByIdAsync(turno.MonoxidoMedicoId.Value, cancellationToken) : null;
+        var medicoLegacy = (turno.MonoxidoMedicoId.HasValue && !turno.MonoxidoMedicoUserId.HasValue)
+            ? await medicoRepository.GetByIdAsync(turno.MonoxidoMedicoId.Value, cancellationToken)
+            : null;
+        var medicoUser = turno.MonoxidoMedicoUserId.HasValue
+            ? await userRepository.GetByIdAsync(turno.MonoxidoMedicoUserId.Value, cancellationToken)
+            : null;
         var operador = await userRepository.GetByIdAsync(turno.OperadorCamaraId, cancellationToken);
 
         return new OutOfHoursTurnSummary(
@@ -113,8 +119,10 @@ public sealed class OutOfHoursTurnsService(
             turno.MonoxidoOrdenMedica,
             turno.MonoxidoResumenClinico,
             turno.MonoxidoMedicoId,
+            turno.MonoxidoMedicoUserId,
             patient is null ? null : new GuidLookupSummary(patient.Id, patient.Nombre, patient.DocumentoIdentidad, patient.Email, patient.IsActive),
-            medicos is null ? null : new IntLookupSummary(medicos.Id, medicos.Nombre, null, medicos.Activo),
+            medicoLegacy is null ? null : new IntLookupSummary(medicoLegacy.Id, medicoLegacy.Nombre, null, medicoLegacy.Activo),
+            medicoUser is null ? null : new GuidLookupSummary(medicoUser.Id, medicoUser.Nombre ?? medicoUser.Identifier, null, medicoUser.Email, medicoUser.IsActive),
             operador is null ? null : new GuidLookupSummary(operador.Id, operador.Nombre ?? operador.Identifier, null, operador.Email, operador.IsActive));
     }
 

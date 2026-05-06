@@ -21,24 +21,21 @@ public sealed class OutOfHoursTurnsController(IOutOfHoursTurnsService outOfHours
     }
 
     [HttpPost]
-    public async Task<IActionResult> Create([FromBody] OutOfHoursTurnCreateRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> Create([FromBody] OutOfHoursTurnCreateRequest request, string idempotencyKey, CancellationToken cancellationToken)
     {
         var item = await outOfHoursTurnsService.CreateAsync(
             User.GetUserId(),
-            new OutOfHoursTurnCreateCommand(request.Fecha, request.Hora, request.PacienteId, request.OperadorCamaraId, request.Notas, request.EsMonoxido, request.MonoxidoOrdenMedica, request.MonoxidoResumenClinico, request.MonoxidoMedicoId),
-            GetRequiredIdempotencyKey(),
+            new OutOfHoursTurnCreateCommand(request.Fecha, request.Hora, request.PacienteId, request.OperadorCamaraId, request.Notas, request.EsMonoxido, request.MonoxidoOrdenMedica, request.MonoxidoResumenClinico, request.MonoxidoMedicoId, request.MonoxidoMedicoUserId),
+            idempotencyKey,
             cancellationToken);
 
         return Ok(item.ToResponse());
     }
 
     [HttpDelete("{turnoId:guid}")]
-    public async Task<IActionResult> Cancel(Guid turnoId, CancellationToken cancellationToken)
+    public async Task<IActionResult> Cancel(Guid turnoId, string idempotencyKey, CancellationToken cancellationToken)
     {
-        var item = await outOfHoursTurnsService.CancelAsync(User.GetUserId(), turnoId, GetRequiredIdempotencyKey(), cancellationToken);
+        var item = await outOfHoursTurnsService.CancelAsync(User.GetUserId(), turnoId, idempotencyKey, cancellationToken);
         return Ok(item.ToResponse());
     }
-
-    private string GetRequiredIdempotencyKey() =>
-        Request.Headers.TryGetValue("Idempotency-Key", out var values) ? values.ToString() : string.Empty;
 }

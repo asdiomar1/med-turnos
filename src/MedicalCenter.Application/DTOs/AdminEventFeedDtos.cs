@@ -30,3 +30,12 @@ public sealed record AdminEventFeedActionOptionDto(
 public sealed record AdminEventFeedFilterOptionsDto(
     IReadOnlyCollection<AdminEventFeedActorOptionDto> Actors,
     IReadOnlyCollection<AdminEventFeedActionOptionDto> Actions);
+
+public sealed record AdminEventFeedQuery(
+    int Limit,
+    DateTimeOffset? BeforeOccurredAt,
+    long? BeforeId,
+    Guid? ActorUserId,
+    IReadOnlyCollection<string> ActionCodes,
+    DateOnly? DateFrom,
+    DateOnly? DateTo);

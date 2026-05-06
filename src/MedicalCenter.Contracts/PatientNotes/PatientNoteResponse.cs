@@ -13,6 +13,9 @@ public sealed class PatientNoteResponse
     [JsonPropertyName("autor_id")]
     public Guid AuthorId { get; init; }
 
+    [JsonPropertyName("autor_nombre")]
+    public string? AuthorNombre { get; init; }
+
     [JsonPropertyName("mensaje")]
     public string Message { get; init; } = string.Empty;
 

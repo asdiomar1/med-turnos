@@ -1,4 +1,5 @@
 using System.Data;
+using System.Data.Common;
 using MedicalCenter.Application.Abstractions.Persistence;
 using MedicalCenter.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -60,6 +61,32 @@ public sealed class UserRepository(MedicalCenterDbContext dbContext) : IUserRepo
         return profileId == Guid.Empty ? null : profileId;
     }
 
+    public async Task<string?> GetDisplayNameByUserIdAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        var profileName = await dbContext.Database.SqlQueryRaw<string>(
+            """
+            select p.nombre as "Value"
+            from public.perfiles p
+            where p.auth_user_id = {0} or p.id = {0}
+            order by case when p.auth_user_id = {0} then 0 else 1 end
+            limit 1
+            """,
+            userId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (!string.IsNullOrWhiteSpace(profileName))
+        {
+            return profileName;
+        }
+
+        var user = await dbContext.Users
+            .Where(x => x.Id == userId)
+            .Select(x => new { x.Nombre, x.Identifier })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return user?.Nombre ?? user?.Identifier;
+    }
+
     public async Task<IReadOnlyCollection<User>> GetStaffAsync(bool includeInactive, CancellationToken cancellationToken)
     {
         var query = dbContext.Users.Where(x => x.IsStaff);
@@ -71,8 +98,53 @@ public sealed class UserRepository(MedicalCenterDbContext dbContext) : IUserRepo
         return await query.OrderBy(x => x.Nombre ?? x.Identifier).ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyCollection<User>> GetByRoleAsync(string roleCode, bool onlyActive, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(roleCode))
+            return [];
+
+        var users = await dbContext.Users
+            .FromSqlRaw(
+                """
+                SELECT DISTINCT
+                       u."Id",
+                       u."Identifier",
+                       u."Email",
+                       u."PasswordHash",
+                       u."IsActive",
+                       u."IsStaff",
+                       u."PatientId",
+                       u."Nombre"
+                FROM public.users u
+                JOIN public.perfiles pf ON pf.auth_user_id = u."Id" OR pf.id = u."Id"
+                JOIN public.rbac_user_roles ur ON ur.user_id = pf.id AND ur.expires_at IS NULL
+                JOIN public.rbac_roles r ON r.id = ur.role_id AND r.activo = true
+                WHERE r.slug = {0}
+                """,
+                roleCode.Trim())
+            .Where(u => !onlyActive || u.IsActive)
+            .OrderBy(u => u.Nombre ?? u.Identifier)
+            .ToListAsync(cancellationToken);
+
+        return users;
+    }
+
     public Task AddAsync(User user, CancellationToken cancellationToken) =>
         dbContext.Users.AddAsync(user, cancellationToken).AsTask();
+
+    public async Task<IReadOnlyCollection<User>> GetBasicByIdsAsync(IEnumerable<Guid> ids, CancellationToken cancellationToken)
+    {
+        var distinctIds = ids.Where(x => x != Guid.Empty).Distinct().ToArray();
+        if (distinctIds.Length == 0)
+        {
+            return [];
+        }
+
+        // Plain ToListAsync without role loading — keeps the query lightweight
+        return await dbContext.Users
+            .Where(x => distinctIds.Contains(x.Id))
+            .ToListAsync(cancellationToken);
+    }
 
     private async Task<IReadOnlyCollection<Role>> LoadRolesAsync(Guid userId, CancellationToken cancellationToken)
     {
@@ -113,17 +185,18 @@ public sealed class UserRepository(MedicalCenterDbContext dbContext) : IUserRepo
             await using var reader = await command.ExecuteReaderAsync(cancellationToken);
             while (await reader.ReadAsync(cancellationToken))
             {
-                var permissions = reader.IsDBNull(7) ? [] : reader.GetFieldValue<string[]>(7);
-                roles.Add(new Role(
+                var permissions = await ReadPermissionsAsync(reader, cancellationToken);
+                var description = await ReadDescriptionAsync(reader, cancellationToken);
+                roles.Add(new Role(new RoleCreateParams(
                     Guid.NewGuid(),
                     reader.GetString(0),
                     reader.GetString(1),
                     permissions,
-                    reader.IsDBNull(2) ? null : reader.GetString(2),
+                    description,
                     reader.GetBoolean(3),
                     reader.GetBoolean(4),
                     reader.GetBoolean(5),
-                    reader.GetString(6)));
+                    reader.GetString(6))));
             }
             return roles;
         }
@@ -131,5 +204,25 @@ public sealed class UserRepository(MedicalCenterDbContext dbContext) : IUserRepo
         {
             if (shouldClose) await connection.CloseAsync();
         }
+    }
+
+    private static async Task<string[]> ReadPermissionsAsync(DbDataReader reader, CancellationToken cancellationToken)
+    {
+        if (await reader.IsDBNullAsync(7, cancellationToken))
+        {
+            return [];
+        }
+
+        return await reader.GetFieldValueAsync<string[]>(7, cancellationToken);
+    }
+
+    private static async Task<string?> ReadDescriptionAsync(DbDataReader reader, CancellationToken cancellationToken)
+    {
+        if (await reader.IsDBNullAsync(2, cancellationToken))
+        {
+            return null;
+        }
+
+        return await reader.GetFieldValueAsync<string>(2, cancellationToken);
     }
 }

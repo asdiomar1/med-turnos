@@ -9,5 +9,6 @@ public interface IPatientRepository
     Task<Patient?> GetByDocumentoAsync(string documentoIdentidad, CancellationToken cancellationToken);
     Task<Patient?> GetByLoginIdentifierAsync(string loginIdentifier, CancellationToken cancellationToken);
     Task<Patient?> GetByPortalIdentifierAsync(string identifier, CancellationToken cancellationToken);
+    Task<IReadOnlyCollection<Patient>> GetByIdsAsync(IEnumerable<Guid> ids, CancellationToken cancellationToken);
     Task AddAsync(Patient patient, CancellationToken cancellationToken);
 }

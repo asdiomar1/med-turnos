@@ -4,6 +4,7 @@ namespace MedicalCenter.Application.Abstractions.Auth;
 
 public interface IAuthService
 {
+    Task ChangeOwnPasswordAsync(Guid userId, string currentPassword, string newPassword, CancellationToken cancellationToken);
     Task<AuthResponse> LoginAsync(string identifier, string password, CancellationToken cancellationToken);
     Task<AuthResponse> RefreshAsync(string refreshToken, CancellationToken cancellationToken);
     Task LogoutAsync(string refreshToken, CancellationToken cancellationToken);

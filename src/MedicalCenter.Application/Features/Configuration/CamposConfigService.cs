@@ -119,7 +119,7 @@ public sealed class CamposConfigService(
         string summary,
         CancellationToken cancellationToken)
     {
-        var entry = new AdminEventFeedEntry(
+        var entry = new AdminEventFeedEntry(new AdminEventFeedEntryCreateParams(
             0,
             DateTimeOffset.UtcNow,
             actorUserId,
@@ -137,7 +137,7 @@ public sealed class CamposConfigService(
             summary,
             AdminEventFeedConstants.SourceSystemApi,
             $"campo_config:{actionCode}:{entityId}:{Guid.NewGuid():N}",
-            "{}");
+            "{}"));
 
         await adminEventFeedRepository.AddAsync(entry, cancellationToken);
     }

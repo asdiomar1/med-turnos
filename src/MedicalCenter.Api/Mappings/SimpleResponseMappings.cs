@@ -37,7 +37,7 @@ public static class SimpleResponseMappings
 
     // Professional mappings
     public static MedicoResponse ToResponse(this MedicoSummaryDto x) =>
-        new() { Id = x.Id, Nombre = x.Nombre, Activo = x.Activo, Orden = x.Orden, CreatedAt = x.CreatedAt, PerfilId = x.PerfilId };
+        new() { Id = x.Id, Nombre = x.Nombre };
 
     public static ReferenteResponse ToResponse(this ReferenteSummaryDto x) =>
         new() { Id = x.Id, Nombre = x.Nombre, Tipo = x.Tipo, Activo = x.Activo, Orden = x.Orden, CreatedAt = x.CreatedAt, UpdatedAt = x.UpdatedAt };
@@ -61,14 +61,11 @@ public static class SimpleResponseMappings
             ObservacionesRelevantes = x.ObservacionesRelevantes, CreatedAt = x.CreatedAt, UpdatedAt = x.UpdatedAt,
         };
 
-    public static ClinicalHistoryResumenResponse ToResumenResponse(this ClinicalHistoryNumeroSummary x) =>
-        new() { PatientId = x.PatientId, Numero = x.Numero };
-
     public static ClinicalEvolutionResponse ToResponse(this ClinicalEvolutionSummary x) =>
         new()
         {
             Id = x.Id, PatientId = x.PatientId, ConsultaSlotId = x.ConsultaSlotId,
-            MedicoId = x.MedicoId, AuthorProfileId = x.AuthorProfileId,
+            MedicoId = x.MedicoId, MedicoUserId = x.MedicoUserId, AuthorProfileId = x.AuthorProfileId,
             FechaClinica = x.FechaClinica, Titulo = x.Titulo, Nota = x.Nota,
             DiagnosticoImpresion = x.DiagnosticoImpresion, Indicaciones = x.Indicaciones,
             CreatedAt = x.CreatedAt, UpdatedAt = x.UpdatedAt,
@@ -77,7 +74,7 @@ public static class SimpleResponseMappings
 
     // Patient note mappings
     public static PatientNoteResponse ToResponse(this PatientNoteSummary x) =>
-        new() { Id = x.Id, PatientId = x.PatientId, AuthorId = x.AuthorId, Message = x.Message, CreatedAt = x.CreatedAt };
+        new() { Id = x.Id, PatientId = x.PatientId, AuthorId = x.AuthorId, AuthorNombre = x.AuthorNombre, Message = x.Message, CreatedAt = x.CreatedAt };
 
     // User preferences mappings
     public static UserPreferencesResponse ToResponse(this UserPreferencesSummary x) =>
@@ -262,6 +259,9 @@ public static class SimpleResponseMappings
 
     public static WhatsappReminderResponse ToResponse(this WhatsappReminderResult x) =>
         new() { FechaObjetivo = x.FechaObjetivo, Total = x.Total };
+
+    public static ClinicalHistoryResumenResponse ToResumenResponse(this ClinicalHistoryNumeroSummary x) =>
+        new() { PatientId = x.PatientId, Numero = x.Numero };
 
     /// <summary>
     /// Helper: safely parse JSON strings that may be null or empty.

@@ -9,78 +9,16 @@ using MedicalCenter.Domain.Entities;
 namespace MedicalCenter.Application.Features.Professionals;
 
 public sealed class ProfessionalsService(
-    IMedicoRepository medicoRepository,
     IReferenteRepository referenteRepository,
     IUserRepository userRepository,
     IAdminEventFeedRepository adminEventFeedRepository,
     IUnitOfWork unitOfWork) : IProfessionalsService
 {
+    private const string AgenciaEntityType = "agencia";
     public async Task<IReadOnlyCollection<MedicoSummaryDto>> GetMedicosAsync(CancellationToken cancellationToken) =>
-        (await medicoRepository.GetAsync(false, cancellationToken)).Select(m => m.ToSummary()).ToArray();
-
-    public async Task<MedicoSummaryDto> CreateMedicoAsync(Guid actorUserId, string nombre, CancellationToken cancellationToken)
-    {
-        var normalizedName = Normalize(nombre);
-        EnsureName(normalizedName);
-        await EnsureMedicoUniqueAsync(normalizedName, null, cancellationToken);
-
-        var medico = new Medico(normalizedName, await medicoRepository.GetNextOrderAsync(cancellationToken));
-        await medicoRepository.AddAsync(medico, cancellationToken);
-        await unitOfWork.SaveChangesAsync(cancellationToken);
-
-        await RegisterCatalogEventAsync(
-            actorUserId,
-            AdminEventFeedConstants.ActionCodes.MedicoCreated,
-            AdminEventFeedConstants.EntityTypes.Medico,
-            medico.Id.ToString(),
-            "Médico creado",
-            $"Se creó el médico \"{medico.Nombre}\".",
-            cancellationToken);
-
-        await unitOfWork.SaveChangesAsync(cancellationToken);
-        return medico.ToSummary();
-    }
-
-    public async Task<MedicoSummaryDto> UpdateMedicoAsync(Guid actorUserId, int medicoId, string nombre, CancellationToken cancellationToken)
-    {
-        var medico = await medicoRepository.GetByIdAsync(medicoId, cancellationToken) ?? throw new NotFoundException("Médico no encontrado.");
-        var previousNombre = medico.Nombre;
-        var normalizedName = Normalize(nombre);
-        EnsureName(normalizedName);
-        await EnsureMedicoUniqueAsync(normalizedName, medicoId, cancellationToken);
-
-        medico.UpdateNombre(normalizedName);
-
-        await RegisterCatalogEventAsync(
-            actorUserId,
-            AdminEventFeedConstants.ActionCodes.MedicoUpdated,
-            AdminEventFeedConstants.EntityTypes.Medico,
-            medico.Id.ToString(),
-            "Médico actualizado",
-            $"Se actualizó el médico \"{previousNombre}\" → \"{medico.Nombre}\".",
-            cancellationToken);
-
-        await unitOfWork.SaveChangesAsync(cancellationToken);
-        return medico.ToSummary();
-    }
-
-    public async Task<MedicoSummaryDto> SetMedicoActiveAsync(Guid actorUserId, int medicoId, bool activo, CancellationToken cancellationToken)
-    {
-        var medico = await medicoRepository.GetByIdAsync(medicoId, cancellationToken) ?? throw new NotFoundException("Médico no encontrado.");
-        medico.SetActive(activo);
-
-        await RegisterCatalogEventAsync(
-            actorUserId,
-            AdminEventFeedConstants.ActionCodes.MedicoStatusUpdated,
-            AdminEventFeedConstants.EntityTypes.Medico,
-            medico.Id.ToString(),
-            "Estado de médico actualizado",
-            $"El médico \"{medico.Nombre}\" quedó {(medico.Activo ? "activo" : "inactivo")}.",
-            cancellationToken);
-
-        await unitOfWork.SaveChangesAsync(cancellationToken);
-        return medico.ToSummary();
-    }
+        (await userRepository.GetByRoleAsync("medico", onlyActive: true, cancellationToken))
+            .Select(u => u.ToMedicoSummary())
+            .ToArray();
 
     public async Task<IReadOnlyCollection<ReferenteSummaryDto>> GetReferentesAsync(CancellationToken cancellationToken) =>
         (await referenteRepository.GetAsync(cancellationToken)).Select(r => r.ToSummary()).ToArray();
@@ -158,15 +96,6 @@ public sealed class ProfessionalsService(
             .Select(x => new OperadorCamaraSummaryDto(x.Id, x.Nombre ?? x.Identifier, x.IsActive))
             .ToArray();
 
-    private async Task EnsureMedicoUniqueAsync(string normalizedName, int? exceptId, CancellationToken cancellationToken)
-    {
-        var existing = await medicoRepository.GetByNormalizedNameAsync(normalizedName, exceptId, cancellationToken);
-        if (existing is not null)
-        {
-            throw new ConflictException("Ya existe un médico con ese nombre.");
-        }
-    }
-
     private async Task EnsureReferenteUniqueAsync(string normalizedName, string normalizedType, int? exceptId, CancellationToken cancellationToken)
     {
         var existing = await referenteRepository.GetByNormalizedNameAndTypeAsync(normalizedName, normalizedType, exceptId, cancellationToken);
@@ -192,15 +121,15 @@ public sealed class ProfessionalsService(
         return normalized switch
         {
             "doctor" => "doctor",
-            "agencia" => "agencia",
-            "institucion" => "agencia",
+            AgenciaEntityType => AgenciaEntityType,
+            "institucion" => AgenciaEntityType,
             "otro" => "otro",
             _ => throw new ValidationException("Tipo de referente inválido.")
         };
     }
 
     private static string NormalizeReferenteTypeForResponse(string tipo) =>
-        tipo == "agencia" ? "institucion" : tipo;
+        tipo == AgenciaEntityType ? "institucion" : tipo;
 
     private async Task RegisterCatalogEventAsync(
         Guid actorUserId,
@@ -211,7 +140,7 @@ public sealed class ProfessionalsService(
         string summary,
         CancellationToken cancellationToken)
     {
-        var entry = new AdminEventFeedEntry(
+        var entry = new AdminEventFeedEntry(new AdminEventFeedEntryCreateParams(
             0,
             DateTimeOffset.UtcNow,
             actorUserId,
@@ -229,9 +158,8 @@ public sealed class ProfessionalsService(
             summary,
             AdminEventFeedConstants.SourceSystemApi,
             $"{entityType}:{actionCode}:{entityId}:{Guid.NewGuid():N}",
-            "{}");
+            "{}"));
 
         await adminEventFeedRepository.AddAsync(entry, cancellationToken);
     }
-
-    }
+}

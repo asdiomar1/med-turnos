@@ -87,7 +87,7 @@ public sealed class DashboardService(
     public async Task<IReadOnlyCollection<DashboardWeeklyVolumeItemDto>> GetVolumenSemanalAsync(DateOnly fecha, CancellationToken cancellationToken)
     {
         var fromDate = fecha.AddDays(-6);
-        var appointments = await appointmentRepository.GetByRangeAsync(fromDate, fecha, cancellationToken);
+        var appointments = await appointmentRepository.GetByRangeAsync(fromDate, fecha, null, null, cancellationToken);
 
         return appointments
             .GroupBy(x => x.Fecha)

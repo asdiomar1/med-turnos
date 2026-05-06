@@ -45,8 +45,9 @@ public sealed class AppointmentRepository(
             await dbContext.SaveChangesAsync(cancellationToken);
             return true;
         }
-        catch (DbUpdateConcurrencyException)
+        catch (DbUpdateConcurrencyException ex)
         {
+            logger.LogDebug(ex, "Concurrency conflict detected during TryReserveAppointmentAsync");
             return false;
         }
     }
@@ -58,14 +59,14 @@ public sealed class AppointmentRepository(
             await dbContext.SaveChangesAsync(cancellationToken);
             return true;
         }
-        catch (DbUpdateConcurrencyException)
+        catch (DbUpdateConcurrencyException ex)
         {
+            logger.LogDebug(ex, "Concurrency conflict detected during TryCommitAsync");
             return false;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            logger.LogError(ex, "Unexpected database error during TryCommitAsync");
-            throw;
+            throw CreateTryCommitException(ex);
         }
     }
 
@@ -114,21 +115,30 @@ public sealed class AppointmentRepository(
         {
             throw;
         }
-        catch (DbUpdateConcurrencyException)
+        catch (DbUpdateConcurrencyException ex)
         {
+            logger.LogDebug(
+                ex,
+                "Concurrency conflict detected during TryCommitWithPatientLockAsync for patient {PatientId}",
+                patientId);
             return false;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            logger.LogError(ex,
-                "Unexpected database error during TryCommitWithPatientLockAsync for patient {PatientId}",
-                patientId);
             dbContext.ChangeTracker.Clear();
-            throw;
+            throw CreateTryCommitWithPatientLockException(patientId, ex);
         }
     }
 
     private static int ToMinutes(TimeOnly hora) => hora.Hour * 60 + hora.Minute;
+
+    private static InvalidOperationException CreateTryCommitException(Exception innerException) =>
+        new InvalidOperationException("Unexpected database error during TryCommitAsync.", innerException);
+
+    private static InvalidOperationException CreateTryCommitWithPatientLockException(Guid patientId, Exception innerException) =>
+        new InvalidOperationException(
+            $"Unexpected database error during TryCommitWithPatientLockAsync for patient {patientId}.",
+            innerException);
 
     public async Task<IReadOnlyCollection<Appointment>> GetByDateAsync(DateOnly fecha, CancellationToken cancellationToken) =>
         await dbContext.Appointments
@@ -139,13 +149,39 @@ public sealed class AppointmentRepository(
             .ThenBy(x => x.Lugar)
             .ToListAsync(cancellationToken);
 
-    public async Task<IReadOnlyCollection<Appointment>> GetByRangeAsync(DateOnly fechaInicio, DateOnly fechaFin, CancellationToken cancellationToken) =>
-        await dbContext.Appointments
+    public async Task<IReadOnlyCollection<Appointment>> GetByRangeAsync(DateOnly fechaInicio, DateOnly fechaFin, int? offset, int? limit, CancellationToken cancellationToken)
+    {
+        var query = dbContext.Appointments
             .Where(x => x.Fecha >= fechaInicio && x.Fecha <= fechaFin)
             .OrderBy(x => x.Fecha)
             .ThenBy(x => x.Hora)
             .ThenBy(x => x.CameraId)
             .ThenBy(x => x.Lugar)
+            .AsQueryable();
+
+        if (offset.HasValue)
+        {
+            query = query.Skip(offset.Value);
+        }
+
+        if (limit.HasValue)
+        {
+            query = query.Take(limit.Value);
+        }
+
+        return await query.ToListAsync(cancellationToken);
+    }
+
+    public async Task<int> CountByRangeAsync(DateOnly fechaInicio, DateOnly fechaFin, CancellationToken cancellationToken) =>
+        await dbContext.Appointments
+            .CountAsync(x => x.Fecha >= fechaInicio && x.Fecha <= fechaFin, cancellationToken);
+
+    public async Task<IReadOnlyCollection<BlockHistory>> GetBlockHistoryByRangeAsync(DateOnly fechaInicio, DateOnly fechaFin, CancellationToken cancellationToken) =>
+        await dbContext.BlockHistories
+            .Where(x => x.Fecha >= fechaInicio && x.Fecha <= fechaFin)
+            .OrderByDescending(x => x.Fecha)
+            .ThenByDescending(x => x.Hora)
+            .ThenByDescending(x => x.CreatedAt)
             .ToListAsync(cancellationToken);
 
     public async Task<IReadOnlyCollection<Appointment>> GetActivosByPacienteAsync(Guid pacienteId, DateOnly fromDate, CancellationToken cancellationToken) =>

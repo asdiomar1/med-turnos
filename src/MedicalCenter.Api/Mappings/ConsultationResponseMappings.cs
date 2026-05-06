@@ -40,13 +40,14 @@ public static class ConsultationResponseMappings
         new()
         {
             Id = x.Id, Fecha = x.Fecha, Hora = x.Hora, Estado = x.Estado,
-            PacienteId = x.PacienteId, MedicoId = x.MedicoId,
+            PacienteId = x.PacienteId, MedicoId = x.MedicoId, MedicoUserId = x.MedicoUserId,
             MotivoCancelacion = x.MotivoCancelacion, ObservacionesAdmin = x.ObservacionesAdmin,
             ConfirmadoPor = x.ConfirmadoPor, ConfirmadoAt = x.ConfirmadoAt,
             CerradoPor = x.CerradoPor, CerradoAt = x.CerradoAt,
             CreatedAt = x.CreatedAt, UpdatedAt = x.UpdatedAt,
             Paciente = x.Paciente.ToResponse(),
             Medico = x.Medico.ToResponse(),
+            MedicoUser = x.MedicoUser.ToResponse(),
             ConfirmadoPorPerfil = x.ConfirmadoPorPerfil.ToResponse(),
             CerradoPorPerfil = x.CerradoPorPerfil.ToResponse(),
         };
@@ -68,9 +69,10 @@ public static class ConsultationResponseMappings
             Notas = x.Notas, CreadoPor = x.CreadoPor, OperadorCamaraId = x.OperadorCamaraId,
             CreatedAt = x.CreatedAt, EsMonoxido = x.EsMonoxido,
             MonoxidoOrdenMedica = x.MonoxidoOrdenMedica, MonoxidoResumenClinico = x.MonoxidoResumenClinico,
-            MonoxidoMedicoId = x.MonoxidoMedicoId,
+            MonoxidoMedicoId = x.MonoxidoMedicoId, MonoxidoMedicoUserId = x.MonoxidoMedicoUserId,
             Paciente = x.Paciente.ToResponse(),
             MonoxidoMedico = x.MonoxidoMedico.ToResponse(),
+            MonoxidoMedicoUser = x.MonoxidoMedicoUser.ToResponse(),
             OperadorCamara = x.OperadorCamara.ToResponse(),
         };
 }

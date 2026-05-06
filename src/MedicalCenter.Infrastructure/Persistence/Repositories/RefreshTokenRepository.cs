@@ -12,4 +12,16 @@ public sealed class RefreshTokenRepository(MedicalCenterDbContext dbContext) : I
 
     public Task<RefreshToken?> GetActiveByTokenHashAsync(string tokenHash, CancellationToken cancellationToken) =>
         dbContext.RefreshTokens.FirstOrDefaultAsync(x => x.TokenHash == tokenHash && x.Status == RefreshTokenStatus.Active, cancellationToken);
+
+    public async Task RevokeActiveByUserIdAsync(Guid userId, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        var tokens = await dbContext.RefreshTokens
+            .Where(x => x.UserId == userId && x.Status == RefreshTokenStatus.Active)
+            .ToListAsync(cancellationToken);
+
+        foreach (var token in tokens.Where(token => token.IsActive(now)))
+        {
+            token.Revoke(now);
+        }
+    }
 }

@@ -56,19 +56,33 @@ public sealed class ClinicalHistoryService(
     public async Task<IReadOnlyCollection<ClinicalEvolutionSummary>> GetEvolutionsAsync(Guid patientId, CancellationToken cancellationToken)
     {
         var evolutions = await clinicalHistoryRepository.GetEvolutionsByPatientIdAsync(patientId, cancellationToken);
-        var medicos = await medicoRepository.GetAsync(false, cancellationToken);
-        var medicoLookup = medicos.ToDictionary(x => x.Id, x => x);
 
-        return evolutions.Select(x =>
+        var legacyMedicoIds = evolutions.Where(x => x.MedicoId > 0 && !x.MedicoUserId.HasValue).Select(x => x.MedicoId).ToHashSet();
+        var medicoLookup = legacyMedicoIds.Count > 0
+            ? (await medicoRepository.GetAsync(false, cancellationToken)).Where(x => legacyMedicoIds.Contains(x.Id)).ToDictionary(x => x.Id)
+            : new Dictionary<int, Medico>();
+
+        var result = new List<ClinicalEvolutionSummary>();
+        foreach (var x in evolutions)
         {
-            medicoLookup.TryGetValue(x.MedicoId, out var medico);
-            return x.ToSummary(medico?.Nombre, medico?.Activo ?? false);
-        }).ToArray();
+            if (x.MedicoUserId.HasValue)
+            {
+                var medicoUser = await userRepository.GetByIdAsync(x.MedicoUserId.Value, cancellationToken);
+                result.Add(x.ToSummary(medicoUser?.Nombre ?? medicoUser?.Identifier, medicoUser?.IsActive ?? false));
+            }
+            else
+            {
+                medicoLookup.TryGetValue(x.MedicoId, out var medico);
+                result.Add(x.ToSummary(medico?.Nombre, medico?.Activo ?? false));
+            }
+        }
+
+        return result;
     }
 
-    public async Task<ClinicalEvolutionSummary> CreateEvolutionAsync(Guid actorUserId, Guid patientId, int medicoId, DateOnly fechaClinica, string? titulo, string nota, string? diagnosticoImpresion, string? indicaciones, Guid? consultaSlotId, CancellationToken cancellationToken)
+    public async Task<ClinicalEvolutionSummary> CreateEvolutionAsync(Guid actorUserId, Guid patientId, CreateEvolutionCommand command, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(nota))
+        if (string.IsNullOrWhiteSpace(command.Nota))
         {
             throw new ValidationException("nota es obligatoria");
         }
@@ -85,27 +99,50 @@ public sealed class ClinicalHistoryService(
             throw new ForbiddenException("Prohibido");
         }
 
-        var medico = await medicoRepository.GetByIdAsync(medicoId, cancellationToken) ?? throw new NotFoundException("Médico no encontrado");
-        if (!medico.Activo)
+        string? medicoNombre;
+        bool medicoActivo;
+
+        if (command.MedicoUserId.HasValue)
         {
-            throw new ConflictException("El médico no se encuentra activo.");
+            var medicoUser = await userRepository.GetByIdAsync(command.MedicoUserId.Value, cancellationToken) ?? throw new NotFoundException("Médico no encontrado");
+            if (!medicoUser.IsActive)
+                throw new ConflictException("El médico no se encuentra activo.");
+            if (!medicoUser.Roles.Any(r => r.Code == "medico"))
+                throw new ConflictException("El usuario no tiene rol de médico.");
+            medicoNombre = medicoUser.Nombre ?? medicoUser.Identifier;
+            medicoActivo = medicoUser.IsActive;
+        }
+        else if (command.MedicoId.HasValue)
+        {
+            var medico = await medicoRepository.GetByIdAsync(command.MedicoId.Value, cancellationToken) ?? throw new NotFoundException("Médico no encontrado");
+            if (!medico.Activo)
+                throw new ConflictException("El médico no se encuentra activo.");
+            medicoNombre = medico.Nombre;
+            medicoActivo = medico.Activo;
+        }
+        else
+        {
+            throw new ValidationException("Médico requerido.");
         }
 
-        var evolution = new ClinicalEvolution(
-            Guid.NewGuid(),
-            patientId,
-            consultaSlotId,
-            medicoId,
-            actor.Id,
-            fechaClinica,
-            titulo,
-            nota.Trim(),
-            diagnosticoImpresion,
-            indicaciones);
+        var evolution = new ClinicalEvolution(new ClinicalEvolutionCreateData
+        {
+            Id = Guid.NewGuid(),
+            PatientId = patientId,
+            ConsultaSlotId = command.ConsultaSlotId,
+            MedicoId = command.MedicoId ?? 0,
+            MedicoUserId = command.MedicoUserId,
+            AuthorProfileId = actor.Id,
+            FechaClinica = command.FechaClinica,
+            Titulo = command.Titulo,
+            Nota = command.Nota.Trim(),
+            DiagnosticoImpresion = command.DiagnosticoImpresion,
+            Indicaciones = command.Indicaciones
+        });
 
         await clinicalHistoryRepository.AddEvolutionAsync(evolution, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        return evolution.ToSummary(medico.Nombre, medico.Activo);
+        return evolution.ToSummary(medicoNombre, medicoActivo);
     }
 
     private async Task<DomainClinicalHistory> EnsureHistoryAsync(Guid patientId, CancellationToken cancellationToken)
@@ -123,7 +160,7 @@ public sealed class ClinicalHistoryService(
         }
 
         var nextNumero = await clinicalHistoryRepository.GetNextNumeroAsync(cancellationToken);
-        history = new DomainClinicalHistory(patientId, nextNumero, null, null, null, null);
+        history = new DomainClinicalHistory(new ClinicalHistoryCreateParams(patientId, nextNumero, null, null, null, null));
         await clinicalHistoryRepository.AddAsync(history, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return history;

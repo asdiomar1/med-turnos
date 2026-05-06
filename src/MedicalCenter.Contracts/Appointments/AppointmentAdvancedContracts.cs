@@ -34,6 +34,9 @@ public sealed class AppointmentOperativeRequest
     [JsonPropertyName("medico_id")]
     public int? MedicoId { get; init; }
 
+    [JsonPropertyName("medico_user_id")]
+    public Guid? MedicoUserId { get; init; }
+
     [JsonPropertyName("es_nuevo_ingreso")]
     public bool EsNuevoIngreso { get; init; }
 
@@ -89,6 +92,40 @@ public sealed class TandaAvailabilityDetailResponse
     public bool EsBloqueCompleto { get; init; }
 }
 
+/// <summary>
+/// Aggregated availability response for camera-based appointment blocks.
+/// Returns one row per (fecha, hora, camara_id) with availability metrics.
+/// </summary>
+public sealed class TandaAvailabilityAggregatedResponse
+{
+    [JsonPropertyName("fecha")]
+    public DateOnly Fecha { get; init; }
+
+    [JsonPropertyName("hora")]
+    public TimeOnly Hora { get; init; }
+
+    [JsonPropertyName("camara_id")]
+    public int CamaraId { get; init; }
+
+    [JsonPropertyName("camara_nombre")]
+    public string CamaraNombre { get; init; } = string.Empty;
+
+    [JsonPropertyName("capacidad")]
+    public int Capacidad { get; init; }
+
+    [JsonPropertyName("libres_count")]
+    public int LibresCount { get; init; }
+
+    [JsonPropertyName("tiene_disponibilidad")]
+    public bool TieneDisponibilidad { get; init; }
+
+    [JsonPropertyName("tiene_bloque_completo_posible")]
+    public bool TieneBloqueCompletoPosible { get; init; }
+
+    [JsonPropertyName("bloqueado_paciente")]
+    public bool BloqueadoPorPaciente { get; init; }
+}
+
 public sealed class RegisterBlockHistoryEntryRequest
 {
     [JsonPropertyName("fecha")]
@@ -114,4 +151,10 @@ public sealed class RegisterBlockHistoryEntryRequest
 
     [JsonPropertyName("motivo")]
     public string? Motivo { get; init; }
+}
+
+public sealed class GenerateAppointmentsRequest
+{
+    [JsonPropertyName("fecha")]
+    public DateOnly Fecha { get; init; }
 }

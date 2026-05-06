@@ -252,7 +252,7 @@ public sealed class RbacAdminRepository : IRbacAdminRepository
         try
         {
             var profileId = Guid.NewGuid();
-            var user = new User(authUserId, normalizedIdentifier, normalizedEmail, passwordHash, true, true, null, normalizedNombre);
+            var user = new User(new UserCreateParams(authUserId, normalizedIdentifier, normalizedEmail, passwordHash, true, true, null, normalizedNombre));
             await _dbContext.Users.AddAsync(user, cancellationToken);
             await _dbContext.SaveChangesAsync(cancellationToken);
 
@@ -304,7 +304,6 @@ public sealed class RbacAdminRepository : IRbacAdminRepository
         {
             var profileId = await GetProfileIdByAuthUserIdOrProfileIdAsync(command.UserId, cancellationToken, transaction)
                 ?? throw new NotFoundException("Usuario no encontrado");
-            var authUserId = await GetAuthUserIdByProfileIdAsync(profileId, cancellationToken, transaction) ?? command.UserId;
 
             await ReplaceUserRolesAsync(profileId, roleSlugs, primaryRoleSlug, cancellationToken, transaction);
             await RebuildEffectivePermissionsForUserAsync(profileId, cancellationToken, transaction);
@@ -524,19 +523,6 @@ public sealed class RbacAdminRepository : IRbacAdminRepository
         return rows.SingleOrDefault();
     }
 
-    private async Task<string?> GetRoleSlugByIdAsync(long roleId, CancellationToken cancellationToken, IDbContextTransaction? transaction = null)
-    {
-        const string sql = """
-            select slug
-            from public.rbac_roles
-            where id = @roleId
-            limit 1;
-            """;
-
-        var rows = await QueryAsync(sql, reader => reader.GetString(0), cancellationToken, transaction, new NpgsqlParameter<long>("roleId", roleId));
-        return rows.SingleOrDefault();
-    }
-
     private async Task<Guid?> GetProfileIdByAuthUserIdAsync(Guid authUserId, CancellationToken cancellationToken, IDbContextTransaction? transaction = null)
     {
         const string sql = """
@@ -660,10 +646,7 @@ public sealed class RbacAdminRepository : IRbacAdminRepository
             cancellationToken,
             transaction,
             new NpgsqlParameter<long>("roleId", roleId),
-            new NpgsqlParameter<string[]>("permissionKeys", keys)
-            {
-                NpgsqlDbType = NpgsqlDbType.Array | NpgsqlDbType.Text
-            });
+            CreateTextArrayParameter("permissionKeys", keys));
     }
 
     private async Task ReplaceUserRolesAsync(Guid userId, IReadOnlyCollection<string> roleSlugs, string primaryRoleSlug, CancellationToken cancellationToken, IDbContextTransaction? transaction = null)
@@ -702,10 +685,15 @@ public sealed class RbacAdminRepository : IRbacAdminRepository
             transaction,
             new NpgsqlParameter<Guid>("userId", userId),
             new NpgsqlParameter<string>("primarySlug", primarySlug),
-            new NpgsqlParameter<string[]>("roleSlugs", slugs)
-            {
-                NpgsqlDbType = NpgsqlDbType.Array | NpgsqlDbType.Text
-            });
+            CreateTextArrayParameter("roleSlugs", slugs));
+    }
+
+    private static NpgsqlParameter<string[]> CreateTextArrayParameter(string parameterName, string[] values)
+    {
+        return new NpgsqlParameter<string[]>(parameterName, values)
+        {
+            DataTypeName = "text[]"
+        };
     }
 
     private async Task RebuildEffectivePermissionsForRoleAsync(long roleId, CancellationToken cancellationToken, IDbContextTransaction? transaction = null)

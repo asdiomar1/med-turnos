@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using MedicalCenter.Application.Abstractions.Common;
 using MedicalCenter.Application.Abstractions.Persistence;
 using MedicalCenter.Application.Abstractions.Storage;
@@ -9,7 +10,7 @@ using MedicalCenter.Domain.Enums;
 
 namespace MedicalCenter.Application.Features.Imports;
 
-public sealed class ImportPatientsOrchestrator(
+public sealed partial class ImportPatientsOrchestrator(
     IObjectStorage objectStorage,
     IImportsOptions importsOptions,
     IImportacionesRepository importacionesRepository,
@@ -45,16 +46,18 @@ public sealed class ImportPatientsOrchestrator(
             cancellationToken);
 
         var sanitizedName = SanitizeFileName(fileName);
+        var storageInfo = new ImportacionStorageInfo(
+            importsOptions.StorageProvider,
+            importsOptions.StorageBucket,
+            storageKey,
+            sizeBytes,
+            contentType);
         var importacion = new Importacion(
             importacionId,
             tipo: "pacientes",
             usuarioId: userId,
             fileName: sanitizedName,
-            storageProvider: importsOptions.StorageProvider,
-            storageBucket: importsOptions.StorageBucket,
-            storageKey: storageKey,
-            sizeBytes: sizeBytes,
-            contentType: contentType,
+            storageInfo: storageInfo,
             expiresAt: presigned.ExpiresAt);
 
         await importacionesRepository.AddAsync(importacion, cancellationToken);
@@ -172,17 +175,19 @@ public sealed class ImportPatientsOrchestrator(
         var now = DateTimeOffset.UtcNow;
         var storageKey = BuildStorageKey(importacionId, fileName, now);
         var sanitizedName = SanitizeFileName(fileName);
+        var storageInfo = new ImportacionStorageInfo(
+            importsOptions.StorageProvider,
+            importsOptions.StorageBucket,
+            storageKey,
+            sizeBytes,
+            contentType);
 
         var importacion = new Importacion(
             importacionId,
             tipo: "pacientes",
             usuarioId: userId,
             fileName: sanitizedName,
-            storageProvider: importsOptions.StorageProvider,
-            storageBucket: importsOptions.StorageBucket,
-            storageKey: storageKey,
-            sizeBytes: sizeBytes,
-            contentType: contentType,
+            storageInfo: storageInfo,
             expiresAt: now);
 
         await importacionesRepository.AddAsync(importacion, cancellationToken);
@@ -279,7 +284,7 @@ public sealed class ImportPatientsOrchestrator(
         string summary,
         CancellationToken cancellationToken)
     {
-        var entry = new AdminEventFeedEntry(
+        var entry = new AdminEventFeedEntry(new AdminEventFeedEntryCreateParams(
             0,
             DateTimeOffset.UtcNow,
             actorUserId,
@@ -297,7 +302,7 @@ public sealed class ImportPatientsOrchestrator(
             summary,
             AdminEventFeedConstants.SourceSystemApi,
             $"importacion:{actionCode}:{importacionId:N}:{Guid.NewGuid():N}",
-            "{}");
+            "{}"));
 
         return adminEventFeedRepository.AddAsync(entry, cancellationToken);
     }
@@ -347,11 +352,14 @@ public sealed class ImportPatientsOrchestrator(
     private static string BuildStorageKey(Guid importacionId, string fileName, DateTimeOffset now) =>
         $"imports/pacientes/{now:yyyy}/{now:MM}/{importacionId}/{SanitizeFileName(fileName)}";
 
+    [GeneratedRegex(@"[^a-z0-9._-]")]
+    private static partial Regex SanitizeFileNameRegex();
+
     private static string SanitizeFileName(string fileName)
     {
         var name = Path.GetFileNameWithoutExtension(fileName);
         var ext = Path.GetExtension(fileName).ToLowerInvariant();
-        var sanitized = System.Text.RegularExpressions.Regex.Replace(name.ToLowerInvariant(), @"[^a-z0-9._-]", "_");
+        var sanitized = SanitizeFileNameRegex().Replace(name.ToLowerInvariant(), "_");
         if (sanitized.Length > 80)
         {
             sanitized = sanitized[..80];

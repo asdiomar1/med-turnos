@@ -1,4 +1,6 @@
 using System.Text.Json.Serialization;
+using MedicalCenter.Contracts.Catalogs;
+using MedicalCenter.Contracts.Common;
 
 namespace MedicalCenter.Contracts.Appointments;
 
@@ -37,8 +39,14 @@ public sealed class AppointmentResponse
     [JsonPropertyName("apartado_por_user_id")]
     public Guid? ApartadoPorUserId { get; init; }
 
+    [JsonPropertyName("apartado_por")]
+    public Guid? ApartadoPor { get; init; }
+
     [JsonPropertyName("apartado_ts")]
     public DateTimeOffset? ApartadoTs { get; init; }
+
+    [JsonPropertyName("apartado_por_perfil")]
+    public GuidLookupResponse? ApartadoPorPerfil { get; init; }
 
     [JsonPropertyName("es_bloque_completo")]
     public bool EsBloqueCompleto { get; init; }
@@ -76,6 +84,9 @@ public sealed class AppointmentResponse
     [JsonPropertyName("medico_id")]
     public int? MedicoId { get; init; }
 
+    [JsonPropertyName("medico_user_id")]
+    public Guid? MedicoUserId { get; init; }
+
     [JsonPropertyName("es_nuevo_ingreso")]
     public bool EsNuevoIngreso { get; init; }
 
@@ -87,6 +98,33 @@ public sealed class AppointmentResponse
 
     [JsonPropertyName("monoxido_resumen_clinico")]
     public bool MonoxidoResumenClinico { get; init; }
+
+    [JsonPropertyName("created_at")]
+    public DateTimeOffset? CreatedAt { get; init; }
+
+    [JsonPropertyName("updated_at")]
+    public DateTimeOffset? UpdatedAt { get; init; }
+
+    [JsonPropertyName("obra_social_validada_por")]
+    public Guid? ObraSocialValidadaPor { get; init; }
+
+    [JsonPropertyName("obra_social_validada_at")]
+    public DateTimeOffset? ObraSocialValidadaAt { get; init; }
+
+    [JsonPropertyName("obra_social_validada_por_perfil")]
+    public GuidLookupResponse? ObraSocialValidadaPorPerfil { get; init; }
+
+    [JsonPropertyName("paciente")]
+    public GuidLookupResponse? Paciente { get; init; }
+
+    [JsonPropertyName("medico")]
+    public IntLookupResponse? Medico { get; init; }
+
+    [JsonPropertyName("referente")]
+    public IntLookupResponse? Referente { get; init; }
+
+    [JsonPropertyName("obra_social")]
+    public ObraSocialResponse? ObraSocial { get; init; }
 }
 
 public sealed class AppointmentCameraResponse
@@ -99,4 +137,7 @@ public sealed class AppointmentCameraResponse
 
     [JsonPropertyName("capacidad")]
     public int Capacidad { get; init; }
+
+    [JsonPropertyName("activa")]
+    public bool Activa { get; init; }
 }

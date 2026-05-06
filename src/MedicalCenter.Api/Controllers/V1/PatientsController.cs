@@ -28,24 +28,26 @@ public sealed class PatientsController(IPatientsService patientsService, ISecuri
     public async Task<IActionResult> Create([FromBody] CreatePatientRequest request, CancellationToken cancellationToken)
     {
         var result = await patientsService.CreateAsync(
-            request.Nombre,
-            request.Email,
-            request.Telefono,
-            request.DocumentoIdentidad,
-            request.LoginIdentifier,
-            request.Nacionalidad,
-            request.CondicionIvaId,
-            request.ObraSocialId,
-            request.NumeroCredencialObraSocial,
-            request.PortalHabilitado,
-            request.OptInWhatsapp,
-            request.OptInSource,
-            request.Claustrofobico,
-            request.Notas,
-            JsonSerializer.Serialize(request.DatosExtra ?? new { }),
+            User.GetUserId(),
+            new CreatePatientCommand(
+                request.Nombre,
+                request.Email,
+                request.Telefono,
+                request.DocumentoIdentidad,
+                request.LoginIdentifier,
+                request.Nacionalidad,
+                request.CondicionIvaId,
+                request.ObraSocialId,
+                request.NumeroCredencialObraSocial,
+                request.PortalHabilitado,
+                request.OptInWhatsapp,
+                request.OptInSource,
+                request.Claustrofobico,
+                request.Notas,
+                JsonSerializer.Serialize(request.DatosExtra ?? new { })),
             cancellationToken);
 
-        LogMutation("create_patient", result.Id.ToString());
+        LogMutation("create_patient");
         return StatusCode(StatusCodes.Status201Created, new DataResponse<object>
         {
             Data = new { id = result.Id, nombre = result.Nombre },
@@ -58,23 +60,25 @@ public sealed class PatientsController(IPatientsService patientsService, ISecuri
     public async Task<IActionResult> Update(Guid pacienteId, [FromBody] UpdatePatientRequest request, CancellationToken cancellationToken)
     {
         var result = await patientsService.UpdateAsync(
+            User.GetUserId(),
             pacienteId,
-            request.Email,
-            request.Telefono,
-            request.DocumentoIdentidad,
-            request.Nacionalidad,
-            request.CondicionIvaId,
-            request.ObraSocialId,
-            request.NumeroCredencialObraSocial,
-            request.Claustrofobico,
-            request.Notas,
-            JsonSerializer.Serialize(request.DatosExtra ?? new { }),
-            request.ActualizarNotas,
-            request.OptInWhatsapp,
-            request.OptInSource,
+            new UpdatePatientCommand(
+                request.Email,
+                request.Telefono,
+                request.DocumentoIdentidad,
+                request.Nacionalidad,
+                request.CondicionIvaId,
+                request.ObraSocialId,
+                request.NumeroCredencialObraSocial,
+                request.Claustrofobico,
+                request.Notas,
+                JsonSerializer.Serialize(request.DatosExtra ?? new { }),
+                request.ActualizarNotas,
+                request.OptInWhatsapp,
+                request.OptInSource),
             cancellationToken);
 
-        LogMutation("update_patient", pacienteId.ToString());
+        LogMutation("update_patient");
         return Ok(result.ToResponse());
     }
 
@@ -83,7 +87,7 @@ public sealed class PatientsController(IPatientsService patientsService, ISecuri
     public async Task<IActionResult> Delete(Guid pacienteId, CancellationToken cancellationToken)
     {
         var result = await patientsService.DeleteAsync(pacienteId, cancellationToken);
-        LogMutation("delete_patient", pacienteId.ToString());
+        LogMutation("delete_patient");
         return Ok(new OkResponse { Ok = result.Ok });
     }
 
@@ -92,7 +96,7 @@ public sealed class PatientsController(IPatientsService patientsService, ISecuri
     public async Task<IActionResult> ConfigurePortal(Guid pacienteId, [FromBody] UpdatePatientPortalRequest request, CancellationToken cancellationToken)
     {
         var result = await patientsService.ConfigurePortalAsync(pacienteId, request.PortalHabilitado, cancellationToken);
-        LogMutation("configure_portal", pacienteId.ToString());
+        LogMutation("configure_portal");
         return Ok(result.ToResponse());
     }
 
@@ -101,7 +105,7 @@ public sealed class PatientsController(IPatientsService patientsService, ISecuri
     public async Task<IActionResult> EnableReset(Guid pacienteId, CancellationToken cancellationToken)
     {
         var result = await patientsService.EnableResetAsync(pacienteId, cancellationToken);
-        LogMutation("enable_reset", pacienteId.ToString());
+        LogMutation("enable_reset");
         return Ok(result.ToResponse());
     }
 
@@ -109,11 +113,11 @@ public sealed class PatientsController(IPatientsService patientsService, ISecuri
     public async Task<IActionResult> UpdateMine([FromBody] UpdateMyPatientRequest request, CancellationToken cancellationToken)
     {
         var result = await patientsService.UpdateMyDataAsync(User.GetUserId(), request.Nombre, request.Email, request.Telefono, cancellationToken);
-        LogMutation("update_my_data", User.GetUserId().ToString());
+        LogMutation("update_my_data");
         return Ok(result.ToResponse());
     }
 
-    private void LogMutation(string action, string targetId)
+    private void LogMutation(string action)
     {
         auditLogger.LogAsync(new SecurityEvent(
             EventType: "data_mutation",

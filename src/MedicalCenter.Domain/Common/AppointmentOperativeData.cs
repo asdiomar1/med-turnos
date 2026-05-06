@@ -16,7 +16,8 @@ public sealed record AppointmentOperativeData(
     bool EsNuevoIngreso,
     bool EsMonoxido,
     bool MonoxidoOrdenMedica,
-    bool MonoxidoResumenClinico)
+    bool MonoxidoResumenClinico,
+    Guid? MedicoUserId = null)
 {
     public static AppointmentOperativeData Empty { get; } = new(
         false,

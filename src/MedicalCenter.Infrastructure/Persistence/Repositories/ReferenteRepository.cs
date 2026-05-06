@@ -21,8 +21,8 @@ public sealed class ReferenteRepository(MedicalCenterDbContext dbContext) : IRef
         }
 
         return query.FirstOrDefaultAsync(x =>
-            x.Nombre.ToLower().Trim() == normalizedName.ToLower().Trim() &&
-            x.Tipo.ToLower() == normalizedType.ToLower(), cancellationToken);
+            string.Equals(x.Nombre.Trim(), normalizedName.Trim(), StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(x.Tipo, normalizedType, StringComparison.OrdinalIgnoreCase), cancellationToken);
     }
 
     public async Task<int> GetNextOrderAsync(CancellationToken cancellationToken)
@@ -33,4 +33,17 @@ public sealed class ReferenteRepository(MedicalCenterDbContext dbContext) : IRef
 
     public Task AddAsync(Referente referente, CancellationToken cancellationToken) =>
         dbContext.Referentes.AddAsync(referente, cancellationToken).AsTask();
+
+    public async Task<IReadOnlyCollection<Referente>> GetByIdsAsync(IEnumerable<int> ids, CancellationToken cancellationToken)
+    {
+        var distinctIds = ids.Distinct().ToArray();
+        if (distinctIds.Length == 0)
+        {
+            return [];
+        }
+
+        return await dbContext.Referentes
+            .Where(x => distinctIds.Contains(x.Id))
+            .ToListAsync(cancellationToken);
+    }
 }

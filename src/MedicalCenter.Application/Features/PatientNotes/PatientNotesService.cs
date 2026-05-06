@@ -16,7 +16,15 @@ public sealed class PatientNotesService(
     public async Task<IReadOnlyCollection<PatientNoteSummary>> GetByPatientAsync(Guid patientId, CancellationToken cancellationToken)
     {
         var notes = await patientNoteRepository.GetByPatientIdAsync(patientId, cancellationToken);
-        return notes.Select(n => n.ToSummary()).ToArray();
+
+        var authorIds = notes.Select(n => n.AuthorId).Distinct().ToArray();
+        var authors = new Dictionary<Guid, string?>();
+        foreach (var id in authorIds)
+        {
+            authors[id] = await userRepository.GetDisplayNameByUserIdAsync(id, cancellationToken);
+        }
+
+        return notes.Select(n => n.ToSummary(authors.GetValueOrDefault(n.AuthorId))).ToArray();
     }
 
     public async Task<PatientNoteSummary> CreateAsync(Guid actorUserId, Guid patientId, string mensaje, CancellationToken cancellationToken)
@@ -41,7 +49,7 @@ public sealed class PatientNotesService(
         var note = new PatientNote(Guid.NewGuid(), patient.Id, actorUserId, mensaje.Trim(), DateTimeOffset.UtcNow);
         await patientNoteRepository.AddAsync(note, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        return note.ToSummary();
+        return note.ToSummary(actor.Nombre ?? actor.Identifier);
     }
 
     public async Task DeleteAsync(Guid actorUserId, Guid noteId, CancellationToken cancellationToken)

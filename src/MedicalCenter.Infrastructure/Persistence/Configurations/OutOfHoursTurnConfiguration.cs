@@ -12,6 +12,7 @@ public sealed class OutOfHoursTurnConfiguration : IEntityTypeConfiguration<OutOf
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Hora).HasColumnType("time without time zone").IsRequired();
         builder.Property(x => x.Notas).HasColumnType("text");
+        builder.Property(x => x.MonoxidoMedicoUserId).HasColumnName("monoxido_medico_user_id");
         builder.Property(x => x.CreatedAt).HasDefaultValueSql("now()");
         builder.HasIndex(x => new { x.Fecha, x.Hora, x.PacienteId }).IsUnique();
         builder.HasIndex(x => x.PacienteId);

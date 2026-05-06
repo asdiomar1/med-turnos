@@ -12,17 +12,15 @@ using MedicalCenter.Domain.Enums;
 namespace MedicalCenter.Application.Features.WhatsApp;
 
 public sealed class WhatsappService(
-    IAppointmentRepository appointmentRepository,
-    IPatientRepository patientRepository,
-    IWhatsappDispatchQueueRepository queueRepository,
-    IWhatsappTemplateRepository templateRepository,
-    IWhatsappMessageRepository messageRepository,
-    IWhatsappMessageActionRepository messageActionRepository,
-    IWhatsAppSender sender,
-    IBlockHistoryRepository blockHistoryRepository,
-    IUnitOfWork unitOfWork,
-    IClock clock) : IWhatsappService
+    WhatsappDataAccessDependencies dataAccess,
+    WhatsappRuntimeDependencies runtime) : IWhatsappService
 {
+    private const string FechaProperty = "fecha";
+    private const string HoraProperty = "hora";
+    private const string DateFormat = "yyyy-MM-dd";
+    private const string TimeFormat = "HH:mm";
+    private const string CancelledSlotsProperty = "cancelled_slots";
+    private const string Recordatorio24hKind = "recordatorio_24h";
     public async Task<WhatsappDispatchResult> DispatchAsync(WhatsappDispatchCommand command, CancellationToken cancellationToken)
     {
         var slotIds = command.SlotIds
@@ -35,7 +33,7 @@ public sealed class WhatsappService(
             slotIds = slotIds.Take(command.Limit.Value).ToArray();
         }
 
-        var items = await queueRepository.ClaimAsync(command.Limit ?? 25, slotIds, cancellationToken);
+        var items = await dataAccess.QueueRepository.ClaimAsync(command.Limit ?? 25, slotIds, cancellationToken);
         foreach (var item in items)
         {
             await ProcessQueueItemAsync(item, cancellationToken);
@@ -46,13 +44,13 @@ public sealed class WhatsappService(
 
     public async Task<WhatsappReminderResult> SendRemindersAsync(WhatsappReminderCommand command, CancellationToken cancellationToken)
     {
-        var fechaObjetivo = command.FechaObjetivo ?? GetTomorrowDateInBuenosAires(clock.UtcNow.UtcDateTime);
-        var appointments = await appointmentRepository.GetByDateAsync(fechaObjetivo, cancellationToken);
+        var fechaObjetivo = command.FechaObjetivo ?? GetTomorrowDateInBuenosAires(runtime.Clock.UtcNow.UtcDateTime);
+        var appointments = await dataAccess.AppointmentRepository.GetByDateAsync(fechaObjetivo, cancellationToken);
 
         var candidates = new List<ReminderCandidate>();
         foreach (var appointment in appointments.Where(x => x.Status == AppointmentStatus.Ocupado && x.PatientId.HasValue))
         {
-            var patient = await patientRepository.GetByIdAsync(appointment.PatientId!.Value, cancellationToken);
+            var patient = await dataAccess.PatientRepository.GetByIdAsync(appointment.PatientId!.Value, cancellationToken);
             if (!IsEligibleForWhatsapp(patient))
             {
                 continue;
@@ -70,12 +68,12 @@ public sealed class WhatsappService(
             }
         }
 
-        await unitOfWork.SaveChangesAsync(cancellationToken);
+        await runtime.UnitOfWork.SaveChangesAsync(cancellationToken);
 
         var reminderSlotIds = candidates.Select(x => x.Appointment.Id).ToArray();
         if (reminderSlotIds.Length > 0)
         {
-            var queuedItems = await queueRepository.ClaimAsync(Math.Max(reminderSlotIds.Length + 10, 25), reminderSlotIds, cancellationToken);
+            var queuedItems = await dataAccess.QueueRepository.ClaimAsync(Math.Max(reminderSlotIds.Length + 10, 25), reminderSlotIds, cancellationToken);
             foreach (var item in queuedItems)
             {
                 await ProcessQueueItemAsync(item, cancellationToken);
@@ -92,7 +90,7 @@ public sealed class WhatsappService(
             return;
         }
 
-        var patient = await patientRepository.GetByIdAsync(appointment.PatientId.Value, cancellationToken);
+        var patient = await dataAccess.PatientRepository.GetByIdAsync(appointment.PatientId.Value, cancellationToken);
         if (!IsEligibleForWhatsapp(patient))
         {
             return;
@@ -101,37 +99,39 @@ public sealed class WhatsappService(
         if (appointment.TandaId.HasValue)
         {
             await EnqueueConfirmationAsync(
-                patient!.Id,
-                appointment.Id,
-                appointment.TandaId,
-                "confirmacion_tanda",
-                "turno_confirmacion_tanda_v1",
-                $"confirmacion_tanda:{appointment.TandaId.Value:N}",
-                triggerSource,
-                new JsonObject
-                {
-                    ["primer_slot_id"] = appointment.Id.ToString(),
-                    ["fecha"] = appointment.Fecha.ToString("yyyy-MM-dd"),
-                    ["hora"] = appointment.Hora.ToString("HH:mm")
-                },
+                new EnqueueConfirmationRequest(
+                    patient!.Id,
+                    appointment.Id,
+                    appointment.TandaId,
+                    "confirmacion_tanda",
+                    "turno_confirmacion_tanda_v1",
+                    $"confirmacion_tanda:{appointment.TandaId.Value:N}",
+                    triggerSource,
+                    new JsonObject
+                    {
+                        ["primer_slot_id"] = appointment.Id.ToString(),
+                        [FechaProperty] = appointment.Fecha.ToString(DateFormat),
+                        [HoraProperty] = appointment.Hora.ToString(TimeFormat)
+                    }),
                 cancellationToken);
             return;
         }
 
         await EnqueueConfirmationAsync(
-            patient!.Id,
-            appointment.Id,
-            null,
-            "confirmacion",
-            "turno_confirmacion_v1",
-            $"confirmacion:{appointment.Id:N}:{appointment.PatientId:N}:{appointment.UpdatedAt:O}",
-            triggerSource,
-            new JsonObject
-            {
-                ["fecha"] = appointment.Fecha.ToString("yyyy-MM-dd"),
-                ["hora"] = appointment.Hora.ToString("HH:mm"),
-                ["camara_id"] = appointment.CameraId
-            },
+            new EnqueueConfirmationRequest(
+                patient!.Id,
+                appointment.Id,
+                null,
+                "confirmacion",
+                "turno_confirmacion_v1",
+                $"confirmacion:{appointment.Id:N}:{appointment.PatientId:N}:{appointment.UpdatedAt:O}",
+                triggerSource,
+                new JsonObject
+                {
+                    [FechaProperty] = appointment.Fecha.ToString(DateFormat),
+                    [HoraProperty] = appointment.Hora.ToString(TimeFormat),
+                    ["camara_id"] = appointment.CameraId
+                }),
             cancellationToken);
     }
 
@@ -142,7 +142,7 @@ public sealed class WhatsappService(
             return;
         }
 
-        var patient = await patientRepository.GetByIdAsync(appointment.PatientId.Value, cancellationToken);
+        var patient = await dataAccess.PatientRepository.GetByIdAsync(appointment.PatientId.Value, cancellationToken);
         if (!IsEligibleForWhatsapp(patient))
         {
             return;
@@ -158,7 +158,7 @@ public sealed class WhatsappService(
 
     public async Task EnqueueTurnosCancelacionAsync(Guid patientId, IReadOnlyCollection<Appointment> appointments, string operationKey, string triggerSource, CancellationToken cancellationToken)
     {
-        var patient = await patientRepository.GetByIdAsync(patientId, cancellationToken);
+        var patient = await dataAccess.PatientRepository.GetByIdAsync(patientId, cancellationToken);
         if (!IsEligibleForWhatsapp(patient))
         {
             return;
@@ -187,16 +187,16 @@ public sealed class WhatsappService(
         var payload = new JsonObject
         {
             ["operation_key"] = string.IsNullOrWhiteSpace(operationKey) ? "cancelacion_multiple" : operationKey.Trim(),
-            ["cancelled_slots"] = new JsonArray(canceledSlots.Select(slot => new JsonObject
+            [CancelledSlotsProperty] = new JsonArray(canceledSlots.Select(slot => new JsonObject
             {
                 ["slot_id"] = slot.Id.ToString(),
-                ["fecha"] = slot.Fecha.ToString("yyyy-MM-dd"),
-                ["hora"] = slot.Hora.ToString("HH:mm")
+                [FechaProperty] = slot.Fecha.ToString(DateFormat),
+                [HoraProperty] = slot.Hora.ToString(TimeFormat)
             }).ToArray())
         };
 
         await TryEnqueueAsync(
-            new WhatsappDispatchQueueItem(
+            new WhatsappDispatchQueueItem(new WhatsappDispatchQueueItemCreateParams(
                 Guid.NewGuid(),
                 patient!.Id,
                 representative.Id,
@@ -205,7 +205,7 @@ public sealed class WhatsappService(
                 "turno_cancelacion_multiple_v1",
                 $"cancelacion_multiple:{operationKey}:{patient.Id}",
                 triggerSource,
-                payload.ToJsonString()),
+                payload.ToJsonString())),
             cancellationToken);
     }
 
@@ -220,42 +220,42 @@ public sealed class WhatsappService(
         var idempotencyKey = $"recordatorio_24h:{candidate.Appointment.Id}:{fechaObjetivo:yyyyMMdd}";
         var payload = new JsonObject
         {
-            ["fecha"] = candidate.Appointment.Fecha.ToString("yyyy-MM-dd"),
-            ["hora"] = candidate.Appointment.Hora.ToString("HH:mm"),
-            ["fecha_objetivo"] = fechaObjetivo.ToString("yyyy-MM-dd"),
+            [FechaProperty] = candidate.Appointment.Fecha.ToString(DateFormat),
+            [HoraProperty] = candidate.Appointment.Hora.ToString(TimeFormat),
+            ["fecha_objetivo"] = fechaObjetivo.ToString(DateFormat),
             ["hora_envio_argentina"] = WhatsAppConstants.DefaultArgentinaSendHour,
             ["patient_phone_e164"] = phone,
         }!.ToJsonString();
 
-        return await queueRepository.TryEnqueueAsync(new WhatsappDispatchQueueItem(
+        return await dataAccess.QueueRepository.TryEnqueueAsync(new WhatsappDispatchQueueItem(new WhatsappDispatchQueueItemCreateParams(
             Guid.NewGuid(),
             candidate.Patient.Id,
             candidate.Appointment.Id,
             candidate.Appointment.TandaId,
-            "recordatorio_24h",
+            Recordatorio24hKind,
             "turno_recordatorio_24h_v3",
             idempotencyKey,
             "app_recordatorio_dia_siguiente",
-            payload), cancellationToken);
+            payload)), cancellationToken);
     }
 
     private async Task EnqueueCancellationSingleAsync(Guid patientId, Appointment appointment, string triggerSource, string? operationKey, CancellationToken cancellationToken)
     {
         var payload = new JsonObject
         {
-            ["cancelled_slots"] = new JsonArray
+            [CancelledSlotsProperty] = new JsonArray
             {
                 new JsonObject
                 {
                     ["slot_id"] = appointment.Id.ToString(),
-                    ["fecha"] = appointment.Fecha.ToString("yyyy-MM-dd"),
-                    ["hora"] = appointment.Hora.ToString("HH:mm")
+                    [FechaProperty] = appointment.Fecha.ToString(DateFormat),
+                    [HoraProperty] = appointment.Hora.ToString(TimeFormat)
                 }
             }
         };
 
         await TryEnqueueAsync(
-            new WhatsappDispatchQueueItem(
+            new WhatsappDispatchQueueItem(new WhatsappDispatchQueueItemCreateParams(
                 Guid.NewGuid(),
                 patientId,
                 appointment.Id,
@@ -266,46 +266,37 @@ public sealed class WhatsappService(
                     ? $"cancelacion:{appointment.Id:N}:{patientId:N}:{appointment.UpdatedAt:O}"
                     : $"cancelacion:{operationKey.Trim()}:{appointment.Id:N}:{patientId:N}",
                 triggerSource,
-                payload.ToJsonString()),
+                payload.ToJsonString())),
             cancellationToken);
     }
 
-    private async Task EnqueueConfirmationAsync(
-        Guid patientId,
-        Guid slotId,
-        Guid? tandaId,
-        string kind,
-        string templateKey,
-        string idempotencyKey,
-        string triggerSource,
-        JsonObject payload,
-        CancellationToken cancellationToken)
+    private async Task EnqueueConfirmationAsync(EnqueueConfirmationRequest request, CancellationToken cancellationToken)
     {
-        var phone = await ResolvePatientPhoneAsync(patientId, cancellationToken);
+        var phone = await ResolvePatientPhoneAsync(request.PatientId, cancellationToken);
         if (phone is null)
         {
             return;
         }
 
-        payload["patient_phone_e164"] = phone;
+        request.Payload["patient_phone_e164"] = phone;
 
         await TryEnqueueAsync(
-            new WhatsappDispatchQueueItem(
+            new WhatsappDispatchQueueItem(new WhatsappDispatchQueueItemCreateParams(
                 Guid.NewGuid(),
-                patientId,
-                slotId,
-                tandaId,
-                kind,
-                templateKey,
-                idempotencyKey,
-                triggerSource,
-                payload.ToJsonString()),
+                request.PatientId,
+                request.SlotId,
+                request.TandaId,
+                request.Kind,
+                request.TemplateKey,
+                request.IdempotencyKey,
+                request.TriggerSource,
+                request.Payload.ToJsonString())),
             cancellationToken);
     }
 
     private async Task<bool> TryEnqueueAsync(WhatsappDispatchQueueItem item, CancellationToken cancellationToken)
     {
-        var enqueued = await queueRepository.TryEnqueueAsync(item, cancellationToken);
+        var enqueued = await dataAccess.QueueRepository.TryEnqueueAsync(item, cancellationToken);
         return enqueued;
     }
 
@@ -313,11 +304,11 @@ public sealed class WhatsappService(
     {
         try
         {
-            var template = await templateRepository.GetActiveByKeyAsync(item.TemplateKey, cancellationToken);
+            var template = await dataAccess.TemplateRepository.GetActiveByKeyAsync(item.TemplateKey, cancellationToken);
             if (template is null)
             {
-                item.MarkSkipped($"Template no disponible: {item.TemplateKey}", clock.UtcNow);
-                await unitOfWork.SaveChangesAsync(cancellationToken);
+                item.MarkSkipped($"Template no disponible: {item.TemplateKey}", runtime.Clock.UtcNow);
+                await runtime.UnitOfWork.SaveChangesAsync(cancellationToken);
                 return;
             }
 
@@ -325,13 +316,13 @@ public sealed class WhatsappService(
             var phone = NormalizePhoneToE164(payload["patient_phone_e164"]?.ToString()) ?? await ResolvePatientPhoneAsync(item.PatientId, cancellationToken);
             if (phone is null)
             {
-                item.MarkSkipped("Paciente sin telefono valido.", clock.UtcNow);
-                await unitOfWork.SaveChangesAsync(cancellationToken);
+                item.MarkSkipped("Paciente sin telefono valido.", runtime.Clock.UtcNow);
+                await runtime.UnitOfWork.SaveChangesAsync(cancellationToken);
                 return;
             }
 
             Guid? reminderActionId = null;
-            if (string.Equals(item.Kind, "recordatorio_24h", StringComparison.OrdinalIgnoreCase) && item.SlotId.HasValue)
+            if (string.Equals(item.Kind, Recordatorio24hKind, StringComparison.OrdinalIgnoreCase) && item.SlotId.HasValue)
             {
                 reminderActionId = Guid.NewGuid();
                 payload["action_id"] = reminderActionId.Value.ToString();
@@ -339,9 +330,9 @@ public sealed class WhatsappService(
 
             var requestPayload = BuildRequestPayload(template, item, payload, phone);
             var requestJson = requestPayload.ToJsonString();
-            var sendResult = await sender.SendRawAsync(requestJson, cancellationToken);
+            var sendResult = await runtime.Sender.SendRawAsync(requestJson, cancellationToken);
 
-            var whatsappMessage = new WhatsappMessage(
+            var whatsappMessage = new WhatsappMessage(new WhatsappMessageCreateParams(
                 Guid.NewGuid(),
                 item.PatientId,
                 item.SlotId,
@@ -351,46 +342,46 @@ public sealed class WhatsappService(
                 phone,
                 item.IdempotencyKey,
                 item.TriggerSource,
-                requestJson);
+                requestJson));
 
             if (sendResult.Ok)
             {
-                whatsappMessage.MarkSent(sendResult.ProviderMessageId, sendResult.ResponsePayloadJson ?? "{}", clock.UtcNow);
-                await messageRepository.AddAsync(whatsappMessage, cancellationToken);
+                whatsappMessage.MarkSent(sendResult.ProviderMessageId, sendResult.ResponsePayloadJson ?? "{}", runtime.Clock.UtcNow);
+                await dataAccess.MessageRepository.AddAsync(whatsappMessage, cancellationToken);
 
-                if (string.Equals(item.Kind, "recordatorio_24h", StringComparison.OrdinalIgnoreCase) && item.SlotId.HasValue)
+                if (string.Equals(item.Kind, Recordatorio24hKind, StringComparison.OrdinalIgnoreCase) && item.SlotId.HasValue)
                 {
                     var actionId = reminderActionId ?? Guid.NewGuid();
                     var actionPayload = BuildReminderActionContext(item, phone, actionId).ToJsonString();
-                    var action = new WhatsappMessageAction(
+                    var action = new WhatsappMessageAction(new WhatsappMessageActionCreateParams(
                         actionId,
                         item.PatientId,
                         item.SlotId.Value,
                         whatsappMessage.Id,
                         "cancelar_turno",
                         phone,
-                        actionPayload);
-                    await messageActionRepository.AddAsync(action, cancellationToken);
+                        actionPayload));
+                    await dataAccess.MessageActionRepository.AddAsync(action, cancellationToken);
                 }
 
-                item.MarkProcessed(clock.UtcNow);
-                await unitOfWork.SaveChangesAsync(cancellationToken);
+                item.MarkProcessed(runtime.Clock.UtcNow);
+                await runtime.UnitOfWork.SaveChangesAsync(cancellationToken);
                 return;
             }
 
-            whatsappMessage.MarkFailed(sendResult.ErrorCode ?? "send_failed", sendResult.ErrorMessage ?? "No se pudo enviar el mensaje", sendResult.ResponsePayloadJson ?? "{}", clock.UtcNow);
-            await messageRepository.AddAsync(whatsappMessage, cancellationToken);
-            item.MarkFailed(sendResult.ErrorMessage ?? "No se pudo enviar el mensaje", clock.UtcNow);
-            await unitOfWork.SaveChangesAsync(cancellationToken);
+            whatsappMessage.MarkFailed(sendResult.ErrorCode ?? "send_failed", sendResult.ErrorMessage ?? "No se pudo enviar el mensaje", sendResult.ResponsePayloadJson ?? "{}", runtime.Clock.UtcNow);
+            await dataAccess.MessageRepository.AddAsync(whatsappMessage, cancellationToken);
+            item.MarkFailed(sendResult.ErrorMessage ?? "No se pudo enviar el mensaje", runtime.Clock.UtcNow);
+            await runtime.UnitOfWork.SaveChangesAsync(cancellationToken);
         }
         catch (Exception exception)
         {
-            item.MarkFailed(exception.Message, clock.UtcNow);
-            await unitOfWork.SaveChangesAsync(cancellationToken);
+            item.MarkFailed(exception.Message, runtime.Clock.UtcNow);
+            await runtime.UnitOfWork.SaveChangesAsync(cancellationToken);
         }
     }
 
-    private JsonObject BuildRequestPayload(WhatsappTemplate template, WhatsappDispatchQueueItem item, JsonObject payload, string phone)
+    private static JsonObject BuildRequestPayload(WhatsappTemplate template, WhatsappDispatchQueueItem item, JsonObject payload, string phone)
     {
         var bodyParameters = BuildBodyParameters(item.Kind, payload);
         var request = new JsonObject
@@ -420,7 +411,7 @@ public sealed class WhatsappService(
             components.Add(bodyComponent);
         }
 
-        if (string.Equals(item.Kind, "recordatorio_24h", StringComparison.OrdinalIgnoreCase) && item.SlotId.HasValue)
+        if (string.Equals(item.Kind, Recordatorio24hKind, StringComparison.OrdinalIgnoreCase) && item.SlotId.HasValue)
         {
             var actionPayload = $"cancelar_turno_solicitar|{item.SlotId.Value:N}|{payload["action_id"]?.ToString() ?? string.Empty}";
             components.Add(new JsonObject
@@ -445,21 +436,21 @@ public sealed class WhatsappService(
 
     private static JsonArray BuildBodyParameters(string kind, JsonObject payload)
     {
-        string? fecha = payload["fecha"]?.ToString();
-        string? hora = payload["hora"]?.ToString();
+        string? fecha = payload[FechaProperty]?.ToString();
+        string? hora = payload[HoraProperty]?.ToString();
 
         return kind.ToLowerInvariant() switch
         {
             "confirmacion" => new JsonArray(fecha, hora, payload["camara_id"]?.ToString()),
             "confirmacion_tanda" => new JsonArray(fecha, hora, payload["primer_slot_id"]?.ToString()),
             "cancelacion" => new JsonArray(
-                payload["cancelled_slots"] is JsonArray cancelled && cancelled.Count > 0
-                    ? cancelled[0]?["fecha"]?.ToString()
+                payload[CancelledSlotsProperty] is JsonArray cancelled && cancelled.Count > 0
+                    ? cancelled[0]?[FechaProperty]?.ToString()
                     : fecha,
-                payload["cancelled_slots"] is JsonArray cancelled2 && cancelled2.Count > 0
-                    ? cancelled2[0]?["hora"]?.ToString()
+                payload[CancelledSlotsProperty] is JsonArray cancelled2 && cancelled2.Count > 0
+                    ? cancelled2[0]?[HoraProperty]?.ToString()
                     : hora),
-            "recordatorio_24h" => new JsonArray(fecha, hora),
+            Recordatorio24hKind => new JsonArray(fecha, hora),
             _ => new JsonArray(fecha, hora)
         };
     }
@@ -476,37 +467,8 @@ public sealed class WhatsappService(
 
     private async Task<string?> ResolvePatientPhoneAsync(Guid patientId, CancellationToken cancellationToken)
     {
-        var patient = await patientRepository.GetByIdAsync(patientId, cancellationToken);
+        var patient = await dataAccess.PatientRepository.GetByIdAsync(patientId, cancellationToken);
         return IsEligibleForWhatsapp(patient) ? NormalizePhoneToE164(patient!.Telefono) : null;
-    }
-
-    private async Task RegisterCancellationHistoryAsync(WhatsappMessageAction action, Appointment appointment, CancellationToken cancellationToken)
-    {
-        var history = new BlockHistory(
-            Guid.NewGuid(),
-            appointment.Fecha,
-            appointment.Hora,
-            appointment.CameraId,
-            appointment.Id,
-            appointment.Lugar,
-            "cancelado_por_whatsapp",
-            action.PatientId,
-            null,
-            "Paciente cancelo por WhatsApp",
-            appointment.ReferidoTercero,
-            appointment.ModalidadCobro,
-            appointment.ObraSocialId,
-            appointment.NumeroAutorizacion,
-            null,
-            null,
-            appointment.MedicoId,
-            appointment.EsNuevoIngreso,
-            appointment.ReferenteId,
-            appointment.TandaId,
-            appointment.SesionesAutorizadas,
-            appointment.CicloObraSocialId);
-
-        await blockHistoryRepository.AddRangeAsync([history], cancellationToken);
     }
 
     private static bool IsEligibleForWhatsapp(Patient? patient) =>
@@ -576,11 +538,41 @@ public sealed class WhatsappService(
         return null;
     }
 
-    private static string[] GetCancellationActionPayloadParts(string payload)
-    {
-        var parts = payload.Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        return parts.Length >= 3 ? parts : [];
-    }
-
     private sealed record ReminderCandidate(Appointment Appointment, Patient Patient);
 }
+
+public sealed class WhatsappDataAccessDependencies(
+    IAppointmentRepository appointmentRepository,
+    IPatientRepository patientRepository,
+    IWhatsappDispatchQueueRepository queueRepository,
+    IWhatsappTemplateRepository templateRepository,
+    IWhatsappMessageRepository messageRepository,
+    IWhatsappMessageActionRepository messageActionRepository)
+{
+    public IAppointmentRepository AppointmentRepository { get; } = appointmentRepository;
+    public IPatientRepository PatientRepository { get; } = patientRepository;
+    public IWhatsappDispatchQueueRepository QueueRepository { get; } = queueRepository;
+    public IWhatsappTemplateRepository TemplateRepository { get; } = templateRepository;
+    public IWhatsappMessageRepository MessageRepository { get; } = messageRepository;
+    public IWhatsappMessageActionRepository MessageActionRepository { get; } = messageActionRepository;
+}
+
+public sealed class WhatsappRuntimeDependencies(
+    IWhatsAppSender sender,
+    IUnitOfWork unitOfWork,
+    IClock clock)
+{
+    public IWhatsAppSender Sender { get; } = sender;
+    public IUnitOfWork UnitOfWork { get; } = unitOfWork;
+    public IClock Clock { get; } = clock;
+}
+
+public sealed record EnqueueConfirmationRequest(
+    Guid PatientId,
+    Guid SlotId,
+    Guid? TandaId,
+    string Kind,
+    string TemplateKey,
+    string IdempotencyKey,
+    string TriggerSource,
+    JsonObject Payload);

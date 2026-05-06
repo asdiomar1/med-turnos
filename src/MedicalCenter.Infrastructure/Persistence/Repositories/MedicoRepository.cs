@@ -28,7 +28,7 @@ public sealed class MedicoRepository(MedicalCenterDbContext dbContext) : IMedico
             query = query.Where(x => x.Id != exceptId.Value);
         }
 
-        return query.FirstOrDefaultAsync(x => x.Nombre.ToLower() == normalizedName.ToLower(), cancellationToken);
+        return query.FirstOrDefaultAsync(x => string.Equals(x.Nombre, normalizedName, StringComparison.OrdinalIgnoreCase), cancellationToken);
     }
 
     public async Task<int> GetNextOrderAsync(CancellationToken cancellationToken)
@@ -39,4 +39,17 @@ public sealed class MedicoRepository(MedicalCenterDbContext dbContext) : IMedico
 
     public Task AddAsync(Medico medico, CancellationToken cancellationToken) =>
         dbContext.Medicos.AddAsync(medico, cancellationToken).AsTask();
+
+    public async Task<IReadOnlyCollection<Medico>> GetByIdsAsync(IEnumerable<int> ids, CancellationToken cancellationToken)
+    {
+        var distinctIds = ids.Distinct().ToArray();
+        if (distinctIds.Length == 0)
+        {
+            return [];
+        }
+
+        return await dbContext.Medicos
+            .Where(x => distinctIds.Contains(x.Id))
+            .ToListAsync(cancellationToken);
+    }
 }

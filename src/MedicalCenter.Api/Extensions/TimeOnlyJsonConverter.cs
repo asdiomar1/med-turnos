@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Globalization;
 
 namespace MedicalCenter.Api.Extensions;
 
@@ -8,9 +9,9 @@ public sealed class TimeOnlyJsonConverter : JsonConverter<TimeOnly>
     public override TimeOnly Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
         var value = reader.GetString();
-        if (TimeOnly.TryParseExact(value, "HH:mm", out var result) ||
-            TimeOnly.TryParseExact(value, "HH:mm:ss", out result) ||
-            TimeOnly.TryParse(value, out result))
+        if (TimeOnly.TryParseExact(value, "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var result) ||
+            TimeOnly.TryParseExact(value, "HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out result) ||
+            TimeOnly.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.None, out result))
         {
             return result;
         }

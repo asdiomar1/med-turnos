@@ -20,6 +20,11 @@ var app = builder.Build();
 app.UseApiMiddleware();
 await app.InitializeDatabaseAsync();
 
-app.Run();
+await app.RunAsync();
 
-public partial class Program;
+public partial class Program
+{
+    protected Program()
+    {
+    }
+}

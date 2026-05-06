@@ -2,30 +2,32 @@ using MedicalCenter.Domain.Common;
 
 namespace MedicalCenter.Domain.Entities;
 
+public sealed record RoleCreateParams(
+    Guid Id,
+    string Code,
+    string Name,
+    IEnumerable<string>? Permissions = null,
+    string? Description = null,
+    bool Active = true,
+    bool IsSystem = false,
+    bool IsStaff = true,
+    string DefaultHome = "/usuario");
+
 public sealed class Role : Entity<Guid>
 {
     private Role() { }
 
-    public Role(
-        Guid id,
-        string code,
-        string name,
-        IEnumerable<string>? permissions = null,
-        string? description = null,
-        bool active = true,
-        bool isSystem = false,
-        bool isStaff = true,
-        string defaultHome = "/usuario")
+    public Role(RoleCreateParams p)
     {
-        Id = id;
-        Code = code;
-        Name = name;
-        Permissions = permissions?.Distinct(StringComparer.OrdinalIgnoreCase).ToList() ?? [];
-        Description = description;
-        Active = active;
-        IsSystem = isSystem;
-        IsStaff = isStaff;
-        DefaultHome = defaultHome;
+        Id = p.Id;
+        Code = p.Code;
+        Name = p.Name;
+        Permissions = p.Permissions?.Distinct(StringComparer.OrdinalIgnoreCase).ToList() ?? [];
+        Description = p.Description;
+        Active = p.Active;
+        IsSystem = p.IsSystem;
+        IsStaff = p.IsStaff;
+        DefaultHome = p.DefaultHome;
     }
 
     public string Code { get; private set; } = string.Empty;

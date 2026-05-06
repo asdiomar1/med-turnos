@@ -34,7 +34,8 @@ public sealed class PatientRepository(MedicalCenterDbContext dbContext) : IPatie
     {
         var normalized = documentoIdentidad.Trim().ToLower();
         return dbContext.Patients.FirstOrDefaultAsync(
-            x => x.DocumentoIdentidad.ToLower() == normalized || (x.DocumentoIdentidadNormalizado != null && x.DocumentoIdentidadNormalizado.ToLower() == normalized),
+            x => x.DocumentoIdentidad.ToLower() == normalized
+                || (x.DocumentoIdentidadNormalizado != null && x.DocumentoIdentidadNormalizado.ToLower() == normalized),
             cancellationToken);
     }
 
@@ -64,4 +65,17 @@ public sealed class PatientRepository(MedicalCenterDbContext dbContext) : IPatie
 
     public Task AddAsync(Patient patient, CancellationToken cancellationToken) =>
         dbContext.Patients.AddAsync(patient, cancellationToken).AsTask();
+
+    public async Task<IReadOnlyCollection<Patient>> GetByIdsAsync(IEnumerable<Guid> ids, CancellationToken cancellationToken)
+    {
+        var distinctIds = ids.Where(x => x != Guid.Empty).Distinct().ToArray();
+        if (distinctIds.Length == 0)
+        {
+            return [];
+        }
+
+        return await dbContext.Patients
+            .Where(x => distinctIds.Contains(x.Id))
+            .ToListAsync(cancellationToken);
+    }
 }

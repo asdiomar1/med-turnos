@@ -382,3 +382,19 @@ FodyWeavers.xsd
 FRONTEND_F1_F5_TASKS.md
 R2_SETUP.md
 skills-lock.json
+
+# MedicalCenter Launcher
+tools/*/publish/
+tools/*/bin/
+tools/*/obj/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+tmp-fix-author-name.sql
+
+# Sonar local outputs
+sonar-issues*.json
+.sonarqube/
+nul

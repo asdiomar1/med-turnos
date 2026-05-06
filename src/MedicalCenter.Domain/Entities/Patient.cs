@@ -9,21 +9,17 @@ public sealed class Patient : Entity<Guid>
     public Patient(
         Guid id,
         string nombre,
-        string telefono,
-        string documentoIdentidad,
-        string? documentoIdentidadNormalizado,
-        int condicionIvaId,
-        bool portalHabilitado,
-        string? loginIdentifier = null)
+        PatientAdministrativeInfo administrativeInfo,
+        PatientPortalInfo portalInfo)
     {
         Id = id;
         Nombre = nombre;
-        Telefono = telefono;
-        DocumentoIdentidad = documentoIdentidad;
-        DocumentoIdentidadNormalizado = documentoIdentidadNormalizado;
-        CondicionIvaId = condicionIvaId;
-        PortalHabilitado = portalHabilitado;
-        LoginIdentifier = loginIdentifier;
+        Telefono = administrativeInfo.Telefono;
+        DocumentoIdentidad = administrativeInfo.DocumentoIdentidad;
+        DocumentoIdentidadNormalizado = administrativeInfo.DocumentoIdentidadNormalizado;
+        CondicionIvaId = administrativeInfo.CondicionIvaId;
+        PortalHabilitado = portalInfo.PortalHabilitado;
+        LoginIdentifier = portalInfo.LoginIdentifier;
         IsActive = true;
     }
 
@@ -46,36 +42,21 @@ public sealed class Patient : Entity<Guid>
     public string? OptInSource { get; private set; }
     public bool IsActive { get; private set; }
 
-    public void UpdateAdministrativeData(
-        string? email,
-        string telefono,
-        string documentoIdentidad,
-        string? documentoIdentidadNormalizado,
-        string? nacionalidad,
-        int condicionIvaId,
-        int? obraSocialId,
-        string? numeroCredencialObraSocial,
-        bool claustrofobico,
-        string? notas,
-        string datosExtra,
-        bool optInWhatsapp,
-        string? optInSource)
+    public void UpdateAdministrativeData(PatientAdministrativeDataUpdate update)
     {
-        Email = email;
-        Telefono = telefono;
-        DocumentoIdentidad = documentoIdentidad;
-        DocumentoIdentidadNormalizado = documentoIdentidadNormalizado;
-        Nacionalidad = nacionalidad;
-        CondicionIvaId = condicionIvaId;
-        ObraSocialId = obraSocialId;
-        NumeroCredencialObraSocial = numeroCredencialObraSocial;
-        Claustrofobico = claustrofobico;
-        Notas = notas;
-        DatosExtra = datosExtra;
-        OptInWhatsapp = optInWhatsapp;
-        OptInSource = optInWhatsapp
-            ? (string.IsNullOrWhiteSpace(optInSource) ? "admin_edicion" : optInSource.Trim())
-            : null;
+        Email = update.Email;
+        Telefono = update.Telefono;
+        DocumentoIdentidad = update.DocumentoIdentidad;
+        DocumentoIdentidadNormalizado = update.DocumentoIdentidadNormalizado;
+        Nacionalidad = update.Nacionalidad;
+        CondicionIvaId = update.CondicionIvaId;
+        ObraSocialId = update.ObraSocialId;
+        NumeroCredencialObraSocial = update.NumeroCredencialObraSocial;
+        Claustrofobico = update.Claustrofobico;
+        Notas = update.Notas;
+        DatosExtra = update.DatosExtra;
+        OptInWhatsapp = update.OptInWhatsapp;
+        OptInSource = ResolveOptInSource(update.OptInWhatsapp, update.OptInSource);
     }
 
     public void UpdateOwnData(string nombre, string? email, string telefono)
@@ -105,4 +86,37 @@ public sealed class Patient : Entity<Guid>
     {
         RequiereResetPortal = true;
     }
+
+    private static string? ResolveOptInSource(bool optInWhatsapp, string? optInSource)
+    {
+        if (!optInWhatsapp)
+        {
+            return null;
+        }
+
+        return string.IsNullOrWhiteSpace(optInSource) ? "admin_edicion" : optInSource.Trim();
+    }
 }
+
+public sealed record PatientAdministrativeInfo(
+    string Telefono,
+    string DocumentoIdentidad,
+    string? DocumentoIdentidadNormalizado,
+    int CondicionIvaId);
+
+public sealed record PatientPortalInfo(bool PortalHabilitado, string? LoginIdentifier = null);
+
+public sealed record PatientAdministrativeDataUpdate(
+    string? Email,
+    string Telefono,
+    string DocumentoIdentidad,
+    string? DocumentoIdentidadNormalizado,
+    string? Nacionalidad,
+    int CondicionIvaId,
+    int? ObraSocialId,
+    string? NumeroCredencialObraSocial,
+    bool Claustrofobico,
+    string? Notas,
+    string DatosExtra,
+    bool OptInWhatsapp,
+    string? OptInSource);

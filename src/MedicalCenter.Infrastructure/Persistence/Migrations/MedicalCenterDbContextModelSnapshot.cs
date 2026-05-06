@@ -191,6 +191,10 @@ namespace MedicalCenter.Infrastructure.Persistence.Migrations
                     b.Property<int?>("MedicoId")
                         .HasColumnType("integer");
 
+                    b.Property<Guid?>("MedicoUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("medico_user_id");
+
                     b.Property<string>("ModalidadCobro")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
@@ -460,6 +464,10 @@ namespace MedicalCenter.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("medico_id");
 
+                    b.Property<Guid?>("MedicoUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("medico_user_id");
+
                     b.Property<string>("Nota")
                         .IsRequired()
                         .HasColumnType("text")
@@ -687,6 +695,10 @@ namespace MedicalCenter.Infrastructure.Persistence.Migrations
 
                     b.Property<int?>("MedicoId")
                         .HasColumnType("integer");
+
+                    b.Property<Guid?>("MedicoUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("medico_user_id");
 
                     b.Property<string>("MotivoCancelacion")
                         .HasMaxLength(500)
@@ -1100,6 +1112,10 @@ namespace MedicalCenter.Infrastructure.Persistence.Migrations
 
                     b.Property<int?>("MonoxidoMedicoId")
                         .HasColumnType("integer");
+
+                    b.Property<Guid?>("MonoxidoMedicoUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("monoxido_medico_user_id");
 
                     b.Property<bool>("MonoxidoOrdenMedica")
                         .HasColumnType("boolean");

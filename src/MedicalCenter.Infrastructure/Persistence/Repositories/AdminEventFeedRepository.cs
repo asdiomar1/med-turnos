@@ -17,53 +17,45 @@ public sealed class AdminEventFeedRepository(MedicalCenterDbContext dbContext) :
         await dbContext.AdminEventFeedEntries.AddAsync(entry, cancellationToken);
     }
 
-    public async Task<IReadOnlyCollection<AdminEventFeedEntry>> ListAsync(
-        int limit,
-        DateTimeOffset? beforeOccurredAt,
-        long? beforeId,
-        Guid? actorUserId,
-        IReadOnlyCollection<string> actionCodes,
-        DateOnly? dateFrom,
-        DateOnly? dateTo,
-        CancellationToken cancellationToken)
+    public async Task<IReadOnlyCollection<AdminEventFeedEntry>> ListAsync(AdminEventFeedQuery query, CancellationToken cancellationToken)
     {
         if (!await TableExistsAsync(cancellationToken))
         {
             return Array.Empty<AdminEventFeedEntry>();
         }
 
-        var normalizedActionCodes = actionCodes as string[] ?? actionCodes.ToArray();
-        var query = dbContext.AdminEventFeedEntries.AsNoTracking().AsQueryable();
+        var normalizedActionCodes = query.ActionCodes as string[] ?? query.ActionCodes.ToArray();
+        var dbQuery = dbContext.AdminEventFeedEntries.AsNoTracking().AsQueryable();
 
-        if (actorUserId.HasValue)
+        if (query.ActorUserId.HasValue)
         {
-            query = query.Where(x => x.ActorUserId == actorUserId);
+            dbQuery = dbQuery.Where(x => x.ActorUserId == query.ActorUserId);
         }
 
         if (normalizedActionCodes.Length > 0)
         {
-            query = query.Where(x => normalizedActionCodes.Contains(x.ActionCode));
+            dbQuery = dbQuery.Where(x => normalizedActionCodes.Contains(x.ActionCode));
         }
 
-        if (dateFrom.HasValue)
+        if (query.DateFrom.HasValue)
         {
-            var from = dateFrom.Value.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
-            query = query.Where(x => x.OccurredAt >= new DateTimeOffset(from));
+            var from = query.DateFrom.Value.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+            dbQuery = dbQuery.Where(x => x.OccurredAt >= new DateTimeOffset(from));
         }
 
-        if (dateTo.HasValue)
+        if (query.DateTo.HasValue)
         {
-            var to = dateTo.Value.AddDays(1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
-            query = query.Where(x => x.OccurredAt < new DateTimeOffset(to));
+            var to = query.DateTo.Value.AddDays(1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+            dbQuery = dbQuery.Where(x => x.OccurredAt < new DateTimeOffset(to));
         }
 
-        if (beforeOccurredAt.HasValue && beforeId.HasValue)
+        if (query.BeforeOccurredAt.HasValue && query.BeforeId.HasValue)
         {
-            query = query.Where(x => x.OccurredAt < beforeOccurredAt || (x.OccurredAt == beforeOccurredAt && x.Id < beforeId));
+            dbQuery = dbQuery.Where(x => x.OccurredAt < query.BeforeOccurredAt || (x.OccurredAt == query.BeforeOccurredAt && x.Id < query.BeforeId));
         }
 
-        var safeLimit = Math.Clamp(limit, 1, 100);
-        return await query
+        var safeLimit = Math.Clamp(query.Limit, 1, 100);
+        return await dbQuery
             .OrderByDescending(x => x.OccurredAt)
             .ThenByDescending(x => x.Id)
             .Take(safeLimit)

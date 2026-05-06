@@ -1,0 +1,178 @@
+name: CI Quality
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: ci-quality-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Cache Sonar packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+
+      - name: Install SonarScanner for .NET
+        run: |
+          dotnet tool update --global dotnet-sonarscanner
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+
+      - name: Validate Sonar configuration
+        shell: bash
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
+          SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
+        run: |
+          set -euo pipefail
+          [ -n "${SONAR_TOKEN:-}" ] || (echo "Missing secret: SONAR_TOKEN" && exit 1)
+          [ -n "${SONAR_PROJECT_KEY:-}" ] || (echo "Missing variable: SONAR_PROJECT_KEY" && exit 1)
+          [ -n "${SONAR_ORGANIZATION:-}" ] || (echo "Missing variable: SONAR_ORGANIZATION" && exit 1)
+
+      - name: Check SonarCloud organization
+        id: check_sonar_org
+        shell: bash
+        env:
+          SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
+          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
+        run: |
+          SONAR_HOST_URL="${SONAR_HOST_URL:-https://sonarcloud.io}"
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+            "${SONAR_HOST_URL}/api/organizations/search?organizations=${SONAR_ORGANIZATION}")
+
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "org_exists=true" >> "$GITHUB_OUTPUT"
+            echo "SonarCloud organization '${SONAR_ORGANIZATION}' verified successfully."
+          else
+            echo "org_exists=false" >> "$GITHUB_OUTPUT"
+            echo "WARNING: SonarCloud organization '${SONAR_ORGANIZATION}' returned HTTP ${HTTP_CODE}. Sonar analysis will be skipped."
+          fi
+
+      - name: Sonar begin
+        id: sonar_begin
+        if: steps.check_sonar_org.outputs.org_exists == 'true'
+        shell: bash
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
+          SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
+          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
+          SONAR_REGION: ${{ vars.SONAR_REGION }}
+        run: |
+          set -euo pipefail
+          SONAR_HOST_URL="${SONAR_HOST_URL:-https://sonarcloud.io}"
+          REGION_ARG=""
+          if [ -n "${SONAR_REGION:-}" ]; then
+            REGION_ARG="/d:sonar.region=${SONAR_REGION}"
+          fi
+
+          dotnet sonarscanner begin \
+            /k:"${SONAR_PROJECT_KEY}" \
+            /o:"${SONAR_ORGANIZATION}" \
+            /d:sonar.host.url="${SONAR_HOST_URL}" \
+            /d:sonar.token="${SONAR_TOKEN}" \
+            /d:sonar.exclusions="**/Migrations/**" \
+            /d:sonar.cs.vstest.reportsPaths="TestResults/sonar/**/*.trx" \
+            /d:sonar.cs.opencover.reportsPaths="TestResults/sonar/**/coverage.opencover.xml" \
+            ${REGION_ARG}
+
+      - name: Restore
+        run: dotnet restore MedicalCenter.sln
+
+      - name: Build
+        run: dotnet build MedicalCenter.sln --configuration Release --no-restore
+
+      - name: Test with coverage
+        shell: bash
+        run: >
+          rm -rf TestResults/sonar &&
+          dotnet test MedicalCenter.sln
+          --configuration Release
+          --no-build
+          --results-directory TestResults/sonar
+          --logger "trx;LogFileName=test-results.trx"
+          --collect:"XPlat Code Coverage;Format=opencover"
+
+      - name: Sonar end
+        if: ${{ always() && steps.sonar_begin.outcome == 'success' }}
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: dotnet sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
+
+      - name: Upload test results
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ github.run_id }}
+          path: TestResults
+          if-no-files-found: warn
+
+  trivy_pr_scan:
+    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft == false }}
+    runs-on: ubuntu-latest
+    needs: quality
+
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image for PR scan (local)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: src/MedicalCenter.Api/Dockerfile
+          push: false
+          load: true
+          tags: medicalcenter-api:pr-${{ github.event.pull_request.number }}
+          cache-from: type=gha,scope=medicalcenter-api-pr
+          cache-to: type=gha,mode=max,scope=medicalcenter-api-pr
+
+      - name: Trivy scan PR image (block HIGH/CRITICAL)
+        uses: aquasecurity/trivy-action@0.35.0
+        with:
+          scan-type: image
+          image-ref: medicalcenter-api:pr-${{ github.event.pull_request.number }}
+          format: sarif
+          output: trivy-results.sarif
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
+          hide-progress: true
+
+      - name: Upload Trivy SARIF
+        if: ${{ always() }}
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-results.sarif

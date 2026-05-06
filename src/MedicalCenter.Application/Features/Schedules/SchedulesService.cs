@@ -4,6 +4,7 @@ using MedicalCenter.Application.DTOs;
 using MedicalCenter.Application.Exceptions;
 using MedicalCenter.Application.Features.AdminEventFeed;
 using MedicalCenter.Domain.Enums;
+using System.Globalization;
 
 namespace MedicalCenter.Application.Features.Schedules;
 
@@ -15,6 +16,7 @@ public sealed class SchedulesService(
     IAdminEventFeedRepository adminEventFeedRepository,
     IUnitOfWork unitOfWork) : ISchedulesService
 {
+    private const string HorarioNoEncontradoMessage = "Horario no encontrado";
     public async Task<IReadOnlyCollection<CameraSummary>> GetCamarasAsync(CancellationToken cancellationToken)
     {
         var cameras = await cameraRepository.GetAsync(cancellationToken);
@@ -121,9 +123,9 @@ public sealed class SchedulesService(
     public async Task<ScheduleHourSummary> UpdateHorarioAsync(int id, string hora, int orden, CancellationToken cancellationToken)
     {
         ValidateHour(hora, orden);
-        var scheduleHour = await scheduleHourRepository.GetByIdAsync(id, cancellationToken) ?? throw new NotFoundException("Horario no encontrado");
-        var futureSlots = await appointmentRepository.GetByRangeAsync(DateOnly.FromDateTime(DateTime.UtcNow.Date), DateOnly.FromDateTime(DateTime.UtcNow.Date.AddYears(2)), cancellationToken);
-        if (!string.Equals(scheduleHour.Hora, hora.Trim(), StringComparison.Ordinal) && futureSlots.Any(x => x.Hora == TimeOnly.Parse(scheduleHour.Hora)))
+        var scheduleHour = await scheduleHourRepository.GetByIdAsync(id, cancellationToken) ?? throw new NotFoundException(HorarioNoEncontradoMessage);
+        var futureSlots = await appointmentRepository.GetByRangeAsync(DateOnly.FromDateTime(DateTime.UtcNow.Date), DateOnly.FromDateTime(DateTime.UtcNow.Date.AddYears(2)), null, null, cancellationToken);
+        if (!string.Equals(scheduleHour.Hora, hora.Trim(), StringComparison.Ordinal) && futureSlots.Any(x => x.Hora == TimeOnly.Parse(scheduleHour.Hora, CultureInfo.InvariantCulture)))
         {
             throw new ConflictException("No se puede cambiar la hora de un horario con slots futuros existentes");
         }
@@ -135,7 +137,7 @@ public sealed class SchedulesService(
 
     public async Task<ScheduleHourSummary> UpdateHorarioEstadoAsync(int id, bool activo, CancellationToken cancellationToken)
     {
-        var scheduleHour = await scheduleHourRepository.GetByIdAsync(id, cancellationToken) ?? throw new NotFoundException("Horario no encontrado");
+        var scheduleHour = await scheduleHourRepository.GetByIdAsync(id, cancellationToken) ?? throw new NotFoundException(HorarioNoEncontradoMessage);
         scheduleHour.SetActivo(activo);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return new ScheduleHourSummary(scheduleHour.Id, scheduleHour.Hora, scheduleHour.Orden, scheduleHour.Activo);
@@ -143,14 +145,14 @@ public sealed class SchedulesService(
 
     public async Task<int> GetHorarioDeletionPreviewAsync(int id, CancellationToken cancellationToken)
     {
-        var scheduleHour = await scheduleHourRepository.GetByIdAsync(id, cancellationToken) ?? throw new NotFoundException("Horario no encontrado");
-        var futureSlots = await appointmentRepository.GetByRangeAsync(DateOnly.FromDateTime(DateTime.UtcNow.Date), DateOnly.FromDateTime(DateTime.UtcNow.Date.AddYears(2)), cancellationToken);
-        return futureSlots.Count(x => x.Hora == TimeOnly.Parse(scheduleHour.Hora));
+        var scheduleHour = await scheduleHourRepository.GetByIdAsync(id, cancellationToken) ?? throw new NotFoundException(HorarioNoEncontradoMessage);
+        var futureSlots = await appointmentRepository.GetByRangeAsync(DateOnly.FromDateTime(DateTime.UtcNow.Date), DateOnly.FromDateTime(DateTime.UtcNow.Date.AddYears(2)), null, null, cancellationToken);
+        return futureSlots.Count(x => x.Hora == TimeOnly.Parse(scheduleHour.Hora, CultureInfo.InvariantCulture));
     }
 
     public async Task<MutationResult> DeleteHorarioAsync(int id, CancellationToken cancellationToken)
     {
-        var scheduleHour = await scheduleHourRepository.GetByIdAsync(id, cancellationToken) ?? throw new NotFoundException("Horario no encontrado");
+        var scheduleHour = await scheduleHourRepository.GetByIdAsync(id, cancellationToken) ?? throw new NotFoundException(HorarioNoEncontradoMessage);
         scheduleHour.SetActivo(false);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return new MutationResult(true);
@@ -166,7 +168,7 @@ public sealed class SchedulesService(
 
     private static void ValidateHour(string hora, int orden)
     {
-        if (!TimeOnly.TryParse(hora, out _) || hora.Length != 5)
+        if (!TimeOnly.TryParseExact(hora, "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out _))
         {
             throw new ValidationException("Hora invalida");
         }
@@ -186,7 +188,7 @@ public sealed class SchedulesService(
         string summary,
         CancellationToken cancellationToken)
     {
-        var entry = new MedicalCenter.Domain.Entities.AdminEventFeedEntry(
+        var entry = new MedicalCenter.Domain.Entities.AdminEventFeedEntry(new MedicalCenter.Domain.Entities.AdminEventFeedEntryCreateParams(
             0,
             DateTimeOffset.UtcNow,
             actorUserId,
@@ -204,7 +206,7 @@ public sealed class SchedulesService(
             summary,
             AdminEventFeedConstants.SourceSystemApi,
             $"camera:{actionCode}:{entityId}:{Guid.NewGuid():N}",
-            "{}");
+            "{}"));
 
         await adminEventFeedRepository.AddAsync(entry, cancellationToken);
     }

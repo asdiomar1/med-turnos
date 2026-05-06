@@ -5,6 +5,6 @@ namespace MedicalCenter.Application.Mappings;
 
 public static class PatientNoteMappings
 {
-    public static PatientNoteSummary ToSummary(this PatientNote x) =>
-        new(x.Id, x.PatientId, x.AuthorId, x.Message, x.CreatedAt);
+    public static PatientNoteSummary ToSummary(this PatientNote x, string? authorNombre = null) =>
+        new(x.Id, x.PatientId, x.AuthorId, x.Message, x.CreatedAt, authorNombre);
 }

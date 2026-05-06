@@ -3,56 +3,58 @@ using MedicalCenter.Domain.Constants;
 
 namespace MedicalCenter.Domain.Entities;
 
+public sealed record BlockHistoryCreateParams(
+    Guid Id,
+    DateOnly Fecha,
+    TimeOnly Hora,
+    int? CamaraId,
+    Guid? SlotId,
+    int? Lugar,
+    string Accion,
+    Guid? PacienteId,
+    Guid? RealizadoPor,
+    string? Motivo,
+    bool ReferidoTercero,
+    string ModalidadCobro,
+    int? ObraSocialId,
+    string? NumeroAutorizacion,
+    Guid? ObraSocialValidadaPor,
+    DateTimeOffset? ObraSocialValidadaAt,
+    int? MedicoId,
+    bool EsNuevoIngreso,
+    int? ReferenteId,
+    Guid? TandaId,
+    int? SesionesAutorizadas,
+    Guid? CicloObraSocialId);
+
 public sealed class BlockHistory : Entity<Guid>
 {
     private BlockHistory() { }
 
-    public BlockHistory(
-        Guid id,
-        DateOnly fecha,
-        TimeOnly hora,
-        int? camaraId,
-        Guid? slotId,
-        int? lugar,
-        string accion,
-        Guid? pacienteId,
-        Guid? realizadoPor,
-        string? motivo,
-        bool referidoTercero,
-        string modalidadCobro,
-        int? obraSocialId,
-        string? numeroAutorizacion,
-        Guid? obraSocialValidadaPor,
-        DateTimeOffset? obraSocialValidadaAt,
-        int? medicoId,
-        bool esNuevoIngreso,
-        int? referenteId,
-        Guid? tandaId,
-        int? sesionesAutorizadas,
-        Guid? cicloObraSocialId)
+    public BlockHistory(BlockHistoryCreateParams p)
     {
-        Id = id;
-        Fecha = fecha;
-        Hora = hora;
-        CamaraId = camaraId;
-        SlotId = slotId;
-        Lugar = lugar;
-        Accion = accion;
-        PacienteId = pacienteId;
-        RealizadoPor = realizadoPor;
-        Motivo = motivo;
-        ReferidoTercero = referidoTercero;
-        ModalidadCobro = modalidadCobro;
-        ObraSocialId = obraSocialId;
-        NumeroAutorizacion = numeroAutorizacion;
-        ObraSocialValidadaPor = obraSocialValidadaPor;
-        ObraSocialValidadaAt = obraSocialValidadaAt;
-        MedicoId = medicoId;
-        EsNuevoIngreso = esNuevoIngreso;
-        ReferenteId = referenteId;
-        TandaId = tandaId;
-        SesionesAutorizadas = sesionesAutorizadas;
-        CicloObraSocialId = cicloObraSocialId;
+        Id = p.Id;
+        Fecha = p.Fecha;
+        Hora = p.Hora;
+        CamaraId = p.CamaraId;
+        SlotId = p.SlotId;
+        Lugar = p.Lugar;
+        Accion = p.Accion;
+        PacienteId = p.PacienteId;
+        RealizadoPor = p.RealizadoPor;
+        Motivo = p.Motivo;
+        ReferidoTercero = p.ReferidoTercero;
+        ModalidadCobro = p.ModalidadCobro;
+        ObraSocialId = p.ObraSocialId;
+        NumeroAutorizacion = p.NumeroAutorizacion;
+        ObraSocialValidadaPor = p.ObraSocialValidadaPor;
+        ObraSocialValidadaAt = p.ObraSocialValidadaAt;
+        MedicoId = p.MedicoId;
+        EsNuevoIngreso = p.EsNuevoIngreso;
+        ReferenteId = p.ReferenteId;
+        TandaId = p.TandaId;
+        SesionesAutorizadas = p.SesionesAutorizadas;
+        CicloObraSocialId = p.CicloObraSocialId;
         CreatedAt = DateTimeOffset.UtcNow;
     }
 

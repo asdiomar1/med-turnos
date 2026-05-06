@@ -3,6 +3,7 @@
     <TargetFramework>net8.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="..\MedicalCenter.Contracts\MedicalCenter.Contracts.csproj" />
     <ProjectReference Include="..\MedicalCenter.Domain\MedicalCenter.Domain.csproj" />
   </ItemGroup>
 </Project>

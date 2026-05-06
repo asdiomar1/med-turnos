@@ -46,11 +46,8 @@ public sealed class DailyClosingsController(IDailyClosingsService dailyClosingsS
     }
 
     [HttpGet("export")]
-    public async Task<IActionResult> Export([FromQuery] DateOnly? fecha, [FromQuery(Name = "cierre_id")] Guid? closingId, CancellationToken cancellationToken)
-    {
-        var date = fecha ?? DateOnly.FromDateTime(DateTime.UtcNow);
-        return Ok((await dailyClosingsService.GetDetailAsync(date, closingId, cancellationToken)).ToResponse());
-    }
+    public async Task<IActionResult> Export([FromQuery] DateOnly? fecha, [FromQuery(Name = "cierre_id")] Guid? closingId, CancellationToken cancellationToken) =>
+        await Detail(fecha, closingId, cancellationToken);
 
     [HttpGet("export/mensual")]
     public async Task<IActionResult> ExportMonthly([FromQuery] int anio, [FromQuery] int mes, CancellationToken cancellationToken)

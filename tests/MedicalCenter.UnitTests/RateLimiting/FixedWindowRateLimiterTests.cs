@@ -33,7 +33,7 @@ public sealed class FixedWindowRateLimiterTests
     }
 
     [Fact]
-    public void Acquire_AfterWindowResets_AllowsRequestsAgain()
+    public async Task Acquire_AfterWindowResets_AllowsRequestsAgain()
     {
         var limiter = CreateLimiter(permitLimit: 2, windowSeconds: 1);
         limiter.AttemptAcquire().Dispose();
@@ -42,7 +42,7 @@ public sealed class FixedWindowRateLimiterTests
         using var rejected = limiter.AttemptAcquire();
         Assert.False(rejected.IsAcquired);
 
-        Thread.Sleep(1100);
+        await Task.Delay(1100);
 
         using var lease = limiter.AttemptAcquire();
         Assert.True(lease.IsAcquired);
