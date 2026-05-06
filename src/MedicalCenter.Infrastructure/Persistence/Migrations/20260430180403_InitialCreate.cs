@@ -1,3 +1,5 @@
+#pragma warning disable CA1861
+
 ﻿using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore.Migrations;
@@ -1240,3 +1242,5 @@ namespace MedicalCenter.Infrastructure.Persistence.Migrations
         }
     }
 }
+
+#pragma warning restore CA1861
