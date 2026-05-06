@@ -14,6 +14,7 @@ public static class HealthWaiter
 {
     private const int DefaultTimeoutSeconds = 60;
     private const int PollIntervalMs = 2000;
+    private const string DefaultHealthUrl = "http://localhost:8090/health/ready"; // NOSONAR S1075 — default value, overridable via parameter
 
     /// <summary>
     /// Waits for Postgres to become available.
@@ -36,8 +37,8 @@ public static class HealthWaiter
             {
                 if (part.Trim().StartsWith("Host=", StringComparison.OrdinalIgnoreCase))
                     host = part.Trim()[5..];
-                else if (part.Trim().StartsWith("Port=", StringComparison.OrdinalIgnoreCase))
-                    int.TryParse(part.Trim()[5..], out port);
+                else if (part.Trim().StartsWith("Port=", StringComparison.OrdinalIgnoreCase) && int.TryParse(part.Trim()[5..], out var parsedPort))
+                    port = parsedPort;
             }
         }
 
@@ -112,7 +113,7 @@ public static class HealthWaiter
     /// Waits for API health endpoint (optional additional check).
     /// </summary>
     public static async Task<bool> WaitForApiHealthAsync(
-        string url = "http://localhost:8090/health/ready",
+        string url = DefaultHealthUrl,
         int timeoutSeconds = 30,
         CancellationToken cancellationToken = default)
     {

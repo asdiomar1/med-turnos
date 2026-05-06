@@ -21,8 +21,8 @@ public sealed class ReferenteRepository(MedicalCenterDbContext dbContext) : IRef
         }
 
         return query.FirstOrDefaultAsync(x =>
-            x.Nombre.ToLower().Trim() == normalizedName.ToLower().Trim() &&
-            x.Tipo.ToLower() == normalizedType.ToLower(), cancellationToken);
+            string.Equals(x.Nombre.Trim(), normalizedName.Trim(), StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(x.Tipo, normalizedType, StringComparison.OrdinalIgnoreCase), cancellationToken);
     }
 
     public async Task<int> GetNextOrderAsync(CancellationToken cancellationToken)

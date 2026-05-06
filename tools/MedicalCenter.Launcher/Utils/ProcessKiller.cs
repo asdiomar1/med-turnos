@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 /// </summary>
 public static class ProcessKiller
 {
+    private static readonly char[] WhitespaceChars = [' ', '\t'];
     /// <summary>
     /// Kills the process listening on the given port, if any.
     /// Returns true if a process was found and killed.
@@ -67,7 +68,7 @@ public static class ProcessKiller
             if (!trimmed.Contains("LISTENING")) continue;
 
             // Format: TCP  0.0.0.0:5245  0.0.0.0:0  LISTENING  12345
-            var parts = trimmed.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+            var parts = trimmed.Split(WhitespaceChars, StringSplitOptions.RemoveEmptyEntries);
             if (parts.Length >= 5)
             {
                 return parts[^1]; // Last token is the PID

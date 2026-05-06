@@ -112,7 +112,7 @@ public sealed class DailyClosingsService(
         }
     }
 
-    private static IReadOnlyCollection<DashboardAlertDto> BuildAlerts(Metrics metrics, decimal ocupacionPorcentaje)
+    private static List<DashboardAlertDto> BuildAlerts(Metrics metrics, decimal ocupacionPorcentaje)
     {
         var alerts = new List<DashboardAlertDto>();
         if (metrics.Total == 0)

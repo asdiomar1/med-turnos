@@ -2,13 +2,24 @@ namespace MedicalCenter.Api.Middleware;
 
 public sealed class SecurityHeadersMiddleware(RequestDelegate next)
 {
+    private const string ContentSecurityPolicy =
+        "default-src 'none'; " +
+        "base-uri 'none'; " +
+        "frame-ancestors 'none'; " +
+        "form-action 'self'; " +
+        "object-src 'none'; " +
+        "script-src 'self'; " +
+        "style-src 'self'; " +
+        "img-src 'self' data:; " +
+        "connect-src 'self'";
+
     public async Task InvokeAsync(HttpContext context)
     {
-        context.Response.Headers["X-Content-Type-Options"] = "nosniff";
-        context.Response.Headers["X-Frame-Options"] = "DENY";
+        context.Response.Headers.XContentTypeOptions = "nosniff";
+        context.Response.Headers.XFrameOptions = "DENY";
         context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
-        context.Response.Headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self';";
-        context.Response.Headers["X-XSS-Protection"] = "1; mode=block";
+        context.Response.Headers.ContentSecurityPolicy = ContentSecurityPolicy;
+        context.Response.Headers.XXSSProtection = "1; mode=block";
 
         await next(context);
     }

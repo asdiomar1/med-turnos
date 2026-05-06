@@ -43,10 +43,7 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options) : ITokenServic
 
     public string CreateNumericCode(int digits)
     {
-        if (digits <= 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(digits));
-        }
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(digits);
 
         var maxExclusive = (int)Math.Pow(10, digits);
         var value = RandomNumberGenerator.GetInt32(0, maxExclusive);

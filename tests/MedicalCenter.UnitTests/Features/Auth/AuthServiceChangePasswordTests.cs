@@ -88,7 +88,7 @@ public sealed class AuthServiceChangePasswordTests
         var exception = await Assert.ThrowsAsync<ValidationException>(
             () => sut.ChangeOwnPasswordAsync(Guid.NewGuid(), "misma-clave-123", "misma-clave-123", CancellationToken.None));
 
-        Assert.Equal(AuthPasswordRules.DifferentPasswordMessage, exception.Message);
+        Assert.Equal(AuthPasswordRules.DifferentCurrentMessage, exception.Message);
         await _refreshTokenRepository.DidNotReceiveWithAnyArgs().RevokeActiveByUserIdAsync(default, default, default);
         await _unitOfWork.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
     }

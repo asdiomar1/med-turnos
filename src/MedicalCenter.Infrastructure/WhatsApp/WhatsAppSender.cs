@@ -8,30 +8,30 @@ namespace MedicalCenter.Infrastructure.WhatsApp;
 
 public sealed class WhatsAppSender(HttpClient httpClient, IOptions<WhatsAppOptions> options) : IWhatsAppSender
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
-
+    private const string KapsoProvider = "kapso";
+    private const string MetaProvider = "meta";
     public async Task<WhatsAppSendResult> SendRawAsync(string requestPayloadJson, CancellationToken cancellationToken)
     {
         var provider = NormalizeProvider(options.Value.Provider);
         var primary = await SendWithProviderAsync(provider, requestPayloadJson, cancellationToken);
-        if (primary.Ok || provider != "kapso" || NormalizeProvider(options.Value.ProviderFallback) != "meta")
+        if (primary.Ok || provider != KapsoProvider || NormalizeProvider(options.Value.ProviderFallback) != MetaProvider)
         {
             return primary;
         }
 
-        var fallback = await SendWithProviderAsync("meta", requestPayloadJson, cancellationToken);
+        var fallback = await SendWithProviderAsync(MetaProvider, requestPayloadJson, cancellationToken);
         if (!fallback.Ok)
         {
             return new WhatsAppSendResult(
                 false,
-                "kapso",
+                KapsoProvider,
                 primary.ProviderMessageId,
                 fallback.ResponsePayloadJson,
                 fallback.ErrorCode ?? primary.ErrorCode,
                 fallback.ErrorMessage ?? primary.ErrorMessage);
         }
 
-        return fallback with { Provider = "meta" };
+        return fallback with { Provider = MetaProvider };
     }
 
     private async Task<WhatsAppSendResult> SendWithProviderAsync(string provider, string requestPayloadJson, CancellationToken cancellationToken)
@@ -67,7 +67,7 @@ public sealed class WhatsAppSender(HttpClient httpClient, IOptions<WhatsAppOptio
     }
 
     private static string NormalizeProvider(string? value) =>
-        string.Equals(value?.Trim(), "kapso", StringComparison.OrdinalIgnoreCase) ? "kapso" : "meta";
+        string.Equals(value?.Trim(), KapsoProvider, StringComparison.OrdinalIgnoreCase) ? KapsoProvider : MetaProvider;
 
     private static string BuildEndpoint(string provider)
     {
@@ -77,14 +77,14 @@ public sealed class WhatsAppSender(HttpClient httpClient, IOptions<WhatsAppOptio
             throw new InvalidOperationException("Falta WHATSAPP_PHONE_NUMBER_ID.");
         }
 
-        return provider == "kapso"
+        return provider == KapsoProvider
             ? $"{(Environment.GetEnvironmentVariable("KAPSO_BASE_URL") ?? "https://api.kapso.ai/meta/whatsapp").TrimEnd('/')}/v24.0/{phoneNumberId}/messages"
             : $"https://graph.facebook.com/v23.0/{phoneNumberId}/messages";
     }
 
     private static void AddAuthenticationHeaders(HttpRequestMessage request, string provider)
     {
-        if (provider == "kapso")
+        if (provider == KapsoProvider)
         {
             var apiKey = Environment.GetEnvironmentVariable("KAPSO_API_KEY") ?? string.Empty;
             if (string.IsNullOrWhiteSpace(apiKey))

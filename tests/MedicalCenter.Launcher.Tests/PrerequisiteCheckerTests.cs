@@ -7,7 +7,7 @@ using Xunit;
 public class PrerequisiteCheckerTests
 {
     [Fact]
-    public async Task CheckDotNetSdkAsync_WhenValidVersion_ReturnsPassed()
+    public void CheckDotNetSdkAsync_WhenValidVersion_ReturnsPassed()
     {
         // Arrange & Act - This test would need mocking ProcessRunner
         // In real implementation, we'd mock ProcessRunner to return specific versions
@@ -18,7 +18,7 @@ public class PrerequisiteCheckerTests
     }
 
     [Fact]
-    public async Task CheckDockerEngineAsync_WhenNotInstalled_ReturnsFailed()
+    public void CheckDockerEngineAsync_WhenNotInstalled_ReturnsFailed()
     {
         // This test verifies the method signature
         var task = PrerequisiteChecker.CheckDockerEngineAsync();

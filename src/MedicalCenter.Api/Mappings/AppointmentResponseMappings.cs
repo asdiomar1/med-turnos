@@ -52,18 +52,6 @@ public static class AppointmentResponseMappings
             ObraSocialValidadaPorPerfil = x.ObraSocialValidadaPorPerfil.ToResponse(),
         };
 
-    /// <summary>
-    /// Portal-specific mapping: only exposes a subset of appointment fields
-    /// (no operative data fields like ModalidadCobro, ObraSocial, etc.)
-    /// </summary>
-    public static AppointmentResponse ToPortalResponse(this AppointmentSummary x) =>
-        new()
-        {
-            Id = x.Id, Fecha = x.Fecha, Hora = x.Hora, Lugar = x.Lugar, Estado = x.Estado,
-            PacienteId = x.PacienteId, CamaraId = x.CamaraId, BlockId = x.BlockId, TandaId = x.TandaId,
-            ApartadoPorUserId = x.ApartadoPorUserId, ApartadoPor = x.ApartadoPorUserId, ApartadoTs = x.ApartadoTs,
-        };
-
     public static TurnoEnrichedResponse ToTurnoEnrichedResponse(this TurnoEnrichedSummary x) =>
         new()
         {
@@ -154,5 +142,17 @@ public static class AppointmentResponseMappings
             TieneDisponibilidad = x.TieneDisponibilidad,
             TieneBloqueCompletoPosible = x.TieneBloqueCompletoPosible,
             BloqueadoPorPaciente = x.BloqueadoPorPaciente
+        };
+
+    /// <summary>
+    /// Portal-specific mapping: only exposes a subset of appointment fields
+    /// (no operative data fields like ModalidadCobro, ObraSocial, etc.)
+    /// </summary>
+    public static AppointmentResponse ToPortalResponse(this AppointmentSummary x) =>
+        new()
+        {
+            Id = x.Id, Fecha = x.Fecha, Hora = x.Hora, Lugar = x.Lugar, Estado = x.Estado,
+            PacienteId = x.PacienteId, CamaraId = x.CamaraId, BlockId = x.BlockId, TandaId = x.TandaId,
+            ApartadoPorUserId = x.ApartadoPorUserId, ApartadoPor = x.ApartadoPorUserId, ApartadoTs = x.ApartadoTs,
         };
 }

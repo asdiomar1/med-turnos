@@ -45,8 +45,9 @@ public sealed class AppointmentRepository(
             await dbContext.SaveChangesAsync(cancellationToken);
             return true;
         }
-        catch (DbUpdateConcurrencyException)
+        catch (DbUpdateConcurrencyException ex)
         {
+            logger.LogDebug(ex, "Concurrency conflict detected during TryReserveAppointmentAsync");
             return false;
         }
     }
@@ -58,14 +59,14 @@ public sealed class AppointmentRepository(
             await dbContext.SaveChangesAsync(cancellationToken);
             return true;
         }
-        catch (DbUpdateConcurrencyException)
+        catch (DbUpdateConcurrencyException ex)
         {
+            logger.LogDebug(ex, "Concurrency conflict detected during TryCommitAsync");
             return false;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            logger.LogError(ex, "Unexpected database error during TryCommitAsync");
-            throw;
+            throw CreateTryCommitException(ex);
         }
     }
 
@@ -114,21 +115,30 @@ public sealed class AppointmentRepository(
         {
             throw;
         }
-        catch (DbUpdateConcurrencyException)
+        catch (DbUpdateConcurrencyException ex)
         {
+            logger.LogDebug(
+                ex,
+                "Concurrency conflict detected during TryCommitWithPatientLockAsync for patient {PatientId}",
+                patientId);
             return false;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            logger.LogError(ex,
-                "Unexpected database error during TryCommitWithPatientLockAsync for patient {PatientId}",
-                patientId);
             dbContext.ChangeTracker.Clear();
-            throw;
+            throw CreateTryCommitWithPatientLockException(patientId, ex);
         }
     }
 
     private static int ToMinutes(TimeOnly hora) => hora.Hour * 60 + hora.Minute;
+
+    private static InvalidOperationException CreateTryCommitException(Exception innerException) =>
+        new InvalidOperationException("Unexpected database error during TryCommitAsync.", innerException);
+
+    private static InvalidOperationException CreateTryCommitWithPatientLockException(Guid patientId, Exception innerException) =>
+        new InvalidOperationException(
+            $"Unexpected database error during TryCommitWithPatientLockAsync for patient {patientId}.",
+            innerException);
 
     public async Task<IReadOnlyCollection<Appointment>> GetByDateAsync(DateOnly fecha, CancellationToken cancellationToken) =>
         await dbContext.Appointments

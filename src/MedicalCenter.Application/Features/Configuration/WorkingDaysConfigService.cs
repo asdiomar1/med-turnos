@@ -24,7 +24,7 @@ public sealed class WorkingDaysConfigService(IDiasLaborablesConfigRepository rep
         return config.ToDto();
     }
 
-    private static IReadOnlyCollection<short> Normalize(IReadOnlyCollection<short> diasSemana) =>
+    private static short[] Normalize(IReadOnlyCollection<short> diasSemana) =>
         (diasSemana.Count == 0 ? DefaultDays : diasSemana)
             .Distinct()
             .Where(x => x >= 0 && x <= 6)

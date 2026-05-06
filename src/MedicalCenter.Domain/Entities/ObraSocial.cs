@@ -6,7 +6,7 @@ public sealed class ObraSocial : Entity<int>
 {
     private ObraSocial() { }
 
-    public ObraSocial(int id = 0, string nombre = "", bool activa = true, bool tieneConvenio = false, int orden = 0, string? abreviatura = null)
+    public ObraSocial(int id, string nombre, bool activa, bool tieneConvenio, int orden, string? abreviatura)
     {
         Id = id;
         Nombre = nombre;

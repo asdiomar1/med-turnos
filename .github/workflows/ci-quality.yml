@@ -83,8 +83,8 @@ jobs:
             /d:sonar.token="${SONAR_TOKEN}" \
             /d:sonar.qualitygate.wait=true \
             /d:sonar.qualitygate.timeout=600 \
-            /d:sonar.cs.vstest.reportsPaths="TestResults/**/*.trx" \
-            /d:sonar.cs.opencover.reportsPaths="TestResults/**/coverage.opencover.xml" \
+            /d:sonar.cs.vstest.reportsPaths="TestResults/sonar/**/*.trx" \
+            /d:sonar.cs.opencover.reportsPaths="TestResults/sonar/**/coverage.opencover.xml" \
             ${REGION_ARG}
 
       - name: Restore
@@ -94,11 +94,13 @@ jobs:
         run: dotnet build MedicalCenter.sln --configuration Release --no-restore
 
       - name: Test with coverage
+        shell: bash
         run: >
+          rm -rf TestResults/sonar &&
           dotnet test MedicalCenter.sln
           --configuration Release
           --no-build
-          --results-directory TestResults
+          --results-directory TestResults/sonar
           --logger "trx;LogFileName=test-results.trx"
           --collect:"XPlat Code Coverage;Format=opencover"
 

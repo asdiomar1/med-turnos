@@ -12,6 +12,7 @@ using MedicalCenter.Launcher.Utils;
 /// </summary>
 public static class DockerComposeRunner
 {
+    private const string DockerCommand = "docker";
     /// <summary>
     /// Starts docker-compose services (optionally filtered by service names).
     /// Shows full output on failure.
@@ -22,17 +23,19 @@ public static class DockerComposeRunner
         string? workingDirectory = null,
         int timeoutMs = 120000)
     {
-        var args = "compose up -d";
+        var argsBuilder = new System.Text.StringBuilder("compose up -d");
 
         if (services != null)
         {
             foreach (var service in services)
             {
-                args += $" {service}";
+                argsBuilder.Append(' ').Append(service);
             }
         }
 
-        var result = await ProcessRunner.RunAsync("docker", args, workingDirectory, timeoutMs);
+        var args = argsBuilder.ToString();
+
+        var result = await ProcessRunner.RunAsync(DockerCommand, args, workingDirectory, timeoutMs);
 
         if (result.ExitCode != 0)
         {
@@ -52,7 +55,7 @@ public static class DockerComposeRunner
         int timeoutMs = 60000)
     {
         var args = "compose down";
-        var result = await ProcessRunner.RunAsync("docker", args, workingDirectory, timeoutMs);
+        var result = await ProcessRunner.RunAsync(DockerCommand, args, workingDirectory, timeoutMs);
 
         if (result.ExitCode != 0)
         {
@@ -73,7 +76,7 @@ public static class DockerComposeRunner
         int timeoutMs = 60000)
     {
         var args = "compose down -v";
-        var result = await ProcessRunner.RunAsync("docker", args, workingDirectory, timeoutMs);
+        var result = await ProcessRunner.RunAsync(DockerCommand, args, workingDirectory, timeoutMs);
 
         if (result.ExitCode != 0)
         {
@@ -100,7 +103,7 @@ public static class DockerComposeRunner
         }
 
         return await ProcessRunner.RunAsync(
-            "docker", 
+            DockerCommand, 
             args, 
             workingDirectory, 
             timeoutMs,
@@ -119,7 +122,7 @@ public static class DockerComposeRunner
         int timeoutMs = 0)
     {
         var args = $"compose up -d {serviceName}";
-        var result = await ProcessRunner.RunAsync("docker", args, workingDirectory, timeoutMs);
+        var result = await ProcessRunner.RunAsync(DockerCommand, args, workingDirectory, timeoutMs);
 
         if (result.ExitCode != 0)
         {

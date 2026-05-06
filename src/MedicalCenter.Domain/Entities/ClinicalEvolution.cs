@@ -6,34 +6,23 @@ public sealed class ClinicalEvolution : Entity<Guid>
 {
     private ClinicalEvolution() { }
 
-    public ClinicalEvolution(
-        Guid id,
-        Guid patientId,
-        Guid? consultaSlotId,
-        int medicoId,
-        Guid authorProfileId,
-        DateOnly fechaClinica,
-        string? titulo,
-        string nota,
-        string? diagnosticoImpresion,
-        string? indicaciones,
-        DateTimeOffset? createdAt = null,
-        DateTimeOffset? updatedAt = null,
-        Guid? medicoUserId = null)
+    public ClinicalEvolution(ClinicalEvolutionCreateData data)
     {
-        Id = id;
-        PatientId = patientId;
-        ConsultaSlotId = consultaSlotId;
-        MedicoId = medicoId;
-        MedicoUserId = medicoUserId;
-        AuthorProfileId = authorProfileId;
-        FechaClinica = fechaClinica;
-        Titulo = titulo;
-        Nota = nota;
-        DiagnosticoImpresion = diagnosticoImpresion;
-        Indicaciones = indicaciones;
-        CreatedAt = createdAt ?? DateTimeOffset.UtcNow;
-        UpdatedAt = updatedAt ?? DateTimeOffset.UtcNow;
+        ArgumentNullException.ThrowIfNull(data);
+
+        Id = data.Id;
+        PatientId = data.PatientId;
+        ConsultaSlotId = data.ConsultaSlotId;
+        MedicoId = data.MedicoId;
+        MedicoUserId = data.MedicoUserId;
+        AuthorProfileId = data.AuthorProfileId;
+        FechaClinica = data.FechaClinica;
+        Titulo = data.Titulo;
+        Nota = data.Nota;
+        DiagnosticoImpresion = data.DiagnosticoImpresion;
+        Indicaciones = data.Indicaciones;
+        CreatedAt = data.CreatedAt ?? DateTimeOffset.UtcNow;
+        UpdatedAt = data.UpdatedAt ?? DateTimeOffset.UtcNow;
     }
 
     public Guid PatientId { get; private set; }
@@ -48,4 +37,21 @@ public sealed class ClinicalEvolution : Entity<Guid>
     public string? Indicaciones { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
     public DateTimeOffset UpdatedAt { get; private set; }
+}
+
+public sealed class ClinicalEvolutionCreateData
+{
+    public required Guid Id { get; init; }
+    public required Guid PatientId { get; init; }
+    public Guid? ConsultaSlotId { get; init; }
+    public required int MedicoId { get; init; }
+    public Guid? MedicoUserId { get; init; }
+    public required Guid AuthorProfileId { get; init; }
+    public required DateOnly FechaClinica { get; init; }
+    public string? Titulo { get; init; }
+    public required string Nota { get; init; }
+    public string? DiagnosticoImpresion { get; init; }
+    public string? Indicaciones { get; init; }
+    public DateTimeOffset? CreatedAt { get; init; }
+    public DateTimeOffset? UpdatedAt { get; init; }
 }

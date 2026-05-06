@@ -12,9 +12,7 @@ using MedicalCenter.Launcher.UI;
 /// </summary>
 public static class ConfigGenerator
 {
-    private static readonly string[] RequiredLaunchJsonKeys = { "configurations" };
-    private static readonly string[] RequiredAppSettingsKeys = { "ConnectionStrings", "Logging" };
-
+    private static readonly JsonSerializerOptions IndentedJsonOptions = new() { WriteIndented = true };
     /// <summary>
     /// Ensures .vscode/launch.json exists with the MedicalCenter.Api debug profile.
     /// </summary>
@@ -75,7 +73,7 @@ public static class ConfigGenerator
             {
                 // File exists - merge missing keys only
                 ConsoleWriter.Warning("appsettings.Development.json exists - merging missing keys");
-                await MergeAppSettingsAsync(appSettingsPath);
+                MergeAppSettings(appSettingsPath);
                 return new ConfigResult(false, true, appSettingsPath);
             }
 
@@ -121,7 +119,7 @@ public static class ConfigGenerator
             }
         };
 
-        return JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true });
+        return JsonSerializer.Serialize(config, IndentedJsonOptions);
     }
 
     private static async Task MergeLaunchJsonAsync(string path)
@@ -181,18 +179,13 @@ public static class ConfigGenerator
             }
         };
 
-        return JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true });
+        return JsonSerializer.Serialize(config, IndentedJsonOptions);
     }
 
-    private static async Task MergeAppSettingsAsync(string path)
+    private static void MergeAppSettings(string path)
     {
         try
         {
-            var existingJson = await File.ReadAllTextAsync(path);
-            var existing = JsonDocument.Parse(existingJson);
-            var newContent = GenerateAppSettingsDev();
-            var newDoc = JsonDocument.Parse(newContent);
-
             // Simple merge - add missing top-level keys
             // This is a simplified merge - in production, you'd want deep merge
             ConsoleWriter.Info("appsettings.Development.json merge is simplified - manual review recommended");

@@ -393,3 +393,8 @@ tools/*/obj/
 .env.local
 .env.*.local
 tmp-fix-author-name.sql
+
+# Sonar local outputs
+sonar-issues*.json
+.sonarqube/
+nul
