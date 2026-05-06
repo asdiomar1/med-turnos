@@ -59,8 +59,28 @@ jobs:
           [ -n "${SONAR_PROJECT_KEY:-}" ] || (echo "Missing variable: SONAR_PROJECT_KEY" && exit 1)
           [ -n "${SONAR_ORGANIZATION:-}" ] || (echo "Missing variable: SONAR_ORGANIZATION" && exit 1)
 
+      - name: Check SonarCloud organization
+        id: check_sonar_org
+        shell: bash
+        env:
+          SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
+          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
+        run: |
+          SONAR_HOST_URL="${SONAR_HOST_URL:-https://sonarcloud.io}"
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+            "${SONAR_HOST_URL}/api/organizations/search?organizations=${SONAR_ORGANIZATION}")
+
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "org_exists=true" >> "$GITHUB_OUTPUT"
+            echo "SonarCloud organization '${SONAR_ORGANIZATION}' verified successfully."
+          else
+            echo "org_exists=false" >> "$GITHUB_OUTPUT"
+            echo "WARNING: SonarCloud organization '${SONAR_ORGANIZATION}' returned HTTP ${HTTP_CODE}. Sonar analysis will be skipped."
+          fi
+
       - name: Sonar begin
         id: sonar_begin
+        if: steps.check_sonar_org.outputs.org_exists == 'true'
         shell: bash
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
