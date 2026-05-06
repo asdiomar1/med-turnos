@@ -13,6 +13,7 @@ public sealed class UserBuilder
     private string _email = "test@medicalcenter.local";
     private bool _isActive = true;
     private bool _isStaff = true;
+    private Guid? _patientId;
     private readonly List<string> _permissions = new();
     private readonly List<Role> _roles = new();
 
@@ -84,6 +85,12 @@ public sealed class UserBuilder
         return this;
     }
 
+    public UserBuilder WithPatientId(Guid? patientId)
+    {
+        _patientId = patientId;
+        return this;
+    }
+
     /// <summary>
     /// Builds the User entity with configured values.
     /// </summary>
@@ -95,7 +102,8 @@ public sealed class UserBuilder
             _email,
             "testhash",
             _isActive,
-            _isStaff));
+            _isStaff,
+            _patientId));
 
         if (_permissions.Count > 0 || _roles.Count > 0)
         {
