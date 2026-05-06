@@ -61,9 +61,6 @@ public static class SimpleResponseMappings
             ObservacionesRelevantes = x.ObservacionesRelevantes, CreatedAt = x.CreatedAt, UpdatedAt = x.UpdatedAt,
         };
 
-    public static ClinicalHistoryResumenResponse ToResumenResponse(this ClinicalHistoryNumeroSummary x) =>
-        new() { PatientId = x.PatientId, Numero = x.Numero };
-
     public static ClinicalEvolutionResponse ToResponse(this ClinicalEvolutionSummary x) =>
         new()
         {
@@ -262,6 +259,9 @@ public static class SimpleResponseMappings
 
     public static WhatsappReminderResponse ToResponse(this WhatsappReminderResult x) =>
         new() { FechaObjetivo = x.FechaObjetivo, Total = x.Total };
+
+    public static ClinicalHistoryResumenResponse ToResumenResponse(this ClinicalHistoryNumeroSummary x) =>
+        new() { PatientId = x.PatientId, Numero = x.Numero };
 
     /// <summary>
     /// Helper: safely parse JSON strings that may be null or empty.

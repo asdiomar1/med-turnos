@@ -55,6 +55,40 @@ public sealed class AuthController(IAuthService authService, ISecurityAuditLogge
         return NoContent();
     }
 
+    [HttpPost("me/password")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> ChangeMyPassword([FromBody] ChangeMyPasswordRequest request, CancellationToken cancellationToken)
+    {
+        Guid? userId = null;
+
+        try
+        {
+            userId = User.GetUserId();
+            await authService.ChangeOwnPasswordAsync(userId.Value, request.CurrentPassword, request.NewPassword, cancellationToken);
+
+            auditLogger.LogAsync(new SecurityEvent(
+                EventType: "password_changed",
+                Message: $"User {userId} changed their password; refresh tokens revoked and access tokens remain valid until expiry.",
+                UserId: userId.ToString(),
+                Path: "/api/v1/auth/me/password",
+                IpAddress: HttpContext.Connection.RemoteIpAddress?.ToString()));
+
+            return NoContent();
+        }
+        catch (Exception)
+        {
+            auditLogger.LogAsync(new SecurityEvent(
+                EventType: "password_change_failed",
+                Message: $"Failed password change attempt for user {userId?.ToString() ?? "unknown"}",
+                UserId: userId?.ToString(),
+                Path: "/api/v1/auth/me/password",
+                IpAddress: HttpContext.Connection.RemoteIpAddress?.ToString()));
+
+            throw;
+        }
+    }
+
     [HttpPost("portal/sign-in")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(AuthSessionResponse), StatusCodes.Status200OK)]

@@ -12,11 +12,7 @@ public sealed class Importacion : Entity<Guid>
         string tipo,
         Guid usuarioId,
         string fileName,
-        string storageProvider,
-        string storageBucket,
-        string storageKey,
-        long sizeBytes,
-        string contentType,
+        ImportacionStorageInfo storageInfo,
         DateTimeOffset expiresAt)
     {
         Id = id;
@@ -24,11 +20,12 @@ public sealed class Importacion : Entity<Guid>
         Estado = ImportacionEstado.PendienteSubida;
         UsuarioId = usuarioId;
         FileName = fileName;
-        StorageProvider = storageProvider;
-        StorageBucket = storageBucket;
-        StorageKey = storageKey;
-        SizeBytes = sizeBytes;
-        ContentType = contentType;
+        StorageProvider = storageInfo.Provider;
+        StorageBucket = storageInfo.Bucket;
+        StorageKey = storageInfo.Key;
+        SizeBytes = storageInfo.SizeBytes;
+        ContentType = storageInfo.ContentType;
+        Sha256 = null;
         ExpiresAt = expiresAt;
         CreatedAt = DateTimeOffset.UtcNow;
     }
@@ -87,4 +84,18 @@ public sealed class Importacion : Entity<Guid>
         Estado == ImportacionEstado.PendienteSubida || Estado == ImportacionEstado.Subido;
 
     public bool PerteneceA(Guid usuarioId) => UsuarioId == usuarioId;
+}
+
+public sealed class ImportacionStorageInfo(
+    string provider,
+    string bucket,
+    string key,
+    long sizeBytes,
+    string contentType)
+{
+    public string Provider { get; } = provider;
+    public string Bucket { get; } = bucket;
+    public string Key { get; } = key;
+    public long SizeBytes { get; } = sizeBytes;
+    public string ContentType { get; } = contentType;
 }

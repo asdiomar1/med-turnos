@@ -11,7 +11,7 @@ using MedicalCenter.Launcher.Utils;
 /// <summary>
 /// Checks for pending Entity Framework migrations without executing them.
 /// </summary>
-public static class MigrationStatusChecker
+public static partial class MigrationStatusChecker
 {
     /// <summary>
     /// Gets the migration status for the Infrastructure project.
@@ -54,12 +54,18 @@ public static class MigrationStatusChecker
         }
     }
 
+    [GeneratedRegex(@"""pendingMigrations"":\s*\[(.*?)\]", RegexOptions.Singleline)]
+    private static partial Regex PendingMigrationsRegex();
+
+    [GeneratedRegex(@"""name"":\s*""([^""]+)""")]
+    private static partial Regex MigrationNameRegex();
+
     private static MigrationStatus ParseJsonOutput(string jsonOutput)
     {
         try
         {
             // Simple JSON parsing - look for "pendingMigrations" array
-            var pendingMatch = Regex.Match(jsonOutput, @"""pendingMigrations"":\s*\[(.*?)\]", RegexOptions.Singleline);
+            var pendingMatch = PendingMigrationsRegex().Match(jsonOutput);
             if (!pendingMatch.Success)
             {
                 return new MigrationStatus(0, Array.Empty<string>(), false);
@@ -68,7 +74,7 @@ public static class MigrationStatusChecker
             var pendingContent = pendingMatch.Groups[1].Value;
 
             // Extract migration names
-            var names = Regex.Matches(pendingContent, @"""name"":\s*""([^""]+)""")
+            var names = MigrationNameRegex().Matches(pendingContent)
                 .Cast<Match>()
                 .Select(m => m.Groups[1].Value)
                 .ToArray();
@@ -100,7 +106,7 @@ public static class MigrationStatusChecker
                     continue;
                 }
 
-                if (inPendingSection && !string.IsNullOrWhiteSpace(trimmed) && !trimmed.StartsWith("("))
+                if (inPendingSection && !string.IsNullOrWhiteSpace(trimmed) && !trimmed.StartsWith('('))
                 {
                     // This is a migration name
                     pendingMigrations.Add(trimmed);

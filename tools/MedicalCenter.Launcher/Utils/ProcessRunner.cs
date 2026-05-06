@@ -21,9 +21,9 @@ public static class ProcessRunner
         string arguments,
         string? workingDirectory = null,
         int timeoutMs = 0,
-        CancellationToken cancellationToken = default,
         Action<string>? onOutput = null,
-        Action<string>? onError = null)
+        Action<string>? onError = null,
+        CancellationToken cancellationToken = default)
     {
         var stdout = new StringBuilder();
         var stderr = new StringBuilder();

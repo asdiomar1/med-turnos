@@ -19,9 +19,9 @@ public sealed class PatientRepository(MedicalCenterDbContext dbContext) : IPatie
         {
             var normalized = search.Trim().ToLower();
             query = query.Where(x =>
-                x.Nombre.ToLower().Contains(normalized) ||
-                (x.DocumentoIdentidad != null && x.DocumentoIdentidad.ToLower().Contains(normalized)) ||
-                (x.Email != null && x.Email.ToLower().Contains(normalized)));
+                x.Nombre.Contains(normalized, StringComparison.OrdinalIgnoreCase) ||
+                (x.DocumentoIdentidad != null && x.DocumentoIdentidad.Contains(normalized, StringComparison.OrdinalIgnoreCase)) ||
+                (x.Email != null && x.Email.Contains(normalized, StringComparison.OrdinalIgnoreCase)));
         }
 
         return await query.OrderBy(x => x.Nombre).ToListAsync(cancellationToken);
@@ -34,7 +34,8 @@ public sealed class PatientRepository(MedicalCenterDbContext dbContext) : IPatie
     {
         var normalized = documentoIdentidad.Trim().ToLower();
         return dbContext.Patients.FirstOrDefaultAsync(
-            x => x.DocumentoIdentidad.ToLower() == normalized || (x.DocumentoIdentidadNormalizado != null && x.DocumentoIdentidadNormalizado.ToLower() == normalized),
+            x => string.Equals(x.DocumentoIdentidad, normalized, StringComparison.OrdinalIgnoreCase)
+                || (x.DocumentoIdentidadNormalizado != null && string.Equals(x.DocumentoIdentidadNormalizado, normalized, StringComparison.OrdinalIgnoreCase)),
             cancellationToken);
     }
 
@@ -42,7 +43,7 @@ public sealed class PatientRepository(MedicalCenterDbContext dbContext) : IPatie
         string.IsNullOrWhiteSpace(loginIdentifier)
             ? Task.FromResult<Patient?>(null)
             : dbContext.Patients.FirstOrDefaultAsync(
-                x => x.LoginIdentifier != null && x.LoginIdentifier.ToLower() == loginIdentifier.Trim().ToLower(),
+                x => x.LoginIdentifier != null && string.Equals(x.LoginIdentifier, loginIdentifier.Trim(), StringComparison.OrdinalIgnoreCase),
                 cancellationToken);
 
     public Task<Patient?> GetByPortalIdentifierAsync(string identifier, CancellationToken cancellationToken)
@@ -55,10 +56,10 @@ public sealed class PatientRepository(MedicalCenterDbContext dbContext) : IPatie
         var normalized = identifier.Trim().ToLower();
         return dbContext.Patients.FirstOrDefaultAsync(
             x =>
-                (x.LoginIdentifier != null && x.LoginIdentifier.ToLower() == normalized) ||
-                x.DocumentoIdentidad.ToLower() == normalized ||
-                (x.DocumentoIdentidadNormalizado != null && x.DocumentoIdentidadNormalizado.ToLower() == normalized) ||
-                (x.Email != null && x.Email.ToLower() == normalized),
+                (x.LoginIdentifier != null && string.Equals(x.LoginIdentifier, normalized, StringComparison.OrdinalIgnoreCase)) ||
+                string.Equals(x.DocumentoIdentidad, normalized, StringComparison.OrdinalIgnoreCase) ||
+                (x.DocumentoIdentidadNormalizado != null && string.Equals(x.DocumentoIdentidadNormalizado, normalized, StringComparison.OrdinalIgnoreCase)) ||
+                (x.Email != null && string.Equals(x.Email, normalized, StringComparison.OrdinalIgnoreCase)),
             cancellationToken);
     }
 

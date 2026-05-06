@@ -46,8 +46,8 @@ public sealed class PostgresAppointmentConcurrencyTests
 
             await using var context1 = new MedicalCenterDbContext(options);
             await using var context2 = new MedicalCenterDbContext(options);
-            var repository1 = new AppointmentRepository(context1, NullLogger<AppointmentRepository>.Instance);
-            var repository2 = new AppointmentRepository(context2, NullLogger<AppointmentRepository>.Instance);
+        var repository1 = new AppointmentRepository(context1, NullLogger<AppointmentRepository>.Instance);
+        var repository2 = new AppointmentRepository(context2, NullLogger<AppointmentRepository>.Instance);
 
             var slot1 = await repository1.GetByIdAsync(appointmentId, CancellationToken.None);
             var slot2 = await repository2.GetByIdAsync(appointmentId, CancellationToken.None);

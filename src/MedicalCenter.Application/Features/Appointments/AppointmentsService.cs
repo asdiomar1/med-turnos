@@ -1835,11 +1835,11 @@ public sealed class AppointmentsService : IAppointmentsService
 
         var inserted = 0;
 
-        foreach (var hour in hours)
+        foreach (var horaStr in hours.Select(h => h.Hora))
         {
-            if (!TimeOnly.TryParse(hour.Hora, CultureInfo.InvariantCulture, DateTimeStyles.None, out var horaTime))
+            if (!TimeOnly.TryParse(horaStr, CultureInfo.InvariantCulture, DateTimeStyles.None, out var horaTime))
             {
-                throw new ValidationException($"Horario invalido en configuración: '{hour.Hora}'.");
+                throw new ValidationException($"Horario invalido en configuración: '{horaStr}'.");
             }
 
             foreach (var camera in cameras)

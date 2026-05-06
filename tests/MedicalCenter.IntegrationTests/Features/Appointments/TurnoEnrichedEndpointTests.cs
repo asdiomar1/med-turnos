@@ -45,7 +45,11 @@ public sealed class TurnoEnrichedEndpointTests : IClassFixture<CustomWebApplicat
         await using (var seedCtx = new MedicalCenterDbContext(options))
         {
             await seedCtx.Database.EnsureCreatedAsync();
-            seedCtx.Patients.Add(new Patient(pacienteId, "María García", "1155551234", "DNI40123456", null, 1, false));
+        seedCtx.Patients.Add(new Patient(
+            pacienteId,
+            "María García",
+            new PatientAdministrativeInfo("1155551234", "DNI40123456", null, 1),
+            new PatientPortalInfo(false)));
             seedCtx.Cameras.Add(new Camera(camaraId, "Cámara Central", 4, true));
             seedCtx.ScheduleHours.Add(new ScheduleHour(scheduleHourId, SeedToHour(seed), seed, true));
             var appt = new Appointment(appointmentId, scheduleId, fecha, Hora(seed), 1, camaraId);

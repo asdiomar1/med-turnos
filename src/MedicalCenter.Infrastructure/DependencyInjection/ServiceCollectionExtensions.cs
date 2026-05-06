@@ -160,39 +160,38 @@ public static class ServiceCollectionExtensions
                 };
             });
 
-        services.AddAuthorization(options =>
-        {
-            options.AddPolicy("AdminAccess", policy => policy.RequireClaim("permission", "app.admin_panel.access"));
-            options.AddPolicy("RbacRead", policy => policy.RequireClaim("permission", "rbac.read"));
-            options.AddPolicy("RbacManage", policy => policy.RequireClaim("permission", "rbac.manage"));
-            options.AddPolicy("StaffRead", policy => policy.RequireClaim("permission", "staff.read"));
-            options.AddPolicy("StaffManage", policy => policy.RequireClaim("permission", "staff.manage"));
-            options.AddPolicy("PatientsRead", policy => policy.RequireClaim("permission", "pacientes.read"));
-            options.AddPolicy("PatientsManage", policy => policy.RequireClaim("permission", "pacientes.manage"));
-            options.AddPolicy("ActivityRead", policy => policy.RequireClaim("permission", "actividad.read"));
-            options.AddPolicy("ConfigRead", policy => policy.RequireClaim("permission", "config.read"));
-            options.AddPolicy("ConfigHorariosManage", policy => policy.RequireClaim("permission", "config.horarios.manage"));
-            options.AddPolicy("ConfigCatalogsManage", policy => policy.RequireClaim("permission", "config.catalogos.manage"));
-            options.AddPolicy("WhatsappManage", policy => policy.RequireClaim("permission", "config.whatsapp.manage"));
-            options.AddPolicy("WhatsappDispatch", policy => policy.RequireClaim("permission", "whatsapp.dispatch"));
-            options.AddPolicy("ClinicalHistoryRead", policy => policy.RequireAssertion(ctx =>
-                ctx.User.HasClaim("permission", "historia_clinica.resumen.read") ||
-                ctx.User.HasClaim("permission", "historia_clinica.detalle.read") ||
-                ctx.User.HasClaim("permission", "historia_clinica.editar_ficha") ||
-                ctx.User.HasClaim("permission", "historia_clinica.crear_evolucion") ||
-                ctx.User.HasClaim("permission", "historia_clinica.editar_numero")));
-            options.AddPolicy("ClinicalHistoryManage", policy => policy.RequireAssertion(ctx =>
-                ctx.User.HasClaim("permission", "historia_clinica.editar_ficha") ||
-                ctx.User.HasClaim("permission", "historia_clinica.crear_evolucion") ||
-                ctx.User.HasClaim("permission", "historia_clinica.editar_numero")));
-            options.AddPolicy("ConsultasRead", policy => policy.RequireClaim("permission", "consultas.read"));
-            options.AddPolicy("ConsultasManage", policy => policy.RequireAssertion(ctx =>
-                ctx.User.HasClaim("permission", "consultas.asignar") ||
-                ctx.User.HasClaim("permission", "consultas.cancelar") ||
-                ctx.User.HasClaim("permission", "consultas.reprogramar") ||
-                ctx.User.HasClaim("permission", "consultas.cerrar")));
-            options.AddPolicy("TurnosFueraHorarioManage", policy => policy.RequireClaim("permission", "turnos.fuera_horario"));
-        });
+        const string PermissionClaim = "permission";
+        services.AddAuthorizationBuilder()
+            .AddPolicy("AdminAccess", policy => policy.RequireClaim(PermissionClaim, "app.admin_panel.access"))
+            .AddPolicy("RbacRead", policy => policy.RequireClaim(PermissionClaim, "rbac.read"))
+            .AddPolicy("RbacManage", policy => policy.RequireClaim(PermissionClaim, "rbac.manage"))
+            .AddPolicy("StaffRead", policy => policy.RequireClaim(PermissionClaim, "staff.read"))
+            .AddPolicy("StaffManage", policy => policy.RequireClaim(PermissionClaim, "staff.manage"))
+            .AddPolicy("PatientsRead", policy => policy.RequireClaim(PermissionClaim, "pacientes.read"))
+            .AddPolicy("PatientsManage", policy => policy.RequireClaim(PermissionClaim, "pacientes.manage"))
+            .AddPolicy("ActivityRead", policy => policy.RequireClaim(PermissionClaim, "actividad.read"))
+            .AddPolicy("ConfigRead", policy => policy.RequireClaim(PermissionClaim, "config.read"))
+            .AddPolicy("ConfigHorariosManage", policy => policy.RequireClaim(PermissionClaim, "config.horarios.manage"))
+            .AddPolicy("ConfigCatalogsManage", policy => policy.RequireClaim(PermissionClaim, "config.catalogos.manage"))
+            .AddPolicy("WhatsappManage", policy => policy.RequireClaim(PermissionClaim, "config.whatsapp.manage"))
+            .AddPolicy("WhatsappDispatch", policy => policy.RequireClaim(PermissionClaim, "whatsapp.dispatch"))
+            .AddPolicy("ClinicalHistoryRead", policy => policy.RequireAssertion(ctx =>
+                ctx.User.HasClaim(PermissionClaim, "historia_clinica.resumen.read") ||
+                ctx.User.HasClaim(PermissionClaim, "historia_clinica.detalle.read") ||
+                ctx.User.HasClaim(PermissionClaim, "historia_clinica.editar_ficha") ||
+                ctx.User.HasClaim(PermissionClaim, "historia_clinica.crear_evolucion") ||
+                ctx.User.HasClaim(PermissionClaim, "historia_clinica.editar_numero")))
+            .AddPolicy("ClinicalHistoryManage", policy => policy.RequireAssertion(ctx =>
+                ctx.User.HasClaim(PermissionClaim, "historia_clinica.editar_ficha") ||
+                ctx.User.HasClaim(PermissionClaim, "historia_clinica.crear_evolucion") ||
+                ctx.User.HasClaim(PermissionClaim, "historia_clinica.editar_numero")))
+            .AddPolicy("ConsultasRead", policy => policy.RequireClaim(PermissionClaim, "consultas.read"))
+            .AddPolicy("ConsultasManage", policy => policy.RequireAssertion(ctx =>
+                ctx.User.HasClaim(PermissionClaim, "consultas.asignar") ||
+                ctx.User.HasClaim(PermissionClaim, "consultas.cancelar") ||
+                ctx.User.HasClaim(PermissionClaim, "consultas.reprogramar") ||
+                ctx.User.HasClaim(PermissionClaim, "consultas.cerrar")))
+            .AddPolicy("TurnosFueraHorarioManage", policy => policy.RequireClaim(PermissionClaim, "turnos.fuera_horario"));
 
         return services;
     }

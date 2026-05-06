@@ -11,11 +11,13 @@ using MedicalCenter.Launcher.Shared;
 using MedicalCenter.Launcher.UI;
 using MedicalCenter.Launcher.Utils;
 
-class Program
+static class Program
 {
     private static readonly string ProjectRoot = FindProjectRoot();
     private static readonly string ApiRoot = System.IO.Path.Combine(ProjectRoot, "src", "MedicalCenter.Api");
     private static readonly string ComposeFile = System.IO.Path.Combine(ProjectRoot, "docker-compose.yml");
+    private static readonly string[] AllServices = ["api", "postgres", "redis"];
+    private static readonly string[] InfraServices = ["postgres", "redis"];
 
     static async Task<int> Main(string[] args)
     {
@@ -33,7 +35,7 @@ class Program
                 return 0;
             }
 
-            return await ExecuteModeAsync(mode.Value, skipReturnPrompt: true);
+            return await ExecuteModeAsync(mode.Value);
         }
 
         // Interactive loop mode
@@ -53,7 +55,7 @@ class Program
             Console.Clear();
             ConsoleWriter.SectionHeader("Medical Center Local Dev Launcher");
 
-            var exitCode = await ExecuteModeAsync(mode, skipReturnPrompt: false);
+            var exitCode = await ExecuteModeAsync(mode);
 
             if (exitCode != 0)
             {
@@ -66,60 +68,70 @@ class Program
         }
     }
 
-    private static async Task<int> ExecuteModeAsync(LaunchMode mode, bool skipReturnPrompt)
+    private static async Task<int> ExecuteModeAsync(LaunchMode mode)
     {
-        // Skip checks for modes that don't need them
-        var needsChecks = mode is LaunchMode.FullDocker
-            or LaunchMode.InfraOnly
-            or LaunchMode.LocalRun
-            or LaunchMode.Rebuild;
-
-        if (needsChecks)
+        if (LauncherModePolicy.RequiresPrerequisiteChecks(mode))
         {
-            ConsoleWriter.SectionHeader("Prerequisite Checks");
-
-            var dotnetCheck = await PrerequisiteChecker.CheckDotNetSdkAsync("8.0");
-            ConsoleWriter.PrintCheckResult(".NET SDK 8.0", dotnetCheck.Passed, dotnetCheck.Passed ? "" : dotnetCheck.Message);
-
-            var dockerCheck = await PrerequisiteChecker.CheckDockerEngineAsync();
-            ConsoleWriter.PrintCheckResult("Docker Engine", dockerCheck.Passed, dockerCheck.Passed ? "" : dockerCheck.Message);
-
-            var ports = new[] { 5433, 6380, 8090 };
-            foreach (var port in ports)
-            {
-                var portCheck = await PrerequisiteChecker.CheckPortAvailableAsync(port);
-                ConsoleWriter.PrintCheckResult($"Port {port}", portCheck.Passed, portCheck.Passed ? "" : portCheck.Message);
-            }
-
-            if (!dotnetCheck.Passed || !dockerCheck.Passed)
-            {
-                ConsoleWriter.Error("Prerequisites not met. Exiting.");
-                return 1;
-            }
-
-            ConsoleWriter.SectionHeader("Configuration");
-            await ConfigGenerator.EnsureLaunchJsonAsync(ProjectRoot);
-            await ConfigGenerator.EnsureAppSettingsDevAsync(ApiRoot);
-
-            ConsoleWriter.SectionHeader("Database Migrations");
-            var migrationStatus = await MigrationStatusChecker.GetMigrationStatusAsync(ProjectRoot);
-            if (migrationStatus.HasPending)
-            {
-                ConsoleWriter.Warning($"Found {migrationStatus.Pending} pending migration(s):");
-                foreach (var name in migrationStatus.PendingNames)
-                {
-                    ConsoleWriter.Info($"  - {name}");
-                }
-                ConsoleWriter.Info("Migrations will be applied by API seed middleware on startup");
-            }
-            else
-            {
-                ConsoleWriter.Success("No pending migrations");
-            }
-
-            ConsoleWriter.SectionHeader("Launch Mode");
+            var prerequisitesPassed = await RunPrerequisiteChecksAndSetupAsync();
+            if (!prerequisitesPassed) return 1;
         }
 
+        return await ExecuteSelectedModeAsync(mode);
+    }
+
+    private static async Task<bool> RunPrerequisiteChecksAndSetupAsync()
+    {
+        ConsoleWriter.SectionHeader("Prerequisite Checks");
+
+        var dotnetCheck = await PrerequisiteChecker.CheckDotNetSdkAsync("8.0");
+        ConsoleWriter.PrintCheckResult(".NET SDK 8.0", dotnetCheck.Passed, dotnetCheck.Passed ? "" : dotnetCheck.Message);
+
+        var dockerCheck = await PrerequisiteChecker.CheckDockerEngineAsync();
+        ConsoleWriter.PrintCheckResult("Docker Engine", dockerCheck.Passed, dockerCheck.Passed ? "" : dockerCheck.Message);
+
+        foreach (var port in LauncherModePolicy.PrerequisitePorts)
+        {
+            var portCheck = await PrerequisiteChecker.CheckPortAvailableAsync(port);
+            ConsoleWriter.PrintCheckResult($"Port {port}", portCheck.Passed, portCheck.Passed ? "" : portCheck.Message);
+        }
+
+        if (!dotnetCheck.Passed || !dockerCheck.Passed)
+        {
+            ConsoleWriter.Error("Prerequisites not met. Exiting.");
+            return false;
+        }
+
+        ConsoleWriter.SectionHeader("Configuration");
+        await ConfigGenerator.EnsureLaunchJsonAsync(ProjectRoot);
+        await ConfigGenerator.EnsureAppSettingsDevAsync(ApiRoot);
+
+        ConsoleWriter.SectionHeader("Database Migrations");
+        var migrationStatus = await MigrationStatusChecker.GetMigrationStatusAsync(ProjectRoot);
+        PrintMigrationStatus(migrationStatus);
+
+        ConsoleWriter.SectionHeader("Launch Mode");
+        return true;
+    }
+
+    private static void PrintMigrationStatus(MigrationStatus migrationStatus)
+    {
+        if (!migrationStatus.HasPending)
+        {
+            ConsoleWriter.Success("No pending migrations");
+            return;
+        }
+
+        ConsoleWriter.Warning($"Found {migrationStatus.Pending} pending migration(s):");
+        foreach (var name in migrationStatus.PendingNames)
+        {
+            ConsoleWriter.Info($"  - {name}");
+        }
+
+        ConsoleWriter.Info("Migrations will be applied by API seed middleware on startup");
+    }
+
+    private static async Task<int> ExecuteSelectedModeAsync(LaunchMode mode)
+    {
         return mode switch
         {
             LaunchMode.FullDocker => await RunFullDockerMode(),
@@ -179,7 +191,7 @@ If no mode is provided, an interactive menu will be shown.
         return null;
     }
 
-private static LaunchMode ShowInteractiveMenu()
+    private static LaunchMode ShowInteractiveMenu()
     {
         Console.WriteLine(@"
 Select launch mode:
@@ -226,7 +238,7 @@ Select launch mode:
 
         ConsoleWriter.Info("Starting all services (api, postgres, redis)...");
         var upResult = await DockerComposeRunner.UpAsync(
-            new[] { "api", "postgres", "redis" },
+            AllServices,
             composeFile: ComposeFile,
             workingDirectory: ProjectRoot);
 
@@ -253,7 +265,7 @@ Select launch mode:
 
         ConsoleWriter.Info("Starting postgres and redis...");
         var upResult = await DockerComposeRunner.UpAsync(
-            new[] { "postgres", "redis" },
+            InfraServices,
             composeFile: ComposeFile,
             workingDirectory: ProjectRoot);
 
@@ -298,16 +310,24 @@ Select launch mode:
         ConsoleWriter.Info("Starting API via dotnet run...");
         ConsoleWriter.Info("Press Ctrl+C to stop...");
 
-        var cts = new CancellationTokenSource();
-        Console.CancelKeyPress += (_, e) =>
+        using var cts = new CancellationTokenSource();
+        ConsoleCancelEventHandler cancelHandler = (_, e) =>
         {
             e.Cancel = true;
             ConsoleWriter.Warning("Shutting down...");
             cts.Cancel();
         };
+        Console.CancelKeyPress += cancelHandler;
 
-        await ApiRunner.RunDotNetAsync(ProjectRoot, cts.Token);
-        return 0;
+        try
+        {
+            await ApiRunner.RunDotNetAsync(ProjectRoot, cts.Token);
+            return 0;
+        }
+        finally
+        {
+            Console.CancelKeyPress -= cancelHandler;
+        }
     }
 
     private static async Task<int> RunDumpDataMode()

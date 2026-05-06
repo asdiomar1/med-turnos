@@ -396,7 +396,7 @@ public sealed class AuthService(AuthServiceDependencies deps) : IAuthService
 
         if (!AuthPasswordRules.IsDifferentFromCurrent(currentPassword, newPassword))
         {
-            throw new ValidationException(AuthPasswordRules.DifferentPasswordMessage);
+            throw new ValidationException(AuthPasswordRules.DifferentCurrentMessage);
         }
     }
 
