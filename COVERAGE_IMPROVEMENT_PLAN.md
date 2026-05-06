@@ -70,9 +70,9 @@ Agregar `**/DatabaseInitializer.cs` a `sonar.exclusions` en el step `Sonar begin
 ```
 
 ### ✅ Criterios de aceptación
-- [ ] `sonar.exclusions` incluye `**/DatabaseInitializer.cs`
-- [ ] CI Quality pasa sin cambios en código
-- [ ] SonarCloud ya no reporta `DatabaseInitializer.cs` como código nuevo
+- [x] `sonar.exclusions` incluye `**/DatabaseInitializer.cs`
+- [x] CI Quality pasa sin cambios en código
+- [x] SonarCloud ya no reporta `DatabaseInitializer.cs` como código nuevo
 
 ### ❌ Fuera de alcance
 - No modificar `DatabaseInitializer.cs`
