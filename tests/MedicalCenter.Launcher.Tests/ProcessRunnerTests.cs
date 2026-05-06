@@ -41,9 +41,10 @@ public class ProcessRunnerTests
     [Fact]
     public async Task RunAsync_WithTimeout_ReturnsTimedOutTrue()
     {
-        // Arrange - use a command that hangs
+        // Arrange - use a command that runs indefinitely
+        // Windows: ping -t runs continuously; Linux/macOS: ping without count runs indefinitely
         var fileName = "ping";
-        var arguments = "-t localhost"; // ping continuously
+        var arguments = OperatingSystem.IsWindows() ? "-t localhost" : "localhost";
 
         // Act
         var result = await ProcessRunner.RunAsync(fileName, arguments, timeoutMs: 1000);
@@ -59,17 +60,18 @@ public class ProcessRunnerTests
         using var cts = new CancellationTokenSource();
         cts.CancelAfter(50); // Cancel after 50ms
 
-        // Act - this may timeout or be cancelled
-        // On Windows, ping doesn't respond to cancellation the same way
+        // Windows: ping -t runs continuously; Linux/macOS: ping without count runs indefinitely
+        var arguments = OperatingSystem.IsWindows() ? "-t localhost" : "localhost";
+
+        // Act
         var result = await ProcessRunner.RunAsync(
             "ping",
-            "localhost",
+            arguments,
             timeoutMs: 5000,
             cancellationToken: cts.Token);
 
-        // Assert - just verify we get a result (not null)
+        // Assert
         Assert.NotNull(result);
-        // On Windows with ping, cancellation may not work as expected, so we just check result exists
     }
 
     [Fact]
