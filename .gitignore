@@ -398,3 +398,7 @@ tmp-fix-author-name.sql
 sonar-issues*.json
 .sonarqube/
 nul
+
+# Local-only files
+LOCAL_DEBUGGING.md
+.atl/skill-registry.md
