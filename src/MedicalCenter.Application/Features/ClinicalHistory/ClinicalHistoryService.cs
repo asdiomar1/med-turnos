@@ -80,9 +80,9 @@ public sealed class ClinicalHistoryService(
         return result;
     }
 
-    public async Task<ClinicalEvolutionSummary> CreateEvolutionAsync(Guid actorUserId, Guid patientId, int? medicoId, DateOnly fechaClinica, string? titulo, string nota, string? diagnosticoImpresion, string? indicaciones, Guid? consultaSlotId, CancellationToken cancellationToken, Guid? medicoUserId = null)
+    public async Task<ClinicalEvolutionSummary> CreateEvolutionAsync(Guid actorUserId, Guid patientId, CreateEvolutionCommand command, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(nota))
+        if (string.IsNullOrWhiteSpace(command.Nota))
         {
             throw new ValidationException("nota es obligatoria");
         }
@@ -102,9 +102,9 @@ public sealed class ClinicalHistoryService(
         string? medicoNombre;
         bool medicoActivo;
 
-        if (medicoUserId.HasValue)
+        if (command.MedicoUserId.HasValue)
         {
-            var medicoUser = await userRepository.GetByIdAsync(medicoUserId.Value, cancellationToken) ?? throw new NotFoundException("Médico no encontrado");
+            var medicoUser = await userRepository.GetByIdAsync(command.MedicoUserId.Value, cancellationToken) ?? throw new NotFoundException("Médico no encontrado");
             if (!medicoUser.IsActive)
                 throw new ConflictException("El médico no se encuentra activo.");
             if (!medicoUser.Roles.Any(r => r.Code == "medico"))
@@ -112,9 +112,9 @@ public sealed class ClinicalHistoryService(
             medicoNombre = medicoUser.Nombre ?? medicoUser.Identifier;
             medicoActivo = medicoUser.IsActive;
         }
-        else if (medicoId.HasValue)
+        else if (command.MedicoId.HasValue)
         {
-            var medico = await medicoRepository.GetByIdAsync(medicoId.Value, cancellationToken) ?? throw new NotFoundException("Médico no encontrado");
+            var medico = await medicoRepository.GetByIdAsync(command.MedicoId.Value, cancellationToken) ?? throw new NotFoundException("Médico no encontrado");
             if (!medico.Activo)
                 throw new ConflictException("El médico no se encuentra activo.");
             medicoNombre = medico.Nombre;
@@ -125,18 +125,20 @@ public sealed class ClinicalHistoryService(
             throw new ValidationException("Médico requerido.");
         }
 
-        var evolution = new ClinicalEvolution(
-            Guid.NewGuid(),
-            patientId,
-            consultaSlotId,
-            medicoId ?? 0,
-            actor.Id,
-            fechaClinica,
-            titulo,
-            nota.Trim(),
-            diagnosticoImpresion,
-            indicaciones,
-            medicoUserId: medicoUserId);
+        var evolution = new ClinicalEvolution(new ClinicalEvolutionCreateData
+        {
+            Id = Guid.NewGuid(),
+            PatientId = patientId,
+            ConsultaSlotId = command.ConsultaSlotId,
+            MedicoId = command.MedicoId ?? 0,
+            MedicoUserId = command.MedicoUserId,
+            AuthorProfileId = actor.Id,
+            FechaClinica = command.FechaClinica,
+            Titulo = command.Titulo,
+            Nota = command.Nota.Trim(),
+            DiagnosticoImpresion = command.DiagnosticoImpresion,
+            Indicaciones = command.Indicaciones
+        });
 
         await clinicalHistoryRepository.AddEvolutionAsync(evolution, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
@@ -158,7 +160,7 @@ public sealed class ClinicalHistoryService(
         }
 
         var nextNumero = await clinicalHistoryRepository.GetNextNumeroAsync(cancellationToken);
-        history = new DomainClinicalHistory(patientId, nextNumero, null, null, null, null);
+        history = new DomainClinicalHistory(new ClinicalHistoryCreateParams(patientId, nextNumero, null, null, null, null));
         await clinicalHistoryRepository.AddAsync(history, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return history;

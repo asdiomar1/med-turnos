@@ -2,20 +2,30 @@ using MedicalCenter.Domain.Common;
 
 namespace MedicalCenter.Domain.Entities;
 
+public sealed record UserCreateParams(
+    Guid Id,
+    string Identifier,
+    string Email,
+    string PasswordHash,
+    bool IsActive,
+    bool IsStaff,
+    Guid? PatientId = null,
+    string? Nombre = null);
+
 public sealed class User : Entity<Guid>
 {
     private User() { }
 
-    public User(Guid id, string identifier, string email, string passwordHash, bool isActive, bool isStaff, Guid? patientId = null, string? nombre = null)
+    public User(UserCreateParams p)
     {
-        Id = id;
-        Identifier = identifier;
-        Email = email;
-        PasswordHash = passwordHash;
-        IsActive = isActive;
-        IsStaff = isStaff;
-        PatientId = patientId;
-        Nombre = nombre;
+        Id = p.Id;
+        Identifier = p.Identifier;
+        Email = p.Email;
+        PasswordHash = p.PasswordHash;
+        IsActive = p.IsActive;
+        IsStaff = p.IsStaff;
+        PatientId = p.PatientId;
+        Nombre = p.Nombre;
     }
 
     public string Identifier { get; private set; } = string.Empty;

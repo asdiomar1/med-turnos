@@ -2,36 +2,38 @@ using MedicalCenter.Domain.Common;
 
 namespace MedicalCenter.Domain.Entities;
 
+public sealed record OutOfHoursTurnCreateParams(
+    Guid Id,
+    DateOnly Fecha,
+    TimeOnly Hora,
+    Guid PacienteId,
+    Guid CreadoPor,
+    Guid OperadorCamaraId,
+    string? Notas,
+    bool EsMonoxido,
+    bool MonoxidoOrdenMedica,
+    bool MonoxidoResumenClinico,
+    int? MonoxidoMedicoId,
+    Guid? MonoxidoMedicoUserId = null);
+
 public sealed class OutOfHoursTurn : Entity<Guid>
 {
     private OutOfHoursTurn() { }
 
-    public OutOfHoursTurn(
-        Guid id,
-        DateOnly fecha,
-        TimeOnly hora,
-        Guid pacienteId,
-        Guid creadoPor,
-        Guid operadorCamaraId,
-        string? notas,
-        bool esMonoxido,
-        bool monoxidoOrdenMedica,
-        bool monoxidoResumenClinico,
-        int? monoxidoMedicoId,
-        Guid? monoxidoMedicoUserId = null)
+    public OutOfHoursTurn(OutOfHoursTurnCreateParams p)
     {
-        Id = id;
-        Fecha = fecha;
-        Hora = hora;
-        PacienteId = pacienteId;
-        CreadoPor = creadoPor;
-        OperadorCamaraId = operadorCamaraId;
-        Notas = notas;
-        EsMonoxido = esMonoxido;
-        MonoxidoOrdenMedica = monoxidoOrdenMedica;
-        MonoxidoResumenClinico = monoxidoResumenClinico;
-        MonoxidoMedicoId = monoxidoMedicoId;
-        MonoxidoMedicoUserId = monoxidoMedicoUserId;
+        Id = p.Id;
+        Fecha = p.Fecha;
+        Hora = p.Hora;
+        PacienteId = p.PacienteId;
+        CreadoPor = p.CreadoPor;
+        OperadorCamaraId = p.OperadorCamaraId;
+        Notas = p.Notas;
+        EsMonoxido = p.EsMonoxido;
+        MonoxidoOrdenMedica = p.MonoxidoOrdenMedica;
+        MonoxidoResumenClinico = p.MonoxidoResumenClinico;
+        MonoxidoMedicoId = p.MonoxidoMedicoId;
+        MonoxidoMedicoUserId = p.MonoxidoMedicoUserId;
         CreatedAt = DateTimeOffset.UtcNow;
     }
 

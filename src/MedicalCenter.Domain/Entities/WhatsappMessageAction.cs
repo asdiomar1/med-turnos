@@ -4,28 +4,30 @@ using MedicalCenter.Domain.Common;
 
 namespace MedicalCenter.Domain.Entities;
 
+public sealed record WhatsappMessageActionCreateParams(
+    Guid Id,
+    Guid PatientId,
+    Guid SlotId,
+    Guid WhatsappMessageId,
+    string ActionKind,
+    string PhoneE164,
+    string RawContext,
+    string Status = "pending_confirmation");
+
 public sealed class WhatsappMessageAction : Entity<Guid>
 {
     private WhatsappMessageAction() { }
 
-    public WhatsappMessageAction(
-        Guid id,
-        Guid patientId,
-        Guid slotId,
-        Guid whatsappMessageId,
-        string actionKind,
-        string phoneE164,
-        string rawContext,
-        string status = "pending_confirmation")
+    public WhatsappMessageAction(WhatsappMessageActionCreateParams p)
     {
-        Id = id;
-        PatientId = patientId;
-        SlotId = slotId;
-        WhatsappMessageId = whatsappMessageId;
-        ActionKind = actionKind;
-        PhoneE164 = phoneE164;
-        RawContext = rawContext;
-        Status = status;
+        Id = p.Id;
+        PatientId = p.PatientId;
+        SlotId = p.SlotId;
+        WhatsappMessageId = p.WhatsappMessageId;
+        ActionKind = p.ActionKind;
+        PhoneE164 = p.PhoneE164;
+        RawContext = p.RawContext;
+        Status = p.Status;
         CreatedAt = DateTimeOffset.UtcNow;
         UpdatedAt = CreatedAt;
     }

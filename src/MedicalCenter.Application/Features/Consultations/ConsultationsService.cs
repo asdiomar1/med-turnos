@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Globalization;
 using MedicalCenter.Application.Abstractions.Common;
 using MedicalCenter.Application.Abstractions.Persistence;
 using MedicalCenter.Application.DTOs;
@@ -13,16 +14,19 @@ using DomainClinicalHistory = MedicalCenter.Domain.Entities.ClinicalHistory;
 namespace MedicalCenter.Application.Features.Consultations;
 
 public sealed class ConsultationsService(
-    IConsultationRepository consultationRepository,
-    IUserRepository userRepository,
-    IPatientRepository patientRepository,
-    IMedicoRepository medicoRepository,
-    IClinicalHistoryRepository clinicalHistoryRepository,
-    IUnitOfWork unitOfWork,
-    IIdempotencyStore idempotencyStore,
-    IClock clock) : IConsultationsService
+    ConsultationsDataAccessDependencies dataAccess,
+    ConsultationsRuntimeDependencies runtime) : IConsultationsService
 {
     private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web);
+    private const string HorarioNoEncontradoMessage = "Horario no encontrado.";
+    private readonly IConsultationRepository consultationRepository = dataAccess.ConsultationRepository;
+    private readonly IUserRepository userRepository = dataAccess.UserRepository;
+    private readonly IPatientRepository patientRepository = dataAccess.PatientRepository;
+    private readonly IMedicoRepository medicoRepository = dataAccess.MedicoRepository;
+    private readonly IClinicalHistoryRepository clinicalHistoryRepository = dataAccess.ClinicalHistoryRepository;
+    private readonly IUnitOfWork unitOfWork = dataAccess.UnitOfWork;
+    private readonly IIdempotencyStore idempotencyStore = dataAccess.IdempotencyStore;
+    private readonly IClock clock = runtime.Clock;
 
     public async Task<IReadOnlyCollection<ConsultationScheduleHourSummary>> GetScheduleHoursAsync(CancellationToken cancellationToken) =>
         (await consultationRepository.GetScheduleHoursAsync(cancellationToken))
@@ -41,7 +45,7 @@ public sealed class ConsultationsService(
     public async Task<ConsultationScheduleHourSummary> UpdateScheduleHourAsync(int id, ConsultationScheduleHourUpsertCommand command, CancellationToken cancellationToken)
     {
         ValidateHora(command.Hora);
-        var entity = await consultationRepository.GetScheduleHourByIdAsync(id, cancellationToken) ?? throw new NotFoundException("Horario no encontrado.");
+        var entity = await consultationRepository.GetScheduleHourByIdAsync(id, cancellationToken) ?? throw new NotFoundException(HorarioNoEncontradoMessage);
         entity.Update(command.Hora.Trim(), command.Orden);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return entity.ToSummary();
@@ -49,7 +53,7 @@ public sealed class ConsultationsService(
 
     public async Task<ConsultationScheduleHourSummary> ToggleScheduleHourAsync(int id, bool activo, CancellationToken cancellationToken)
     {
-        var entity = await consultationRepository.GetScheduleHourByIdAsync(id, cancellationToken) ?? throw new NotFoundException("Horario no encontrado.");
+        var entity = await consultationRepository.GetScheduleHourByIdAsync(id, cancellationToken) ?? throw new NotFoundException(HorarioNoEncontradoMessage);
         entity.SetActivo(activo);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return entity.ToSummary();
@@ -57,7 +61,7 @@ public sealed class ConsultationsService(
 
     public async Task<ConsultationScheduleHourDeletionPreviewSummary> PreviewDeleteScheduleHourAsync(int id, CancellationToken cancellationToken)
     {
-        var entity = await consultationRepository.GetScheduleHourByIdAsync(id, cancellationToken) ?? throw new NotFoundException("Horario no encontrado.");
+        var entity = await consultationRepository.GetScheduleHourByIdAsync(id, cancellationToken) ?? throw new NotFoundException(HorarioNoEncontradoMessage);
         var futureSlots = await consultationRepository.CountFutureSlotsByHourAsync(ParseHour(entity.Hora), DateOnly.FromDateTime(clock.UtcNow.UtcDateTime.Date), cancellationToken);
         return new ConsultationScheduleHourDeletionPreviewSummary(entity.Id, entity.Hora, futureSlots == 0, futureSlots);
     }
@@ -70,7 +74,7 @@ public sealed class ConsultationsService(
             throw new ConflictException("No se puede desactivar el horario porque tiene consultas futuras.");
         }
 
-        var entity = await consultationRepository.GetScheduleHourByIdAsync(id, cancellationToken) ?? throw new NotFoundException("Horario no encontrado.");
+        var entity = await consultationRepository.GetScheduleHourByIdAsync(id, cancellationToken) ?? throw new NotFoundException(HorarioNoEncontradoMessage);
         entity.SetActivo(false);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return entity.ToSummary();
@@ -139,43 +143,10 @@ public sealed class ConsultationsService(
             async () =>
             {
                 await RequireActorAsync(actorUserId, "consultas.asignar", cancellationToken);
-                var patient = await patientRepository.GetByIdAsync(command.PacienteId, cancellationToken) ?? throw new NotFoundException("Paciente no encontrado.");
-                if (!patient.IsActive)
-                {
-                    throw new ConflictException("El paciente no se encuentra activo.");
-                }
-
-                if (command.MedicoUserId.HasValue)
-                {
-                    var medicoUser = await userRepository.GetByIdAsync(command.MedicoUserId.Value, cancellationToken) ?? throw new NotFoundException("Médico no encontrado.");
-                    if (!medicoUser.IsActive)
-                        throw new ConflictException("El médico no se encuentra activo.");
-                    if (!medicoUser.Roles.Any(r => r.Code == "medico"))
-                        throw new ConflictException("El usuario no tiene rol de médico.");
-                }
-                else if (command.MedicoId.HasValue)
-                {
-                    var medico = await medicoRepository.GetByIdAsync(command.MedicoId.Value, cancellationToken) ?? throw new NotFoundException("Médico no encontrado.");
-                    if (!medico.Activo)
-                        throw new ConflictException("El médico no se encuentra activo.");
-                }
-                else
-                {
-                    throw new ValidationException("Médico requerido.");
-                }
-
-                var slot = await consultationRepository.GetByIdAsync(slotId, cancellationToken) ?? throw new NotFoundException("Consulta no encontrada.");
-                EnsureNotPast(slot);
-                await EnsurePatientHasNoConsecutiveConsultationsAsync(command.PacienteId, slot.Fecha, slot.Hora, null, cancellationToken);
-
-                try
-                {
-                    slot.Assign(command.PacienteId, command.MedicoId, command.ObservacionesAdmin, actorUserId, clock.UtcNow, command.MedicoUserId);
-                }
-                catch (InvalidOperationException exception)
-                {
-                    throw new ConflictException(exception.Message);
-                }
+                await EnsureActivePatientAsync(command.PacienteId, cancellationToken);
+                await ValidateMedicoAssignmentAsync(command, cancellationToken);
+                var slot = await GetAssignableSlotAsync(slotId, command.PacienteId, cancellationToken);
+                AssignSlot(slot, command, actorUserId);
 
                 await unitOfWork.SaveChangesAsync(cancellationToken);
                 return await MapAsync(slot, cancellationToken);
@@ -284,18 +255,20 @@ public sealed class ConsultationsService(
                 if (slot.Estado == ConsultationStatus.Completada && !string.IsNullOrWhiteSpace(command.Nota) && slot.PacienteId.HasValue)
                 {
                     await EnsureClinicalHistoryAsync(slot.PacienteId.Value, cancellationToken);
-                    var evolution = new ClinicalEvolution(
-                        Guid.NewGuid(),
-                        slot.PacienteId.Value,
-                        slot.Id,
-                        slot.MedicoId ?? 0,
-                        actor.Id,
-                        slot.Fecha,
-                        command.Titulo,
-                        command.Nota.Trim(),
-                        command.DiagnosticoImpresion,
-                        command.Indicaciones,
-                        medicoUserId: slot.MedicoUserId);
+                    var evolution = new ClinicalEvolution(new ClinicalEvolutionCreateData
+                    {
+                        Id = Guid.NewGuid(),
+                        PatientId = slot.PacienteId.Value,
+                        ConsultaSlotId = slot.Id,
+                        MedicoId = slot.MedicoId ?? 0,
+                        MedicoUserId = slot.MedicoUserId,
+                        AuthorProfileId = actor.Id,
+                        FechaClinica = slot.Fecha,
+                        Titulo = command.Titulo,
+                        Nota = command.Nota.Trim(),
+                        DiagnosticoImpresion = command.DiagnosticoImpresion,
+                        Indicaciones = command.Indicaciones
+                    });
                     await clinicalHistoryRepository.AddEvolutionAsync(evolution, cancellationToken);
                 }
 
@@ -308,7 +281,7 @@ public sealed class ConsultationsService(
     public async Task<IReadOnlyCollection<ConsultationSessionSummary>> GetCompletedSessionsAsync(Guid patientId, CancellationToken cancellationToken) =>
         (await consultationRepository.GetSessionsByPatientIdAsync(patientId, cancellationToken)).Select(x => x.ToSummary()).ToArray();
 
-    private ConsultationSlotSummary Map(ConsultationSlot slot, GuidLookupSummary? patient, IntLookupSummary? medico, GuidLookupSummary? medicoUser, GuidLookupSummary? confirmadoPor, GuidLookupSummary? cerradoPor) =>
+    private static ConsultationSlotSummary Map(ConsultationSlot slot, GuidLookupSummary? patient, IntLookupSummary? medico, GuidLookupSummary? medicoUser, GuidLookupSummary? confirmadoPor, GuidLookupSummary? cerradoPor) =>
         new(slot.Id, slot.Fecha, slot.Hora, slot.Estado.ToString().ToLowerInvariant(), slot.PacienteId, slot.MedicoId, slot.MedicoUserId, slot.MotivoCancelacion, slot.ObservacionesAdmin, slot.ConfirmadoPor, slot.ConfirmadoAt, slot.CerradoPor, slot.CerradoAt, slot.CreatedAt, slot.UpdatedAt, patient, medico, medicoUser, confirmadoPor, cerradoPor);
 
     private async Task<ConsultationSlotSummary> MapAsync(ConsultationSlot slot, CancellationToken cancellationToken)
@@ -363,7 +336,7 @@ public sealed class ConsultationsService(
         var history = await clinicalHistoryRepository.GetByPatientIdAsync(patientId, cancellationToken);
         if (history is null)
         {
-            await clinicalHistoryRepository.AddAsync(new DomainClinicalHistory(patientId, 1, null, null, null, null), cancellationToken);
+            await clinicalHistoryRepository.AddAsync(new DomainClinicalHistory(new ClinicalHistoryCreateParams(patientId, 1, null, null, null, null)), cancellationToken);
         }
     }
 
@@ -380,13 +353,74 @@ public sealed class ConsultationsService(
 
     private static void ValidateHora(string hora)
     {
-        if (!TimeOnly.TryParse(hora, out _))
+        if (!TimeOnly.TryParse(hora, CultureInfo.InvariantCulture, DateTimeStyles.None, out _))
         {
             throw new ValidationException("Hora invalida.");
         }
     }
 
-    private static TimeOnly ParseHour(string hora) => TimeOnly.Parse(hora);
+    private static TimeOnly ParseHour(string hora) => TimeOnly.Parse(hora, CultureInfo.InvariantCulture, DateTimeStyles.None);
+
+    private async Task EnsureActivePatientAsync(Guid patientId, CancellationToken cancellationToken)
+    {
+        var patient = await patientRepository.GetByIdAsync(patientId, cancellationToken) ?? throw new NotFoundException("Paciente no encontrado.");
+        if (!patient.IsActive)
+        {
+            throw new ConflictException("El paciente no se encuentra activo.");
+        }
+    }
+
+    private async Task ValidateMedicoAssignmentAsync(AssignConsultationCommand command, CancellationToken cancellationToken)
+    {
+        if (command.MedicoUserId.HasValue)
+        {
+            var medicoUser = await userRepository.GetByIdAsync(command.MedicoUserId.Value, cancellationToken) ?? throw new NotFoundException("Medico no encontrado.");
+            if (!medicoUser.IsActive)
+            {
+                throw new ConflictException("El Medico no se encuentra activo.");
+            }
+
+            if (!medicoUser.Roles.Any(role => role.Code == "medico"))
+            {
+                throw new ConflictException("El usuario no tiene rol de Medico.");
+            }
+
+            return;
+        }
+
+        if (command.MedicoId.HasValue)
+        {
+            var medico = await medicoRepository.GetByIdAsync(command.MedicoId.Value, cancellationToken) ?? throw new NotFoundException("Medico no encontrado.");
+            if (!medico.Activo)
+            {
+                throw new ConflictException("El Medico no se encuentra activo.");
+            }
+
+            return;
+        }
+
+        throw new ValidationException("Medico requerido.");
+    }
+
+    private async Task<ConsultationSlot> GetAssignableSlotAsync(Guid slotId, Guid patientId, CancellationToken cancellationToken)
+    {
+        var slot = await consultationRepository.GetByIdAsync(slotId, cancellationToken) ?? throw new NotFoundException("Consulta no encontrada.");
+        EnsureNotPast(slot);
+        await EnsurePatientHasNoConsecutiveConsultationsAsync(patientId, slot.Fecha, slot.Hora, null, cancellationToken);
+        return slot;
+    }
+
+    private void AssignSlot(ConsultationSlot slot, AssignConsultationCommand command, Guid actorUserId)
+    {
+        try
+        {
+            slot.Assign(command.PacienteId, command.MedicoId, command.ObservacionesAdmin, actorUserId, clock.UtcNow, command.MedicoUserId);
+        }
+        catch (InvalidOperationException exception)
+        {
+            throw new ConflictException(exception.Message);
+        }
+    }
 
     private static void ValidateRequiredIdempotencyKey(string idempotencyKey)
     {
@@ -442,3 +476,14 @@ public sealed class ConsultationsService(
 
     private static int ToMinutes(TimeOnly hora) => hora.Hour * 60 + hora.Minute;
 }
+
+public sealed record ConsultationsDataAccessDependencies(
+    IConsultationRepository ConsultationRepository,
+    IUserRepository UserRepository,
+    IPatientRepository PatientRepository,
+    IMedicoRepository MedicoRepository,
+    IClinicalHistoryRepository ClinicalHistoryRepository,
+    IUnitOfWork UnitOfWork,
+    IIdempotencyStore IdempotencyStore);
+
+public sealed record ConsultationsRuntimeDependencies(IClock Clock);

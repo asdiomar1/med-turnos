@@ -14,6 +14,7 @@ public sealed class CatalogsService(
     IAdminEventFeedRepository adminEventFeedRepository,
     IUnitOfWork unitOfWork) : ICatalogsService
 {
+    private const string ObraSocialEntityType = "obra_social";
     public async Task<IReadOnlyCollection<CondicionIvaSummaryDto>> GetCondicionesIvaAsync(bool includeInactive, CancellationToken cancellationToken) =>
         (await condicionIvaRepository.GetAllAsync(includeInactive, cancellationToken)).Select(x => x.ToSummary()).ToArray();
 
@@ -26,14 +27,14 @@ public sealed class CatalogsService(
         var condicionIva = new CondicionIva(0, normalizedName, true, await condicionIvaRepository.GetNextOrderAsync(cancellationToken));
         await condicionIvaRepository.AddAsync(condicionIva, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        await RegisterCatalogEventAsync(
+        await RegisterCatalogEventAsync(new CatalogEventParams(
             actorUserId,
             AdminEventFeedConstants.ActionCodes.CondicionIvaCreated,
             condicionIva.Id.ToString(),
             AdminEventFeedConstants.EntityTypes.CondicionIva,
             "condicion_iva",
             "Condición IVA creada",
-            $"Se creó la condición IVA \"{condicionIva.Nombre}\".",
+            $"Se creó la condición IVA \"{condicionIva.Nombre}\"."),
             cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return condicionIva.ToSummary();
@@ -47,14 +48,14 @@ public sealed class CatalogsService(
         EnsureName(normalizedName);
         await EnsureUniqueCondicionIvaNameAsync(normalizedName, condicionIvaId, cancellationToken);
         condicionIva.Update(normalizedName, orden);
-        await RegisterCatalogEventAsync(
+        await RegisterCatalogEventAsync(new CatalogEventParams(
             actorUserId,
             AdminEventFeedConstants.ActionCodes.CondicionIvaUpdated,
             condicionIva.Id.ToString(),
             AdminEventFeedConstants.EntityTypes.CondicionIva,
             "condicion_iva",
             "Condición IVA actualizada",
-            $"Se actualizó la condición IVA \"{previousNombre}\" → \"{condicionIva.Nombre}\".",
+            $"Se actualizó la condición IVA \"{previousNombre}\" → \"{condicionIva.Nombre}\"."),
             cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         await condicionIvaRepository.InvalidateCacheAsync(cancellationToken);
@@ -65,14 +66,14 @@ public sealed class CatalogsService(
     {
         var condicionIva = await condicionIvaRepository.GetByIdAsync(condicionIvaId, cancellationToken) ?? throw new NotFoundException("Condición IVA no encontrada.");
         condicionIva.SetActive(activo);
-        await RegisterCatalogEventAsync(
+        await RegisterCatalogEventAsync(new CatalogEventParams(
             actorUserId,
             AdminEventFeedConstants.ActionCodes.CondicionIvaStatusUpdated,
             condicionIva.Id.ToString(),
             AdminEventFeedConstants.EntityTypes.CondicionIva,
             "condicion_iva",
             "Estado de condición IVA actualizado",
-            $"La condición IVA \"{condicionIva.Nombre}\" quedó {(condicionIva.Activo ? "activa" : "inactiva")}.",
+            $"La condición IVA \"{condicionIva.Nombre}\" quedó {(condicionIva.Activo ? "activa" : "inactiva")}."),
             cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         await condicionIvaRepository.InvalidateCacheAsync(cancellationToken);
@@ -91,14 +92,14 @@ public sealed class CatalogsService(
         var obraSocial = new ObraSocial(0, normalizedName, true, tieneConvenio, 0, NormalizeAbreviatura(abreviatura));
         await obraSocialRepository.AddAsync(obraSocial, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        await RegisterCatalogEventAsync(
+        await RegisterCatalogEventAsync(new CatalogEventParams(
             actorUserId,
             AdminEventFeedConstants.ActionCodes.ObraSocialCreated,
             obraSocial.Id.ToString(),
             AdminEventFeedConstants.EntityTypes.ObraSocial,
-            "obra_social",
+            ObraSocialEntityType,
             "Obra social creada",
-            $"Se creó la obra social \"{obraSocial.Nombre}\".",
+            $"Se creó la obra social \"{obraSocial.Nombre}\"."),
             cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return obraSocial.ToSummary();
@@ -112,14 +113,14 @@ public sealed class CatalogsService(
         EnsureName(normalizedName);
         await EnsureUniqueNameAsync(normalizedName, obraSocialId, cancellationToken);
         obraSocial.Update(normalizedName, tieneConvenio, NormalizeAbreviatura(abreviatura));
-        await RegisterCatalogEventAsync(
+        await RegisterCatalogEventAsync(new CatalogEventParams(
             actorUserId,
             AdminEventFeedConstants.ActionCodes.ObraSocialUpdated,
             obraSocial.Id.ToString(),
             AdminEventFeedConstants.EntityTypes.ObraSocial,
-            "obra_social",
+            ObraSocialEntityType,
             "Obra social actualizada",
-            $"Se actualizó la obra social \"{previousNombre}\" → \"{obraSocial.Nombre}\".",
+            $"Se actualizó la obra social \"{previousNombre}\" → \"{obraSocial.Nombre}\"."),
             cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return obraSocial.ToSummary();
@@ -129,14 +130,14 @@ public sealed class CatalogsService(
     {
         var obraSocial = await obraSocialRepository.GetByIdAsync(obraSocialId, cancellationToken) ?? throw new NotFoundException("Obra social no encontrada.");
         obraSocial.SetActive(activa);
-        await RegisterCatalogEventAsync(
+        await RegisterCatalogEventAsync(new CatalogEventParams(
             actorUserId,
             AdminEventFeedConstants.ActionCodes.ObraSocialStatusUpdated,
             obraSocial.Id.ToString(),
             AdminEventFeedConstants.EntityTypes.ObraSocial,
-            "obra_social",
+            ObraSocialEntityType,
             "Estado de obra social actualizado",
-            $"La obra social \"{obraSocial.Nombre}\" quedó {(obraSocial.Activa ? "activa" : "inactiva")}.",
+            $"La obra social \"{obraSocial.Nombre}\" quedó {(obraSocial.Activa ? "activa" : "inactiva")}."),
             cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return obraSocial.ToSummary();
@@ -146,14 +147,14 @@ public sealed class CatalogsService(
     {
         var obraSocial = await obraSocialRepository.GetByIdAsync(obraSocialId, cancellationToken) ?? throw new NotFoundException("Obra social no encontrada.");
         obraSocial.SetTieneConvenio(tieneConvenio);
-        await RegisterCatalogEventAsync(
+        await RegisterCatalogEventAsync(new CatalogEventParams(
             actorUserId,
             AdminEventFeedConstants.ActionCodes.ObraSocialConvenioUpdated,
             obraSocial.Id.ToString(),
             AdminEventFeedConstants.EntityTypes.ObraSocial,
-            "obra_social",
+            ObraSocialEntityType,
             "Convenio de obra social actualizado",
-            $"La obra social \"{obraSocial.Nombre}\" quedó con convenio={(obraSocial.TieneConvenio ? "sí" : "no")}.",
+            $"La obra social \"{obraSocial.Nombre}\" quedó con convenio={(obraSocial.TieneConvenio ? "sí" : "no")}."),
             cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return obraSocial.ToSummary();
@@ -188,35 +189,36 @@ public sealed class CatalogsService(
     private static string Normalize(string? value) => string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim();
     private static string? NormalizeAbreviatura(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim().ToUpperInvariant();
 
-    private async Task RegisterCatalogEventAsync(
-        Guid actorUserId,
-        string actionCode,
-        string entityId,
-        string entityType,
-        string sourcePrefix,
-        string title,
-        string summary,
-        CancellationToken cancellationToken)
+    private sealed record CatalogEventParams(
+        Guid ActorUserId,
+        string ActionCode,
+        string EntityId,
+        string EntityType,
+        string SourcePrefix,
+        string Title,
+        string Summary);
+
+    private async Task RegisterCatalogEventAsync(CatalogEventParams p, CancellationToken cancellationToken)
     {
-        var entry = new AdminEventFeedEntry(
+        var entry = new AdminEventFeedEntry(new AdminEventFeedEntryCreateParams(
             0,
             DateTimeOffset.UtcNow,
-            actorUserId,
+            p.ActorUserId,
             AdminEventFeedConstants.DefaultActorLabel,
-            actionCode,
+            p.ActionCode,
             AdminEventFeedConstants.ActionFamilyCatalog,
-            entityType,
-            entityId,
+            p.EntityType,
+            p.EntityId,
             null,
             null,
             null,
             null,
             null,
-            title,
-            summary,
+            p.Title,
+            p.Summary,
             AdminEventFeedConstants.SourceSystemApi,
-            $"{sourcePrefix}:{actionCode}:{entityId}:{Guid.NewGuid():N}",
-            "{}");
+            $"{p.SourcePrefix}:{p.ActionCode}:{p.EntityId}:{Guid.NewGuid():N}",
+            "{}"));
 
         await adminEventFeedRepository.AddAsync(entry, cancellationToken);
     }

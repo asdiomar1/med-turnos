@@ -17,14 +17,15 @@ public sealed class ImportPatientsService(
     IXlsxRowReader xlsxRowReader,
     IUnitOfWork unitOfWork) : IImportPatientsService
 {
+    private const string DocumentoIdentidadKey = "documento_identidad";
     private static readonly Dictionary<string, string> HeaderAliases = new(StringComparer.OrdinalIgnoreCase)
     {
         ["nombre"] = "nombre",
         ["email"] = "email",
         ["telefono"] = "telefono",
-        ["documento_identidad"] = "documento_identidad",
-        ["documento"] = "documento_identidad",
-        ["dni"] = "documento_identidad",
+        [DocumentoIdentidadKey] = DocumentoIdentidadKey,
+        ["documento"] = DocumentoIdentidadKey,
+        ["dni"] = DocumentoIdentidadKey,
         ["documento_identidad_normalizado"] = "documento_identidad_normalizado",
         ["login_identifier"] = "login_identifier",
         ["nacionalidad"] = "nacionalidad",
@@ -58,96 +59,13 @@ public sealed class ImportPatientsService(
             total++;
             try
             {
-                var row = MapRow(rawRow);
-                if (string.IsNullOrWhiteSpace(row.Nombre) || string.IsNullOrWhiteSpace(row.Telefono) || string.IsNullOrWhiteSpace(row.DocumentoIdentidad))
+                var rowResult = await ProcessRowAsync(rawRow, conditions, obrasSociales, cancellationToken);
+                if (rowResult == ImportRowResult.Created)
                 {
-                    throw new ValidationException("nombre, telefono y documento_identidad son obligatorios.");
-                }
-
-                var normalizedDoc = NormalizeDocumento(row.DocumentoIdentidad);
-                var condicionIvaId = ResolveCondicionIvaId(row, conditions);
-                var obraSocialId = ResolveObraSocialId(row, obrasSociales);
-                var datosExtra = NormalizeJson(row.DatosExtra);
-                var portalHabilitado = ParseBool(row.PortalHabilitado);
-                var optInWhatsapp = ParseBool(row.OptInWhatsapp);
-                var loginIdentifier = NormalizeOrNull(row.LoginIdentifier);
-                if (portalHabilitado && string.IsNullOrWhiteSpace(loginIdentifier))
-                {
-                    loginIdentifier = normalizedDoc;
-                }
-
-                var existing = await patientRepository.GetByDocumentoAsync(row.DocumentoIdentidad, cancellationToken);
-                if (existing is null)
-                {
-                    var patient = new Patient(
-                        Guid.NewGuid(),
-                        row.Nombre.Trim(),
-                        row.Telefono.Trim(),
-                        row.DocumentoIdentidad.Trim(),
-                        normalizedDoc,
-                        condicionIvaId,
-                        portalHabilitado,
-                        loginIdentifier);
-
-                    patient.UpdateAdministrativeData(
-                        row.Email?.Trim(),
-                        row.Telefono.Trim(),
-                        row.DocumentoIdentidad.Trim(),
-                        normalizedDoc,
-                        NormalizeOrNull(row.Nacionalidad),
-                        condicionIvaId,
-                        obraSocialId,
-                        NormalizeOrNull(row.NumeroCredencialObraSocial),
-                        ParseBool(row.Claustrofobico),
-                        NormalizeOrNull(row.Notas),
-                        datosExtra,
-                        optInWhatsapp,
-                        NormalizeOrNull(row.OptInSource));
-
-                    patient.ConfigurePortal(portalHabilitado, portalHabilitado);
-                    if (!string.IsNullOrWhiteSpace(loginIdentifier))
-                    {
-                        patient.SetLoginIdentifier(loginIdentifier);
-                    }
-
-                    await patientRepository.AddAsync(patient, cancellationToken);
-
-                    if (TryGetHistoryNumber(row.NumeroHc, out var hcNumber))
-                    {
-                        await EnsureClinicalHistoryForPatientAsync(patient.Id, hcNumber, cancellationToken);
-                    }
-
                     created++;
                 }
                 else
                 {
-                    existing.UpdateAdministrativeData(
-                        row.Email?.Trim(),
-                        row.Telefono.Trim(),
-                        row.DocumentoIdentidad.Trim(),
-                        normalizedDoc,
-                        NormalizeOrNull(row.Nacionalidad),
-                        condicionIvaId,
-                        obraSocialId,
-                        NormalizeOrNull(row.NumeroCredencialObraSocial),
-                        ParseBool(row.Claustrofobico),
-                        NormalizeOrNull(row.Notas),
-                        datosExtra,
-                        optInWhatsapp,
-                        NormalizeOrNull(row.OptInSource));
-
-                    if (!string.IsNullOrWhiteSpace(loginIdentifier))
-                    {
-                        existing.SetLoginIdentifier(loginIdentifier);
-                    }
-
-                    existing.ConfigurePortal(portalHabilitado, portalHabilitado);
-
-                    if (TryGetHistoryNumber(row.NumeroHc, out var hcNumber))
-                    {
-                        await EnsureClinicalHistoryForPatientAsync(existing.Id, hcNumber, cancellationToken);
-                    }
-
                     updated++;
                 }
             }
@@ -163,12 +81,130 @@ public sealed class ImportPatientsService(
         return new ImportPatientsResultDto(total, created, updated, skipped, errors.Count, errors);
     }
 
+    private async Task<ImportRowResult> ProcessRowAsync(
+        IReadOnlyDictionary<string, string?> rawRow,
+        IReadOnlyCollection<CondicionIva> conditions,
+        IReadOnlyCollection<ObraSocial> obrasSociales,
+        CancellationToken cancellationToken)
+    {
+        var row = MapRow(rawRow);
+        ValidateRequiredFields(row);
+        var context = BuildRowContext(row, conditions, obrasSociales);
+        var existing = await patientRepository.GetByDocumentoAsync(row.DocumentoIdentidad!, cancellationToken);
+        if (existing is null)
+        {
+            await CreatePatientAsync(row, context, cancellationToken);
+            return ImportRowResult.Created;
+        }
+
+        await UpdatePatientAsync(existing, row, context, cancellationToken);
+        return ImportRowResult.Updated;
+    }
+
+    private async Task CreatePatientAsync(PatientImportRow row, ImportPatientContext context, CancellationToken cancellationToken)
+    {
+        var patient = new Patient(
+            Guid.NewGuid(),
+            row.Nombre!.Trim(),
+            new PatientAdministrativeInfo(
+                row.Telefono!.Trim(),
+                row.DocumentoIdentidad!.Trim(),
+                context.NormalizedDoc,
+                context.CondicionIvaId),
+            new PatientPortalInfo(context.PortalHabilitado, context.LoginIdentifier));
+
+        ApplyAdministrativeData(patient, row, context);
+        ConfigurePortalAccess(patient, context.PortalHabilitado, context.LoginIdentifier);
+        await patientRepository.AddAsync(patient, cancellationToken);
+        await EnsureClinicalHistoryIfNeededAsync(patient.Id, row.NumeroHc, cancellationToken);
+    }
+
+    private async Task UpdatePatientAsync(Patient existing, PatientImportRow row, ImportPatientContext context, CancellationToken cancellationToken)
+    {
+        ApplyAdministrativeData(existing, row, context);
+        ConfigurePortalAccess(existing, context.PortalHabilitado, context.LoginIdentifier);
+        await EnsureClinicalHistoryIfNeededAsync(existing.Id, row.NumeroHc, cancellationToken);
+    }
+
+    private static void ValidateRequiredFields(PatientImportRow row)
+    {
+        if (string.IsNullOrWhiteSpace(row.Nombre) || string.IsNullOrWhiteSpace(row.Telefono) || string.IsNullOrWhiteSpace(row.DocumentoIdentidad))
+        {
+            throw new ValidationException("nombre, telefono y documento_identidad son obligatorios.");
+        }
+    }
+
+    private static ImportPatientContext BuildRowContext(
+        PatientImportRow row,
+        IReadOnlyCollection<CondicionIva> conditions,
+        IReadOnlyCollection<ObraSocial> obrasSociales)
+    {
+        var normalizedDoc = NormalizeDocumento(row.DocumentoIdentidad!);
+        var portalHabilitado = ParseBool(row.PortalHabilitado);
+        var loginIdentifier = ResolveLoginIdentifier(row.LoginIdentifier, portalHabilitado, normalizedDoc);
+
+        return new ImportPatientContext(
+            normalizedDoc,
+            ResolveCondicionIvaId(row, conditions),
+            ResolveObraSocialId(row, obrasSociales),
+            NormalizeJson(row.DatosExtra),
+            portalHabilitado,
+            ParseBool(row.OptInWhatsapp),
+            loginIdentifier);
+    }
+
+    private static string? ResolveLoginIdentifier(string? loginIdentifier, bool portalHabilitado, string normalizedDoc)
+    {
+        var normalizedLogin = NormalizeOrNull(loginIdentifier);
+        if (portalHabilitado && string.IsNullOrWhiteSpace(normalizedLogin))
+        {
+            return normalizedDoc;
+        }
+
+        return normalizedLogin;
+    }
+
+    private static void ApplyAdministrativeData(Patient patient, PatientImportRow row, ImportPatientContext context)
+    {
+        patient.UpdateAdministrativeData(new PatientAdministrativeDataUpdate(
+            row.Email?.Trim(),
+            row.Telefono!.Trim(),
+            row.DocumentoIdentidad!.Trim(),
+            context.NormalizedDoc,
+            NormalizeOrNull(row.Nacionalidad),
+            context.CondicionIvaId,
+            context.ObraSocialId,
+            NormalizeOrNull(row.NumeroCredencialObraSocial),
+            ParseBool(row.Claustrofobico),
+            NormalizeOrNull(row.Notas),
+            context.DatosExtra,
+            context.OptInWhatsapp,
+            NormalizeOrNull(row.OptInSource)));
+    }
+
+    private static void ConfigurePortalAccess(Patient patient, bool portalHabilitado, string? loginIdentifier)
+    {
+        patient.ConfigurePortal(portalHabilitado, portalHabilitado);
+        if (!string.IsNullOrWhiteSpace(loginIdentifier))
+        {
+            patient.SetLoginIdentifier(loginIdentifier);
+        }
+    }
+
+    private async Task EnsureClinicalHistoryIfNeededAsync(Guid patientId, string? numeroHc, CancellationToken cancellationToken)
+    {
+        if (TryGetHistoryNumber(numeroHc, out var hcNumber))
+        {
+            await EnsureClinicalHistoryForPatientAsync(patientId, hcNumber, cancellationToken);
+        }
+    }
+
     private async Task EnsureClinicalHistoryForPatientAsync(Guid patientId, long number, CancellationToken cancellationToken)
     {
         var history = await clinicalHistoryRepository.GetByPatientIdAsync(patientId, cancellationToken);
         if (history is null)
         {
-            await clinicalHistoryRepository.AddAsync(new DomainClinicalHistory(patientId, number, null, null, null, null), cancellationToken);
+            await clinicalHistoryRepository.AddAsync(new DomainClinicalHistory(new ClinicalHistoryCreateParams(patientId, number, null, null, null, null)), cancellationToken);
         }
     }
 
@@ -269,7 +305,7 @@ public sealed class ImportPatientsService(
             map.GetValueOrDefault("nombre"),
             map.GetValueOrDefault("email"),
             map.GetValueOrDefault("telefono"),
-            map.GetValueOrDefault("documento_identidad"),
+            map.GetValueOrDefault(DocumentoIdentidadKey),
             map.GetValueOrDefault("login_identifier"),
             map.GetValueOrDefault("nacionalidad"),
             map.GetValueOrDefault("condicion_iva_id"),
@@ -311,4 +347,19 @@ public sealed class ImportPatientsService(
         string? OptInWhatsapp,
         string? OptInSource,
         string? NumeroHc);
+
+    private sealed record ImportPatientContext(
+        string NormalizedDoc,
+        int CondicionIvaId,
+        int? ObraSocialId,
+        string DatosExtra,
+        bool PortalHabilitado,
+        bool OptInWhatsapp,
+        string? LoginIdentifier);
+
+    private enum ImportRowResult
+    {
+        Created,
+        Updated
+    }
 }

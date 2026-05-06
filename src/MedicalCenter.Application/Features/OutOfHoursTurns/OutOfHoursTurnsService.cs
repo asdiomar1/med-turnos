@@ -55,7 +55,7 @@ public sealed class OutOfHoursTurnsService(
                 }
 
                 var operadorCamaraId = command.OperadorCamaraId ?? actor.Id;
-                var turno = new OutOfHoursTurn(
+                var turno = new OutOfHoursTurn(new OutOfHoursTurnCreateParams(
                     Guid.NewGuid(),
                     command.Fecha,
                     command.Hora,
@@ -67,7 +67,7 @@ public sealed class OutOfHoursTurnsService(
                     command.MonoxidoOrdenMedica,
                     command.MonoxidoResumenClinico,
                     command.MonoxidoMedicoId,
-                    command.MonoxidoMedicoUserId);
+                    command.MonoxidoMedicoUserId));
 
                 await outOfHoursTurnRepository.AddAsync(turno, cancellationToken);
                 await unitOfWork.SaveChangesAsync(cancellationToken);

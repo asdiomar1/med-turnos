@@ -56,7 +56,15 @@ public sealed class ClinicalHistoryController(IClinicalHistoryService clinicalHi
     [Authorize(Policy = "ClinicalHistoryManage")]
     public async Task<IActionResult> CreateEvolution(Guid pacienteId, [FromBody] CreateClinicalEvolutionRequest request, CancellationToken cancellationToken)
     {
-        var item = await clinicalHistoryService.CreateEvolutionAsync(User.GetUserId(), pacienteId, request.MedicoId, request.FechaClinica, request.Titulo, request.Nota, request.DiagnosticoImpresion, request.Indicaciones, request.ConsultaSlotId, cancellationToken, request.MedicoUserId);
+        var item = await clinicalHistoryService.CreateEvolutionAsync(User.GetUserId(), pacienteId, new CreateEvolutionCommand(
+            request.MedicoId,
+            request.FechaClinica,
+            request.Titulo,
+            request.Nota,
+            request.DiagnosticoImpresion,
+            request.Indicaciones,
+            request.ConsultaSlotId,
+            request.MedicoUserId), cancellationToken);
         return StatusCode(StatusCodes.Status201Created, item.ToResponse());
     }
 }

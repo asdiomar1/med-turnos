@@ -11,33 +11,17 @@ namespace MedicalCenter.Application.Features.Patients;
 
 public sealed class PatientsService(IPatientRepository patientRepository, IUserRepository userRepository, IAdminEventFeedRepository adminEventFeedRepository, IUnitOfWork unitOfWork) : IPatientsService
 {
+    private const string PatientNotFoundMessage = "Paciente no encontrado";
     public async Task<IReadOnlyCollection<PatientSummary>> GetAsync(string? search, bool includeInactive, CancellationToken cancellationToken)
     {
         var patients = await patientRepository.GetAsync(search, includeInactive, cancellationToken);
         return patients.Select(x => x.ToSummary()).ToArray();
     }
 
-    public async Task<CreatedPatientResult> CreateAsync(
-        Guid actorUserId,
-        string nombre,
-        string? email,
-        string telefono,
-        string documentoIdentidad,
-        string? loginIdentifier,
-        string? nacionalidad,
-        int condicionIvaId,
-        int? obraSocialId,
-        string? numeroCredencialObraSocial,
-        bool portalHabilitado,
-        bool optInWhatsapp,
-        string? optInSource,
-        bool claustrofobico,
-        string? notas,
-        string datosExtra,
-        CancellationToken cancellationToken)
+    public async Task<CreatedPatientResult> CreateAsync(Guid actorUserId, CreatePatientCommand command, CancellationToken cancellationToken)
     {
-        Validate(nombre, telefono, documentoIdentidad, nacionalidad, condicionIvaId, obraSocialId, numeroCredencialObraSocial, datosExtra);
-        var normalizedLoginIdentifier = NormalizeOrNull(loginIdentifier);
+        Validate(new ValidationParams(command.Nombre, command.Telefono, command.DocumentoIdentidad, command.Nacionalidad, command.CondicionIvaId, command.ObraSocialId, command.NumeroCredencialObraSocial, command.DatosExtra));
+        var normalizedLoginIdentifier = NormalizeOrNull(command.LoginIdentifier);
         if (!string.IsNullOrWhiteSpace(normalizedLoginIdentifier) &&
             await patientRepository.GetByLoginIdentifierAsync(normalizedLoginIdentifier, cancellationToken) is not null)
         {
@@ -46,20 +30,29 @@ public sealed class PatientsService(IPatientRepository patientRepository, IUserR
 
         var patient = new Patient(
             Guid.NewGuid(),
-            nombre.Trim(),
-            telefono.Trim(),
-            documentoIdentidad.Trim(),
-            NormalizeDocumento(documentoIdentidad),
-            condicionIvaId,
-            portalHabilitado,
-            normalizedLoginIdentifier);
-        patient.UpdateAdministrativeData(email?.Trim(), telefono.Trim(), documentoIdentidad.Trim(), NormalizeDocumento(documentoIdentidad), nacionalidad?.Trim(), condicionIvaId, obraSocialId, numeroCredencialObraSocial?.Trim(), claustrofobico, notas?.Trim(), datosExtra, optInWhatsapp, optInSource);
-        patient.ConfigurePortal(portalHabilitado, portalHabilitado);
+            command.Nombre.Trim(),
+            new PatientAdministrativeInfo(command.Telefono.Trim(), command.DocumentoIdentidad.Trim(), NormalizeDocumento(command.DocumentoIdentidad), command.CondicionIvaId),
+            new PatientPortalInfo(command.PortalHabilitado, normalizedLoginIdentifier));
+        patient.UpdateAdministrativeData(new PatientAdministrativeDataUpdate(
+            command.Email?.Trim(),
+            command.Telefono.Trim(),
+            command.DocumentoIdentidad.Trim(),
+            NormalizeDocumento(command.DocumentoIdentidad),
+            command.Nacionalidad?.Trim(),
+            command.CondicionIvaId,
+            command.ObraSocialId,
+            command.NumeroCredencialObraSocial?.Trim(),
+            command.Claustrofobico,
+            command.Notas?.Trim(),
+            command.DatosExtra,
+            command.OptInWhatsapp,
+            command.OptInSource));
+        patient.ConfigurePortal(command.PortalHabilitado, command.PortalHabilitado);
 
         await patientRepository.AddAsync(patient, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
-        var entry = new AdminEventFeedEntry(
+        var entry = new AdminEventFeedEntry(new AdminEventFeedEntryCreateParams(
             0,
             DateTimeOffset.UtcNow,
             actorUserId,
@@ -73,7 +66,7 @@ public sealed class PatientsService(IPatientRepository patientRepository, IUserR
             $"Se creó el paciente \"{patient.Nombre}\".",
             AdminEventFeedConstants.SourceSystemApi,
             $"paciente:{AdminEventFeedConstants.ActionCodes.PacienteCreated}:{patient.Id}:{Guid.NewGuid():N}",
-            "{}");
+            "{}"));
 
         await adminEventFeedRepository.AddAsync(entry, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
@@ -81,14 +74,27 @@ public sealed class PatientsService(IPatientRepository patientRepository, IUserR
         return new CreatedPatientResult(patient.Id, patient.Nombre);
     }
 
-    public async Task<PatientSummary> UpdateAsync(Guid actorUserId, Guid patientId, string? email, string telefono, string documentoIdentidad, string? nacionalidad, int condicionIvaId, int? obraSocialId, string? numeroCredencialObraSocial, bool claustrofobico, string? notas, string datosExtra, bool actualizarNotas, bool optInWhatsapp, string? optInSource, CancellationToken cancellationToken)
+    public async Task<PatientSummary> UpdateAsync(Guid actorUserId, Guid patientId, UpdatePatientCommand command, CancellationToken cancellationToken)
     {
-        var patient = await patientRepository.GetByIdAsync(patientId, cancellationToken) ?? throw new NotFoundException("Paciente no encontrado");
-        Validate(patient.Nombre, telefono, documentoIdentidad, nacionalidad, condicionIvaId, obraSocialId, numeroCredencialObraSocial, datosExtra);
-        patient.UpdateAdministrativeData(email?.Trim(), telefono.Trim(), documentoIdentidad.Trim(), NormalizeDocumento(documentoIdentidad), nacionalidad?.Trim(), condicionIvaId, obraSocialId, numeroCredencialObraSocial?.Trim(), claustrofobico, actualizarNotas ? notas?.Trim() : patient.Notas, datosExtra, optInWhatsapp, optInSource);
+        var patient = await patientRepository.GetByIdAsync(patientId, cancellationToken) ?? throw new NotFoundException(PatientNotFoundMessage);
+        Validate(new ValidationParams(patient.Nombre, command.Telefono, command.DocumentoIdentidad, command.Nacionalidad, command.CondicionIvaId, command.ObraSocialId, command.NumeroCredencialObraSocial, command.DatosExtra));
+        patient.UpdateAdministrativeData(new PatientAdministrativeDataUpdate(
+            command.Email?.Trim(),
+            command.Telefono.Trim(),
+            command.DocumentoIdentidad.Trim(),
+            NormalizeDocumento(command.DocumentoIdentidad),
+            command.Nacionalidad?.Trim(),
+            command.CondicionIvaId,
+            command.ObraSocialId,
+            command.NumeroCredencialObraSocial?.Trim(),
+            command.Claustrofobico,
+            command.ActualizarNotas ? command.Notas?.Trim() : patient.Notas,
+            command.DatosExtra,
+            command.OptInWhatsapp,
+            command.OptInSource));
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
-        var entry = new AdminEventFeedEntry(
+        var entry = new AdminEventFeedEntry(new AdminEventFeedEntryCreateParams(
             0,
             DateTimeOffset.UtcNow,
             actorUserId,
@@ -102,7 +108,7 @@ public sealed class PatientsService(IPatientRepository patientRepository, IUserR
             $"Se actualizaron los datos del paciente \"{patient.Nombre}\".",
             AdminEventFeedConstants.SourceSystemApi,
             $"paciente:{AdminEventFeedConstants.ActionCodes.PacienteUpdated}:{patientId}:{Guid.NewGuid():N}",
-            "{}");
+            "{}"));
 
         await adminEventFeedRepository.AddAsync(entry, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
@@ -112,7 +118,7 @@ public sealed class PatientsService(IPatientRepository patientRepository, IUserR
 
     public async Task<MutationResult> DeleteAsync(Guid patientId, CancellationToken cancellationToken)
     {
-        var patient = await patientRepository.GetByIdAsync(patientId, cancellationToken) ?? throw new NotFoundException("Paciente no encontrado");
+        var patient = await patientRepository.GetByIdAsync(patientId, cancellationToken) ?? throw new NotFoundException(PatientNotFoundMessage);
         patient.Deactivate();
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return new MutationResult(true);
@@ -120,7 +126,7 @@ public sealed class PatientsService(IPatientRepository patientRepository, IUserR
 
     public async Task<PatientSummary> ConfigurePortalAsync(Guid patientId, bool portalHabilitado, CancellationToken cancellationToken)
     {
-        var patient = await patientRepository.GetByIdAsync(patientId, cancellationToken) ?? throw new NotFoundException("Paciente no encontrado");
+        var patient = await patientRepository.GetByIdAsync(patientId, cancellationToken) ?? throw new NotFoundException(PatientNotFoundMessage);
         if (portalHabilitado && string.IsNullOrWhiteSpace(patient.DocumentoIdentidadNormalizado))
         {
             throw new ValidationException("Habilitar portal exige documento valido");
@@ -133,7 +139,7 @@ public sealed class PatientsService(IPatientRepository patientRepository, IUserR
 
     public async Task<PatientSummary> EnableResetAsync(Guid patientId, CancellationToken cancellationToken)
     {
-        var patient = await patientRepository.GetByIdAsync(patientId, cancellationToken) ?? throw new NotFoundException("Paciente no encontrado");
+        var patient = await patientRepository.GetByIdAsync(patientId, cancellationToken) ?? throw new NotFoundException(PatientNotFoundMessage);
         patient.MarkResetRequired();
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return patient.ToSummary();
@@ -147,7 +153,7 @@ public sealed class PatientsService(IPatientRepository patientRepository, IUserR
             throw new ForbiddenException();
         }
 
-        var patient = await patientRepository.GetByIdAsync(user.PatientId.Value, cancellationToken) ?? throw new NotFoundException("Paciente no encontrado");
+        var patient = await patientRepository.GetByIdAsync(user.PatientId.Value, cancellationToken) ?? throw new NotFoundException(PatientNotFoundMessage);
         if (string.IsNullOrWhiteSpace(nombre) || string.IsNullOrWhiteSpace(telefono))
         {
             throw new ValidationException("nombre y telefono son obligatorios");
@@ -158,26 +164,36 @@ public sealed class PatientsService(IPatientRepository patientRepository, IUserR
         return patient.ToSummary();
     }
 
-    private static void Validate(string nombre, string telefono, string documentoIdentidad, string? nacionalidad, int condicionIvaId, int? obraSocialId, string? numeroCredencialObraSocial, string datosExtra)
+    private sealed record ValidationParams(
+        string Nombre,
+        string Telefono,
+        string DocumentoIdentidad,
+        string? Nacionalidad,
+        int CondicionIvaId,
+        int? ObraSocialId,
+        string? NumeroCredencialObraSocial,
+        string DatosExtra);
+
+    private static void Validate(ValidationParams p)
     {
-        if (string.IsNullOrWhiteSpace(nombre) || string.IsNullOrWhiteSpace(telefono) || string.IsNullOrWhiteSpace(documentoIdentidad) || condicionIvaId <= 0)
+        if (string.IsNullOrWhiteSpace(p.Nombre) || string.IsNullOrWhiteSpace(p.Telefono) || string.IsNullOrWhiteSpace(p.DocumentoIdentidad) || p.CondicionIvaId <= 0)
         {
             throw new ValidationException("telefono, documento y condicion_iva_id son obligatorios");
         }
 
-        if (documentoIdentidad.Any(char.IsLetter) && string.IsNullOrWhiteSpace(nacionalidad))
+        if (p.DocumentoIdentidad.Any(char.IsLetter) && string.IsNullOrWhiteSpace(p.Nacionalidad))
         {
             throw new ValidationException("nacionalidad es obligatoria cuando el documento contiene letras");
         }
 
-        if (obraSocialId.HasValue && string.IsNullOrWhiteSpace(numeroCredencialObraSocial))
+        if (p.ObraSocialId.HasValue && string.IsNullOrWhiteSpace(p.NumeroCredencialObraSocial))
         {
             throw new ValidationException("numero_credencial_obra_social es obligatorio si hay obra social");
         }
 
         try
         {
-            using var _ = JsonDocument.Parse(datosExtra);
+            using var _ = JsonDocument.Parse(p.DatosExtra);
             if (_.RootElement.ValueKind != JsonValueKind.Object)
             {
                 throw new ValidationException("datos_extra invalido");

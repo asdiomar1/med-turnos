@@ -2,29 +2,31 @@ using MedicalCenter.Domain.Common;
 
 namespace MedicalCenter.Domain.Entities;
 
+public sealed record ClinicalHistoryCreateParams(
+    Guid PatientId,
+    long Numero,
+    string? Antecedentes,
+    string? Alergias,
+    string? MedicacionActual,
+    string? ObservacionesRelevantes,
+    DateTimeOffset? CreatedAt = null,
+    DateTimeOffset? UpdatedAt = null);
+
 public sealed class ClinicalHistory : Entity<Guid>
 {
     private ClinicalHistory() { }
 
-    public ClinicalHistory(
-        Guid patientId,
-        long numero,
-        string? antecedentes,
-        string? alergias,
-        string? medicacionActual,
-        string? observacionesRelevantes,
-        DateTimeOffset? createdAt = null,
-        DateTimeOffset? updatedAt = null)
+    public ClinicalHistory(ClinicalHistoryCreateParams p)
     {
-        Id = patientId;
-        PatientId = patientId;
-        Numero = numero;
-        Antecedentes = antecedentes;
-        Alergias = alergias;
-        MedicacionActual = medicacionActual;
-        ObservacionesRelevantes = observacionesRelevantes;
-        CreatedAt = createdAt ?? DateTimeOffset.UtcNow;
-        UpdatedAt = updatedAt ?? DateTimeOffset.UtcNow;
+        Id = p.PatientId;
+        PatientId = p.PatientId;
+        Numero = p.Numero;
+        Antecedentes = p.Antecedentes;
+        Alergias = p.Alergias;
+        MedicacionActual = p.MedicacionActual;
+        ObservacionesRelevantes = p.ObservacionesRelevantes;
+        CreatedAt = p.CreatedAt ?? DateTimeOffset.UtcNow;
+        UpdatedAt = p.UpdatedAt ?? DateTimeOffset.UtcNow;
     }
 
     public Guid PatientId { get; private set; }

@@ -14,6 +14,7 @@ public sealed class ProfessionalsService(
     IAdminEventFeedRepository adminEventFeedRepository,
     IUnitOfWork unitOfWork) : IProfessionalsService
 {
+    private const string AgenciaEntityType = "agencia";
     public async Task<IReadOnlyCollection<MedicoSummaryDto>> GetMedicosAsync(CancellationToken cancellationToken) =>
         (await userRepository.GetByRoleAsync("medico", onlyActive: true, cancellationToken))
             .Select(u => u.ToMedicoSummary())
@@ -120,15 +121,15 @@ public sealed class ProfessionalsService(
         return normalized switch
         {
             "doctor" => "doctor",
-            "agencia" => "agencia",
-            "institucion" => "agencia",
+            AgenciaEntityType => AgenciaEntityType,
+            "institucion" => AgenciaEntityType,
             "otro" => "otro",
             _ => throw new ValidationException("Tipo de referente inválido.")
         };
     }
 
     private static string NormalizeReferenteTypeForResponse(string tipo) =>
-        tipo == "agencia" ? "institucion" : tipo;
+        tipo == AgenciaEntityType ? "institucion" : tipo;
 
     private async Task RegisterCatalogEventAsync(
         Guid actorUserId,
@@ -139,7 +140,7 @@ public sealed class ProfessionalsService(
         string summary,
         CancellationToken cancellationToken)
     {
-        var entry = new AdminEventFeedEntry(
+        var entry = new AdminEventFeedEntry(new AdminEventFeedEntryCreateParams(
             0,
             DateTimeOffset.UtcNow,
             actorUserId,
@@ -157,7 +158,7 @@ public sealed class ProfessionalsService(
             summary,
             AdminEventFeedConstants.SourceSystemApi,
             $"{entityType}:{actionCode}:{entityId}:{Guid.NewGuid():N}",
-            "{}");
+            "{}"));
 
         await adminEventFeedRepository.AddAsync(entry, cancellationToken);
     }
