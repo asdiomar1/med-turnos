@@ -1,5 +1,6 @@
 using System.IO;
 using MedicalCenter.Application.Abstractions.Common;
+using MedicalCenter.Domain.Constants;
 using MedicalCenter.Domain.Entities;
 using MedicalCenter.Infrastructure.Options;
 using MedicalCenter.Infrastructure.Persistence;
@@ -29,173 +30,173 @@ public static class DatabaseInitializer
 
     private static readonly (long Id, string Key, string Nombre, string? Descripcion, string Modulo)[] Permissions =
     [
-        (1, "app.admin_panel.access", "Acceso panel interno", "Permite ingresar al panel de administración", "app"),
-        (2, "portal.access", "Acceso portal paciente", "Permite ingresar al portal paciente", "portal"),
-        (3, "portal.turnos.reserve", "Reservar turnos portal", "Permite reservar turnos desde el portal", "portal"),
-        (4, "portal.turnos.cancel", "Cancelar turnos portal", "Permite cancelar turnos propios desde el portal", "portal"),
-        (5, "portal.self.update", "Editar datos propios portal", "Permite editar datos personales del paciente", "portal"),
-        (6, "dashboard.read", "Ver dashboard", "Permite leer métricas y agenda del dashboard", "dashboard"),
-        (7, "turnos.read", "Ver turnos cámara", "Permite consultar agenda de turnos de cámara", "turnos"),
-        (8, "turnos.asignar", "Asignar turnos cámara", "Permite asignar turnos de cámara", "turnos"),
-        (9, "turnos.cancelar", "Cancelar turnos cámara", "Permite cancelar turnos de cámara", "turnos"),
-        (10, "turnos.reprogramar", "Reprogramar turnos cámara", "Permite reprogramar turnos de cámara", "turnos"),
-        (11, "turnos.apartar", "Apartar turnos cámara", "Permite apartar turnos de cámara", "turnos"),
-        (12, "turnos.confirmar_apartado", "Confirmar apartados", "Permite confirmar turnos apartados", "turnos"),
-        (13, "turnos.liberar_apartado", "Liberar apartados", "Permite liberar turnos apartados", "turnos"),
-        (14, "turnos.bloque_completo", "Operar bloque completo", "Permite asignar/cancelar bloque completo", "turnos"),
-        (15, "turnos.tanda", "Operar tandas", "Permite crear y gestionar tandas", "turnos"),
-        (16, "turnos.cierre_diario", "Gestionar cierre diario", "Permite confirmar/reabrir cierre diario", "turnos"),
-        (17, "turnos.fuera_horario", "Gestionar turnos fuera de horario", "Permite crear/cancelar turnos fuera de horario", "turnos"),
-        (18, "consultas.read", "Ver consultas", "Permite ver agenda de consultas médicas", "consultas"),
-        (19, "consultas.asignar", "Asignar consultas", "Permite asignar consultas médicas", "consultas"),
-        (20, "consultas.cancelar", "Cancelar consultas", "Permite cancelar consultas médicas", "consultas"),
-        (21, "consultas.reprogramar", "Reprogramar consultas", "Permite reprogramar consultas médicas", "consultas"),
-        (22, "consultas.cerrar", "Cerrar consultas", "Permite cerrar consultas médicas", "consultas"),
-        (24, "historia_clinica.editar_ficha", "Editar ficha clínica", "Permite editar ficha clínica resumida", "historia_clinica"),
-        (25, "historia_clinica.crear_evolucion", "Crear evoluciones", "Permite cargar evoluciones clínicas", "historia_clinica"),
-        (26, "historia_clinica.editar_numero", "Editar número HC", "Permite cambiar número de historia clínica", "historia_clinica"),
-        (27, "pacientes.read", "Ver pacientes", "Permite consultar listado y detalle de pacientes", "pacientes"),
-        (28, "pacientes.crear", "Crear pacientes", "Permite alta de pacientes", "pacientes"),
-        (29, "pacientes.editar", "Editar pacientes", "Permite edición de pacientes", "pacientes"),
-        (30, "pacientes.portal.manage", "Gestionar portal paciente", "Permite configurar acceso al portal paciente", "pacientes"),
-        (31, "config.read", "Ver configuración", "Permite consultar catálogos y configuración", "configuracion"),
-        (32, "config.horarios.manage", "Gestionar horarios", "Permite editar horarios y apertura/reparación de slots", "configuracion"),
-        (33, "config.camaras.manage", "Gestionar cámaras", "Permite crear/editar/activar cámaras", "configuracion"),
-        (34, "config.catalogos.manage", "Gestionar catálogos", "Permite editar médicos, referentes, obras sociales y campos", "configuracion"),
-        (35, "config.whatsapp.manage", "Gestionar configuración WhatsApp", "Permite editar plantillas y settings WhatsApp", "configuracion"),
-        (36, "actividad.read", "Ver actividad", "Permite consultar feed de actividad y auditoría", "actividad"),
-        (37, "reportes.read", "Ver reportes", "Permite acceder a cierres y reportes", "reportes"),
-        (38, "reportes.export", "Exportar reportes", "Permite exportar cierres y reportes", "reportes"),
-        (39, "staff.read", "Ver usuarios internos", "Permite listar usuarios internos", "usuarios"),
-        (40, "staff.manage", "Gestionar usuarios internos", "Permite crear usuarios staff y asignar roles", "usuarios"),
-        (41, "rbac.read", "Ver roles y permisos", "Permite ver configuración RBAC", "rbac"),
-        (42, "rbac.manage", "Gestionar roles y permisos", "Permite editar roles, permisos y asignaciones", "rbac"),
-        (43, "whatsapp.dispatch", "Despachar WhatsApp", "Permite ejecutar envíos y recordatorios manuales", "whatsapp"),
-        (44, "historia_clinica.resumen.read", "Ver resumen HC", "Permite ver número de HC en el listado de pacientes", "historia_clinica"),
-        (47, "historia_clinica.detalle.read", "Ver detalle HC", "Permite ver ficha clínica completa y evoluciones", "historia_clinica")
+        (1, PermissionConstants.AppAdminPanelAccess, "Acceso panel interno", "Permite ingresar al panel de administración", PermissionConstants.ModuleApp),
+        (2, PermissionConstants.PortalAccess, "Acceso portal paciente", "Permite ingresar al portal paciente", PermissionConstants.ModulePortal),
+        (3, PermissionConstants.PortalTurnosReserve, "Reservar turnos portal", "Permite reservar turnos desde el portal", PermissionConstants.ModulePortal),
+        (4, PermissionConstants.PortalTurnosCancel, "Cancelar turnos portal", "Permite cancelar turnos propios desde el portal", PermissionConstants.ModulePortal),
+        (5, PermissionConstants.PortalSelfUpdate, "Editar datos propios portal", "Permite editar datos personales del paciente", PermissionConstants.ModulePortal),
+        (6, PermissionConstants.DashboardRead, "Ver dashboard", "Permite leer métricas y agenda del dashboard", PermissionConstants.ModuleDashboard),
+        (7, PermissionConstants.TurnosRead, "Ver turnos cámara", "Permite consultar agenda de turnos de cámara", PermissionConstants.ModuleTurnos),
+        (8, PermissionConstants.TurnosAsignar, "Asignar turnos cámara", "Permite asignar turnos de cámara", PermissionConstants.ModuleTurnos),
+        (9, PermissionConstants.TurnosCancelar, "Cancelar turnos cámara", "Permite cancelar turnos de cámara", PermissionConstants.ModuleTurnos),
+        (10, PermissionConstants.TurnosReprogramar, "Reprogramar turnos cámara", "Permite reprogramar turnos de cámara", PermissionConstants.ModuleTurnos),
+        (11, PermissionConstants.TurnosApartar, "Apartar turnos cámara", "Permite apartar turnos de cámara", PermissionConstants.ModuleTurnos),
+        (12, PermissionConstants.TurnosConfirmarApartado, "Confirmar apartados", "Permite confirmar turnos apartados", PermissionConstants.ModuleTurnos),
+        (13, PermissionConstants.TurnosLiberarApartado, "Liberar apartados", "Permite liberar turnos apartados", PermissionConstants.ModuleTurnos),
+        (14, PermissionConstants.TurnosBloqueCompleto, "Operar bloque completo", "Permite asignar/cancelar bloque completo", PermissionConstants.ModuleTurnos),
+        (15, PermissionConstants.TurnosTanda, "Operar tandas", "Permite crear y gestionar tandas", PermissionConstants.ModuleTurnos),
+        (16, PermissionConstants.TurnosCierreDiario, "Gestionar cierre diario", "Permite confirmar/reabrir cierre diario", PermissionConstants.ModuleTurnos),
+        (17, PermissionConstants.TurnosFueraHorario, "Gestionar turnos fuera de horario", "Permite crear/cancelar turnos fuera de horario", PermissionConstants.ModuleTurnos),
+        (18, PermissionConstants.ConsultasRead, "Ver consultas", "Permite ver agenda de consultas médicas", PermissionConstants.ModuleConsultas),
+        (19, PermissionConstants.ConsultasAsignar, "Asignar consultas", "Permite asignar consultas médicas", PermissionConstants.ModuleConsultas),
+        (20, PermissionConstants.ConsultasCancelar, "Cancelar consultas", "Permite cancelar consultas médicas", PermissionConstants.ModuleConsultas),
+        (21, PermissionConstants.ConsultasReprogramar, "Reprogramar consultas", "Permite reprogramar consultas médicas", PermissionConstants.ModuleConsultas),
+        (22, PermissionConstants.ConsultasCerrar, "Cerrar consultas", "Permite cerrar consultas médicas", PermissionConstants.ModuleConsultas),
+        (24, PermissionConstants.HistoriaClinicaEditarFicha, "Editar ficha clínica", "Permite editar ficha clínica resumida", PermissionConstants.ModuleHistoriaClinica),
+        (25, PermissionConstants.HistoriaClinicaCrearEvolucion, "Crear evoluciones", "Permite cargar evoluciones clínicas", PermissionConstants.ModuleHistoriaClinica),
+        (26, PermissionConstants.HistoriaClinicaEditarNumero, "Editar número HC", "Permite cambiar número de historia clínica", PermissionConstants.ModuleHistoriaClinica),
+        (27, PermissionConstants.PacientesRead, "Ver pacientes", "Permite consultar listado y detalle de pacientes", PermissionConstants.ModulePacientes),
+        (28, PermissionConstants.PacientesCrear, "Crear pacientes", "Permite alta de pacientes", PermissionConstants.ModulePacientes),
+        (29, PermissionConstants.PacientesEditar, "Editar pacientes", "Permite edición de pacientes", PermissionConstants.ModulePacientes),
+        (30, PermissionConstants.PacientesPortalManage, "Gestionar portal paciente", "Permite configurar acceso al portal paciente", PermissionConstants.ModulePacientes),
+        (31, PermissionConstants.ConfigRead, "Ver configuración", "Permite consultar catálogos y configuración", PermissionConstants.ModuleConfiguracion),
+        (32, PermissionConstants.ConfigHorariosManage, "Gestionar horarios", "Permite editar horarios y apertura/reparación de slots", PermissionConstants.ModuleConfiguracion),
+        (33, PermissionConstants.ConfigCamarasManage, "Gestionar cámaras", "Permite crear/editar/activar cámaras", PermissionConstants.ModuleConfiguracion),
+        (34, PermissionConstants.ConfigCatalogosManage, "Gestionar catálogos", "Permite editar médicos, referentes, obras sociales y campos", PermissionConstants.ModuleConfiguracion),
+        (35, PermissionConstants.ConfigWhatsappManage, "Gestionar configuración WhatsApp", "Permite editar plantillas y settings WhatsApp", PermissionConstants.ModuleConfiguracion),
+        (36, PermissionConstants.ActividadRead, "Ver actividad", "Permite consultar feed de actividad y auditoría", PermissionConstants.ModuleActividad),
+        (37, PermissionConstants.ReportesRead, "Ver reportes", "Permite acceder a cierres y reportes", PermissionConstants.ModuleReportes),
+        (38, PermissionConstants.ReportesExport, "Exportar reportes", "Permite exportar cierres y reportes", PermissionConstants.ModuleReportes),
+        (39, PermissionConstants.StaffRead, "Ver usuarios internos", "Permite listar usuarios internos", PermissionConstants.ModuleUsuarios),
+        (40, PermissionConstants.StaffManage, "Gestionar usuarios internos", "Permite crear usuarios staff y asignar roles", PermissionConstants.ModuleUsuarios),
+        (41, PermissionConstants.RbacRead, "Ver roles y permisos", "Permite ver configuración RBAC", PermissionConstants.ModuleRbac),
+        (42, PermissionConstants.RbacManage, "Gestionar roles y permisos", "Permite editar roles, permisos y asignaciones", PermissionConstants.ModuleRbac),
+        (43, PermissionConstants.WhatsappDispatch, "Despachar WhatsApp", "Permite ejecutar envíos y recordatorios manuales", PermissionConstants.ModuleWhatsapp),
+        (44, PermissionConstants.HistoriaClinicaResumenRead, "Ver resumen HC", "Permite ver número de HC en el listado de pacientes", PermissionConstants.ModuleHistoriaClinica),
+        (47, PermissionConstants.HistoriaClinicaDetalleRead, "Ver detalle HC", "Permite ver ficha clínica completa y evoluciones", PermissionConstants.ModuleHistoriaClinica)
     ];
 
     private static readonly (long Id, string Slug, string Nombre, string? Descripcion, bool IsStaff, string DefaultHome)[] Roles =
     [
-        (1, "paciente", "Paciente", "Acceso exclusivo al portal de paciente", false, "/paciente"),
-        (2, "staff_inactivo", "Staff inactivo", "Cuenta interna desactivada sin permisos operativos", true, "/login"),
-        (3, "operador_camara", "Operador de cámara", "Operación diaria de agenda y cierres operativos", true, "/usuario/turnos"),
-        (4, "secretaria", "Secretaría", "Gestión operativa de pacientes, turnos y consultas", true, "/usuario/pacientes"),
-        (5, "medico", "Médico", "Gestión clínica de consultas e historias clínicas", true, "/usuario/historias-clinicas"),
-        (6, "admin", "Administrador", "Acceso total y gestión del sistema", true, "/usuario")
+        (1, PermissionConstants.RolePaciente, "Paciente", "Acceso exclusivo al portal de paciente", false, PermissionConstants.RoutePaciente),
+        (2, PermissionConstants.RoleStaffInactivo, "Staff inactivo", "Cuenta interna desactivada sin permisos operativos", true, PermissionConstants.RouteLogin),
+        (3, PermissionConstants.RoleOperadorCamara, "Operador de cámara", "Operación diaria de agenda y cierres operativos", true, PermissionConstants.RouteUsuarioTurnos),
+        (4, PermissionConstants.RoleSecretaria, "Secretaría", "Gestión operativa de pacientes, turnos y consultas", true, PermissionConstants.RouteUsuarioPacientes),
+        (5, PermissionConstants.RoleMedico, "Médico", "Gestión clínica de consultas e historias clínicas", true, PermissionConstants.RouteUsuarioHistoriasClinicas),
+        (6, PermissionConstants.RoleAdmin, "Administrador", "Acceso total y gestión del sistema", true, PermissionConstants.RouteUsuario)
     ];
 
     private static readonly (string RoleSlug, string[] PermissionKeys)[] RolePermissions =
     [
-        ("paciente", ["portal.access", "portal.turnos.reserve", "portal.turnos.cancel", "portal.self.update"]),
-        ("staff_inactivo", []),
-        ("operador_camara", [
-            "app.admin_panel.access",
-            "dashboard.read",
-            "turnos.read",
-            "turnos.asignar",
-            "turnos.cancelar",
-            "turnos.reprogramar",
-            "turnos.apartar",
-            "turnos.confirmar_apartado",
-            "turnos.liberar_apartado",
-            "turnos.bloque_completo",
-            "turnos.tanda",
-            "turnos.cierre_diario",
-            "turnos.fuera_horario",
-            "config.horarios.manage",
-            "config.camaras.manage",
-            "config.catalogos.manage",
-            "actividad.read",
-            "historia_clinica.resumen.read"
+        (PermissionConstants.RolePaciente, [PermissionConstants.PortalAccess, PermissionConstants.PortalTurnosReserve, PermissionConstants.PortalTurnosCancel, PermissionConstants.PortalSelfUpdate]),
+        (PermissionConstants.RoleStaffInactivo, []),
+        (PermissionConstants.RoleOperadorCamara, [
+            PermissionConstants.AppAdminPanelAccess,
+            PermissionConstants.DashboardRead,
+            PermissionConstants.TurnosRead,
+            PermissionConstants.TurnosAsignar,
+            PermissionConstants.TurnosCancelar,
+            PermissionConstants.TurnosReprogramar,
+            PermissionConstants.TurnosApartar,
+            PermissionConstants.TurnosConfirmarApartado,
+            PermissionConstants.TurnosLiberarApartado,
+            PermissionConstants.TurnosBloqueCompleto,
+            PermissionConstants.TurnosTanda,
+            PermissionConstants.TurnosCierreDiario,
+            PermissionConstants.TurnosFueraHorario,
+            PermissionConstants.ConfigHorariosManage,
+            PermissionConstants.ConfigCamarasManage,
+            PermissionConstants.ConfigCatalogosManage,
+            PermissionConstants.ActividadRead,
+            PermissionConstants.HistoriaClinicaResumenRead
         ]),
-        ("secretaria", [
-            "app.admin_panel.access",
-            "dashboard.read",
-            "staff.read",
-            "pacientes.read",
-            "pacientes.crear",
-            "pacientes.editar",
-            "pacientes.portal.manage",
-            "turnos.read",
-            "turnos.asignar",
-            "turnos.cancelar",
-            "turnos.reprogramar",
-            "turnos.apartar",
-            "turnos.confirmar_apartado",
-            "turnos.liberar_apartado",
-            "turnos.bloque_completo",
-            "turnos.tanda",
-            "consultas.read",
-            "consultas.asignar",
-            "consultas.cancelar",
-            "consultas.reprogramar",
-            "consultas.cerrar",
-            "config.horarios.manage",
-            "config.camaras.manage",
-            "config.catalogos.manage",
-            "actividad.read",
-            "reportes.read",
-            "reportes.export",
-            "historia_clinica.resumen.read"
+        (PermissionConstants.RoleSecretaria, [
+            PermissionConstants.AppAdminPanelAccess,
+            PermissionConstants.DashboardRead,
+            PermissionConstants.StaffRead,
+            PermissionConstants.PacientesRead,
+            PermissionConstants.PacientesCrear,
+            PermissionConstants.PacientesEditar,
+            PermissionConstants.PacientesPortalManage,
+            PermissionConstants.TurnosRead,
+            PermissionConstants.TurnosAsignar,
+            PermissionConstants.TurnosCancelar,
+            PermissionConstants.TurnosReprogramar,
+            PermissionConstants.TurnosApartar,
+            PermissionConstants.TurnosConfirmarApartado,
+            PermissionConstants.TurnosLiberarApartado,
+            PermissionConstants.TurnosBloqueCompleto,
+            PermissionConstants.TurnosTanda,
+            PermissionConstants.ConsultasRead,
+            PermissionConstants.ConsultasAsignar,
+            PermissionConstants.ConsultasCancelar,
+            PermissionConstants.ConsultasReprogramar,
+            PermissionConstants.ConsultasCerrar,
+            PermissionConstants.ConfigHorariosManage,
+            PermissionConstants.ConfigCamarasManage,
+            PermissionConstants.ConfigCatalogosManage,
+            PermissionConstants.ActividadRead,
+            PermissionConstants.ReportesRead,
+            PermissionConstants.ReportesExport,
+            PermissionConstants.HistoriaClinicaResumenRead
         ]),
-        ("medico", [
-            "consultas.read",
-            "consultas.asignar",
-            "consultas.cancelar",
-            "consultas.reprogramar",
-            "consultas.cerrar",
-            "historia_clinica.editar_ficha",
-            "historia_clinica.crear_evolucion",
-            "historia_clinica.editar_numero",
-            "pacientes.read",
-            "historia_clinica.resumen.read"
+        (PermissionConstants.RoleMedico, [
+            PermissionConstants.ConsultasRead,
+            PermissionConstants.ConsultasAsignar,
+            PermissionConstants.ConsultasCancelar,
+            PermissionConstants.ConsultasReprogramar,
+            PermissionConstants.ConsultasCerrar,
+            PermissionConstants.HistoriaClinicaEditarFicha,
+            PermissionConstants.HistoriaClinicaCrearEvolucion,
+            PermissionConstants.HistoriaClinicaEditarNumero,
+            PermissionConstants.PacientesRead,
+            PermissionConstants.HistoriaClinicaResumenRead
         ]),
-        ("admin", [
-            "app.admin_panel.access",
-            "portal.access",
-            "portal.turnos.reserve",
-            "portal.turnos.cancel",
-            "portal.self.update",
-            "dashboard.read",
-            "turnos.read",
-            "turnos.asignar",
-            "turnos.cancelar",
-            "turnos.reprogramar",
-            "turnos.apartar",
-            "turnos.confirmar_apartado",
-            "turnos.liberar_apartado",
-            "turnos.bloque_completo",
-            "turnos.tanda",
-            "turnos.cierre_diario",
-            "turnos.fuera_horario",
-            "consultas.read",
-            "consultas.asignar",
-            "consultas.cancelar",
-            "consultas.reprogramar",
-            "consultas.cerrar",
-            "historia_clinica.editar_ficha",
-            "historia_clinica.crear_evolucion",
-            "historia_clinica.editar_numero",
-            "pacientes.read",
-            "pacientes.crear",
-            "pacientes.editar",
-            "pacientes.portal.manage",
-            "config.read",
-            "config.horarios.manage",
-            "config.camaras.manage",
-            "config.catalogos.manage",
-            "config.whatsapp.manage",
-            "actividad.read",
-            "reportes.read",
-            "reportes.export",
-            "staff.read",
-            "staff.manage",
-            "rbac.read",
-            "rbac.manage",
-            "whatsapp.dispatch",
-            "historia_clinica.resumen.read",
-            "historia_clinica.detalle.read"
+        (PermissionConstants.RoleAdmin, [
+            PermissionConstants.AppAdminPanelAccess,
+            PermissionConstants.PortalAccess,
+            PermissionConstants.PortalTurnosReserve,
+            PermissionConstants.PortalTurnosCancel,
+            PermissionConstants.PortalSelfUpdate,
+            PermissionConstants.DashboardRead,
+            PermissionConstants.TurnosRead,
+            PermissionConstants.TurnosAsignar,
+            PermissionConstants.TurnosCancelar,
+            PermissionConstants.TurnosReprogramar,
+            PermissionConstants.TurnosApartar,
+            PermissionConstants.TurnosConfirmarApartado,
+            PermissionConstants.TurnosLiberarApartado,
+            PermissionConstants.TurnosBloqueCompleto,
+            PermissionConstants.TurnosTanda,
+            PermissionConstants.TurnosCierreDiario,
+            PermissionConstants.TurnosFueraHorario,
+            PermissionConstants.ConsultasRead,
+            PermissionConstants.ConsultasAsignar,
+            PermissionConstants.ConsultasCancelar,
+            PermissionConstants.ConsultasReprogramar,
+            PermissionConstants.ConsultasCerrar,
+            PermissionConstants.HistoriaClinicaEditarFicha,
+            PermissionConstants.HistoriaClinicaCrearEvolucion,
+            PermissionConstants.HistoriaClinicaEditarNumero,
+            PermissionConstants.PacientesRead,
+            PermissionConstants.PacientesCrear,
+            PermissionConstants.PacientesEditar,
+            PermissionConstants.PacientesPortalManage,
+            PermissionConstants.ConfigRead,
+            PermissionConstants.ConfigHorariosManage,
+            PermissionConstants.ConfigCamarasManage,
+            PermissionConstants.ConfigCatalogosManage,
+            PermissionConstants.ConfigWhatsappManage,
+            PermissionConstants.ActividadRead,
+            PermissionConstants.ReportesRead,
+            PermissionConstants.ReportesExport,
+            PermissionConstants.StaffRead,
+            PermissionConstants.StaffManage,
+            PermissionConstants.RbacRead,
+            PermissionConstants.RbacManage,
+            PermissionConstants.WhatsappDispatch,
+            PermissionConstants.HistoriaClinicaResumenRead,
+            PermissionConstants.HistoriaClinicaDetalleRead
         ])
     ];
 
@@ -316,83 +317,96 @@ public static class DatabaseInitializer
         {
             var trimmed = line.Trim();
 
-            // Skip empty lines and SQL comments
-            if (string.IsNullOrEmpty(trimmed) || trimmed.StartsWith("--"))
-                continue;
-
-            // Skip pg_dump metadata lines (e.g. "Type: TABLE DATA; Schema: auth; Owner: ...")
-            if (IsPgDumpMetadataLine(trimmed))
+            if (ShouldSkipSqlLine(trimmed))
                 continue;
 
             buffer.AppendLine(line);
 
-            // A statement ends when the line itself ends with a semicolon.
-            if (trimmed.EndsWith(";"))
-            {
-                var statement = buffer.ToString().Trim();
-                buffer.Clear();
+            if (!trimmed.EndsWith(';'))
+                continue;
 
-                if (string.IsNullOrEmpty(statement))
-                    continue;
+            var statement = buffer.ToString().Trim();
+            buffer.Clear();
 
-                var savepointName = $"sp_{savepointIndex++}";
+            if (string.IsNullOrEmpty(statement))
+                continue;
 
-                try
-                {
-                    // Create savepoint before each statement
-                    await using (var savepointCmd = connection.CreateCommand())
-                    {
-                        savepointCmd.Transaction = transaction;
-                        savepointCmd.CommandText = $"SAVEPOINT {savepointName}";
-                        await savepointCmd.ExecuteNonQueryAsync(cancellationToken);
-                    }
+            var savepointName = $"sp_{savepointIndex++}";
+            var executedSuccessfully = await TryExecuteStatementWithSavepointAsync(
+                connection,
+                transaction,
+                statement,
+                savepointName,
+                cancellationToken);
 
-                    await using var cmd = connection.CreateCommand();
-                    cmd.Transaction = transaction;
-                    cmd.CommandText = statement;
-                    await cmd.ExecuteNonQueryAsync(cancellationToken);
-                    executed++;
-
-                    // Release savepoint on success
-                    await using (var releaseCmd = connection.CreateCommand())
-                    {
-                        releaseCmd.Transaction = transaction;
-                        releaseCmd.CommandText = $"RELEASE SAVEPOINT {savepointName}";
-                        await releaseCmd.ExecuteNonQueryAsync(cancellationToken);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    skipped++;
-                    var msg = ex.Message.Trim();
-
-                    // Rollback to savepoint to restore transaction state
-                    try
-                    {
-                        await using (var rollbackCmd = connection.CreateCommand())
-                        {
-                            rollbackCmd.Transaction = transaction;
-                            rollbackCmd.CommandText = $"ROLLBACK TO SAVEPOINT {savepointName}";
-                            await rollbackCmd.ExecuteNonQueryAsync(cancellationToken);
-                        }
-                    }
-                    catch (Exception rollbackEx)
-                    {
-                        Console.WriteLine($"[DEBUG] Failed to rollback savepoint: {rollbackEx.Message}");
-                    }
-
-                    // Only log non-duplicate errors to reduce noise
-                    if (!msg.Contains("duplicate key", StringComparison.OrdinalIgnoreCase))
-                    {
-                        Console.WriteLine($"[DEBUG] SQL statement skipped: {msg}");
-                    }
-                }
-            }
+            if (executedSuccessfully)
+                executed++;
+            else
+                skipped++;
         }
 
         await transaction.CommitAsync(cancellationToken);
         Console.WriteLine($"[DEBUG] Dev data summary: {executed} executed, {skipped} skipped");
         return executed;
+    }
+
+    private static bool ShouldSkipSqlLine(string trimmedLine) =>
+        string.IsNullOrEmpty(trimmedLine)
+        || trimmedLine.StartsWith("--", StringComparison.Ordinal)
+        || IsPgDumpMetadataLine(trimmedLine);
+
+    private static async Task<bool> TryExecuteStatementWithSavepointAsync(
+        System.Data.Common.DbConnection connection,
+        System.Data.Common.DbTransaction transaction,
+        string statement,
+        string savepointName,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await ExecuteNonQueryAsync(connection, transaction, $"SAVEPOINT {savepointName}", cancellationToken);
+            await ExecuteNonQueryAsync(connection, transaction, statement, cancellationToken);
+            await ExecuteNonQueryAsync(connection, transaction, $"RELEASE SAVEPOINT {savepointName}", cancellationToken);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            await RollbackSavepointQuietlyAsync(connection, transaction, savepointName, cancellationToken);
+
+            var message = ex.Message.Trim();
+            if (!message.Contains("duplicate key", StringComparison.OrdinalIgnoreCase))
+                Console.WriteLine($"[DEBUG] SQL statement skipped: {message}");
+
+            return false;
+        }
+    }
+
+    private static async Task ExecuteNonQueryAsync(
+        System.Data.Common.DbConnection connection,
+        System.Data.Common.DbTransaction transaction,
+        string commandText,
+        CancellationToken cancellationToken)
+    {
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = commandText;
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    private static async Task RollbackSavepointQuietlyAsync(
+        System.Data.Common.DbConnection connection,
+        System.Data.Common.DbTransaction transaction,
+        string savepointName,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await ExecuteNonQueryAsync(connection, transaction, $"ROLLBACK TO SAVEPOINT {savepointName}", cancellationToken);
+        }
+        catch (Exception rollbackEx)
+        {
+            Console.WriteLine($"[DEBUG] Failed to rollback savepoint: {rollbackEx.Message}");
+        }
     }
 
     /// <summary>
@@ -693,14 +707,14 @@ public static class DatabaseInitializer
         if (existingUser is null)
         {
             authUserId = Guid.NewGuid();
-            existingUser = new User(authUserId, adminIdentifier, adminEmail, adminPasswordHash, true, true, null, "Administrador");
+            existingUser = new User(authUserId, adminIdentifier, adminEmail, adminPasswordHash, true, true, null, PermissionConstants.AdminProfileName);
             await dbContext.Users.AddAsync(existingUser, cancellationToken);
         }
         else
         {
             authUserId = existingUser.Id;
             existingUser.ActivatePortalUser(adminIdentifier, adminPasswordHash, adminEmail);
-            existingUser.UpdateProfileName("Administrador");
+            existingUser.UpdateProfileName(PermissionConstants.AdminProfileName);
             existingUser.SetPasswordHash(adminPasswordHash);
             dbContext.Entry(existingUser).Property(x => x.IsStaff).CurrentValue = true;
             dbContext.Entry(existingUser).Property(x => x.PatientId).CurrentValue = null;
@@ -750,7 +764,7 @@ public static class DatabaseInitializer
                     {2},
                     null
                 );
-                """, [profileId, "Administrador", adminEmail, authUserId], cancellationToken);
+                """, [profileId, PermissionConstants.AdminProfileName, adminEmail, authUserId], cancellationToken);
 
             profileId = await dbContext.Database.SqlQueryRaw<Guid>(
                 """
@@ -773,7 +787,7 @@ public static class DatabaseInitializer
                     portal_login_email = {2},
                     updated_at = now()
                 where id = {0};
-                """, [profileId, "Administrador", adminEmail, authUserId], cancellationToken);
+                """, [profileId, PermissionConstants.AdminProfileName, adminEmail, authUserId], cancellationToken);
         }
 
         var adminRoleId = await dbContext.Database.SqlQueryRaw<long>(
