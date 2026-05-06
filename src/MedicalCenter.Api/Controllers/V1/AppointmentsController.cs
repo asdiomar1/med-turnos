@@ -99,12 +99,12 @@ public sealed class AppointmentsController(
     }
 
     [HttpPost("{slotId:guid}/asignaciones")]
-    public async Task<IActionResult> Assign(Guid slotId, [FromBody] AssignAppointmentRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> Assign(Guid slotId, [FromBody] AssignAppointmentRequest request, string idempotencyKey, CancellationToken cancellationToken)
     {
         var item = await appointmentsService.AssignAsync(
             User.GetUserId(),
             slotId,
-            GetRequiredIdempotencyKey(),
+            idempotencyKey,
             new MedicalCenter.Application.DTOs.AssignAppointmentCommand(
                 request.PacienteId,
                 request.EsTanda,
@@ -131,19 +131,19 @@ public sealed class AppointmentsController(
     }
 
     [HttpPost("{slotId:guid}/cancelaciones")]
-    public async Task<IActionResult> Cancel(Guid slotId, [FromBody] CancelAppointmentRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> Cancel(Guid slotId, [FromBody] CancelAppointmentRequest request, string idempotencyKey, CancellationToken cancellationToken)
     {
-        var item = await appointmentsService.CancelAsync(User.GetUserId(), slotId, GetRequiredIdempotencyKey(), request.Motivo, cancellationToken);
+        var item = await appointmentsService.CancelAsync(User.GetUserId(), slotId, idempotencyKey, request.Motivo, cancellationToken);
         return Ok(item.ToResponse());
     }
 
     [HttpPost("{slotId:guid}/reprogramaciones")]
-    public async Task<IActionResult> Reschedule(Guid slotId, [FromBody] RescheduleAppointmentRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> Reschedule(Guid slotId, [FromBody] RescheduleAppointmentRequest request, string idempotencyKey, CancellationToken cancellationToken)
     {
         var item = await appointmentsService.RescheduleAsync(
             User.GetUserId(),
             slotId,
-            GetRequiredIdempotencyKey(),
+            idempotencyKey,
             new MedicalCenter.Application.DTOs.RescheduleAppointmentCommand(request.TargetSlotId, request.Scope),
             cancellationToken);
 
@@ -151,12 +151,12 @@ public sealed class AppointmentsController(
     }
 
     [HttpPost("{slotId:guid}/apartados")]
-    public async Task<IActionResult> Hold(Guid slotId, [FromBody] HoldAppointmentRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> Hold(Guid slotId, [FromBody] HoldAppointmentRequest request, string idempotencyKey, CancellationToken cancellationToken)
     {
         var item = await appointmentsService.HoldAsync(
             User.GetUserId(),
             slotId,
-            GetRequiredIdempotencyKey(),
+            idempotencyKey,
             new MedicalCenter.Application.DTOs.HoldAppointmentCommand(
                 request.PacienteId,
                 request.EsMonoxido,
@@ -180,12 +180,12 @@ public sealed class AppointmentsController(
     }
 
     [HttpPost("{slotId:guid}/apartados/confirmaciones")]
-    public async Task<IActionResult> ConfirmHold(Guid slotId, [FromBody] ConfirmHeldAppointmentRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> ConfirmHold(Guid slotId, [FromBody] ConfirmHeldAppointmentRequest request, string idempotencyKey, CancellationToken cancellationToken)
     {
         var item = await appointmentsService.ConfirmHoldAsync(
             User.GetUserId(),
             slotId,
-            GetRequiredIdempotencyKey(),
+            idempotencyKey,
             new MedicalCenter.Application.DTOs.HoldAppointmentCommand(
                 request.PacienteId,
                 request.EsMonoxido,
@@ -209,18 +209,18 @@ public sealed class AppointmentsController(
     }
 
     [HttpPost("{slotId:guid}/apartados/liberaciones")]
-    public async Task<IActionResult> ReleaseHold(Guid slotId, [FromBody] ReleaseHeldAppointmentRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> ReleaseHold(Guid slotId, [FromBody] ReleaseHeldAppointmentRequest request, string idempotencyKey, CancellationToken cancellationToken)
     {
-        var item = await appointmentsService.ReleaseHoldAsync(User.GetUserId(), slotId, GetRequiredIdempotencyKey(), request.Motivo, cancellationToken);
+        var item = await appointmentsService.ReleaseHoldAsync(User.GetUserId(), slotId, idempotencyKey, request.Motivo, cancellationToken);
         return Ok(item.ToResponse());
     }
 
     [HttpPost("bloques/asignaciones")]
-    public async Task<IActionResult> AssignBlock([FromBody] AssignBlockAppointmentsRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> AssignBlock([FromBody] AssignBlockAppointmentsRequest request, string idempotencyKey, CancellationToken cancellationToken)
     {
         var items = await appointmentsService.AssignBlockAsync(
             User.GetUserId(),
-            GetRequiredIdempotencyKey(),
+            idempotencyKey,
             new MedicalCenter.Application.DTOs.AssignBlockAppointmentsCommand(
                 request.Fecha,
                 request.Hora,
@@ -249,11 +249,11 @@ public sealed class AppointmentsController(
     }
 
     [HttpPost("bloques/cancelaciones")]
-    public async Task<IActionResult> CancelBlock([FromBody] CancelBlockAppointmentsRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> CancelBlock([FromBody] CancelBlockAppointmentsRequest request, string idempotencyKey, CancellationToken cancellationToken)
     {
         var items = await appointmentsService.CancelBlockAsync(
             User.GetUserId(),
-            GetRequiredIdempotencyKey(),
+            idempotencyKey,
             new MedicalCenter.Application.DTOs.CancelBlockAppointmentsCommand(request.Fecha, request.Hora, request.CamaraId, request.PacienteId, request.Motivo),
             cancellationToken);
 
@@ -261,9 +261,9 @@ public sealed class AppointmentsController(
     }
 
     [HttpPost("tandas/{tandaId:guid}/cancelaciones")]
-    public async Task<IActionResult> CancelTanda(Guid tandaId, [FromBody] CancelTandaRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> CancelTanda(Guid tandaId, [FromBody] CancelTandaRequest request, string idempotencyKey, CancellationToken cancellationToken)
     {
-        var items = await appointmentsService.CancelTandaAsync(User.GetUserId(), tandaId, GetRequiredIdempotencyKey(), request.Motivo, cancellationToken);
+        var items = await appointmentsService.CancelTandaAsync(User.GetUserId(), tandaId, idempotencyKey, request.Motivo, cancellationToken);
         return Ok(items.Select(x => x.ToResponse()));
     }
 
@@ -382,12 +382,12 @@ public sealed class AppointmentsController(
     }
 
     [HttpPost("{slotId:guid}/reprogramaciones/tanda")]
-    public async Task<IActionResult> RescheduleTanda(Guid slotId, [FromBody] RescheduleAppointmentRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> RescheduleTanda(Guid slotId, [FromBody] RescheduleAppointmentRequest request, string idempotencyKey, CancellationToken cancellationToken)
     {
         var item = await appointmentsService.RescheduleAsync(
             User.GetUserId(),
             slotId,
-            GetRequiredIdempotencyKey(),
+            idempotencyKey,
             new MedicalCenter.Application.DTOs.RescheduleAppointmentCommand(request.TargetSlotId, "tanda"),
             cancellationToken);
 
@@ -395,20 +395,15 @@ public sealed class AppointmentsController(
     }
 
     [HttpPost("{slotId:guid}/reprogramaciones/bloque")]
-    public async Task<IActionResult> RescheduleBlock(Guid slotId, [FromBody] RescheduleAppointmentRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> RescheduleBlock(Guid slotId, [FromBody] RescheduleAppointmentRequest request, string idempotencyKey, CancellationToken cancellationToken)
     {
         var item = await appointmentsService.RescheduleAsync(
             User.GetUserId(),
             slotId,
-            GetRequiredIdempotencyKey(),
+            idempotencyKey,
             new MedicalCenter.Application.DTOs.RescheduleAppointmentCommand(request.TargetSlotId, "bloque_tanda"),
             cancellationToken);
 
         return Ok(item.ToResponse());
     }
-
-    private string GetRequiredIdempotencyKey() =>
-        Request.Headers.TryGetValue("Idempotency-Key", out var values)
-            ? values.ToString()
-            : string.Empty;
 }
