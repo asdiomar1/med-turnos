@@ -1,4 +1,5 @@
 using System.Data;
+using System.Data.Common;
 using MedicalCenter.Application.Abstractions.Persistence;
 using MedicalCenter.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -12,14 +13,14 @@ public sealed class UserRepository(MedicalCenterDbContext dbContext) : IUserRepo
         string.IsNullOrWhiteSpace(identifier)
             ? Task.FromResult<User?>(null)
             : dbContext.Users.FirstOrDefaultAsync(
-                x => x.Identifier.ToLower() == identifier.Trim().ToLower(),
+                x => string.Equals(x.Identifier, identifier.Trim(), StringComparison.OrdinalIgnoreCase),
                 cancellationToken);
 
     public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken) =>
         string.IsNullOrWhiteSpace(email)
             ? Task.FromResult<User?>(null)
             : dbContext.Users.FirstOrDefaultAsync(
-                x => x.Email.ToLower() == email.Trim().ToLower(),
+                x => string.Equals(x.Email, email.Trim(), StringComparison.OrdinalIgnoreCase),
                 cancellationToken);
 
     public async Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
@@ -184,17 +185,18 @@ public sealed class UserRepository(MedicalCenterDbContext dbContext) : IUserRepo
             await using var reader = await command.ExecuteReaderAsync(cancellationToken);
             while (await reader.ReadAsync(cancellationToken))
             {
-                var permissions = reader.IsDBNull(7) ? [] : reader.GetFieldValue<string[]>(7);
-                roles.Add(new Role(
+                var permissions = await ReadPermissionsAsync(reader, cancellationToken);
+                var description = await ReadDescriptionAsync(reader, cancellationToken);
+                roles.Add(new Role(new RoleCreateParams(
                     Guid.NewGuid(),
                     reader.GetString(0),
                     reader.GetString(1),
                     permissions,
-                    reader.IsDBNull(2) ? null : reader.GetString(2),
+                    description,
                     reader.GetBoolean(3),
                     reader.GetBoolean(4),
                     reader.GetBoolean(5),
-                    reader.GetString(6)));
+                    reader.GetString(6))));
             }
             return roles;
         }
@@ -202,5 +204,25 @@ public sealed class UserRepository(MedicalCenterDbContext dbContext) : IUserRepo
         {
             if (shouldClose) await connection.CloseAsync();
         }
+    }
+
+    private static async Task<string[]> ReadPermissionsAsync(DbDataReader reader, CancellationToken cancellationToken)
+    {
+        if (await reader.IsDBNullAsync(7, cancellationToken))
+        {
+            return [];
+        }
+
+        return await reader.GetFieldValueAsync<string[]>(7, cancellationToken);
+    }
+
+    private static async Task<string?> ReadDescriptionAsync(DbDataReader reader, CancellationToken cancellationToken)
+    {
+        if (await reader.IsDBNullAsync(2, cancellationToken))
+        {
+            return null;
+        }
+
+        return await reader.GetFieldValueAsync<string>(2, cancellationToken);
     }
 }

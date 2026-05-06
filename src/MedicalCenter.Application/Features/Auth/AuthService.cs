@@ -3,24 +3,39 @@ using MedicalCenter.Application.Abstractions.Common;
 using MedicalCenter.Application.Abstractions.Persistence;
 using MedicalCenter.Application.DTOs;
 using MedicalCenter.Application.Exceptions;
+using MedicalCenter.Contracts.Validation.Auth;
 using MedicalCenter.Domain.Entities;
 
 namespace MedicalCenter.Application.Features.Auth;
 
-public sealed class AuthService(
-    IUserRepository userRepository,
-    IRoleRepository roleRepository,
-    IRefreshTokenRepository refreshTokenRepository,
-    IPatientRepository patientRepository,
-    IPortalAccessTokenRepository portalAccessTokenRepository,
-    ITokenService tokenService,
-    IPasswordHasher passwordHasher,
-    IClock clock,
-    IUnitOfWork unitOfWork) : IAuthService
+public sealed record AuthServiceDependencies(
+    IUserRepository UserRepository,
+    IRoleRepository RoleRepository,
+    IRefreshTokenRepository RefreshTokenRepository,
+    IPatientRepository PatientRepository,
+    IPortalAccessTokenRepository PortalAccessTokenRepository,
+    ITokenService TokenService,
+    IPasswordHasher PasswordHasher,
+    IClock Clock,
+    IUnitOfWork UnitOfWork);
+
+public sealed class AuthService(AuthServiceDependencies deps) : IAuthService
 {
+    private readonly IUserRepository userRepository = deps.UserRepository;
+    private readonly IRoleRepository roleRepository = deps.RoleRepository;
+    private readonly IRefreshTokenRepository refreshTokenRepository = deps.RefreshTokenRepository;
+    private readonly IPatientRepository patientRepository = deps.PatientRepository;
+    private readonly IPortalAccessTokenRepository portalAccessTokenRepository = deps.PortalAccessTokenRepository;
+    private readonly ITokenService tokenService = deps.TokenService;
+    private readonly IPasswordHasher passwordHasher = deps.PasswordHasher;
+    private readonly IClock clock = deps.Clock;
+    private readonly IUnitOfWork unitOfWork = deps.UnitOfWork;
+
     private const int PortalAccessTokenDigits = 6;
     private const int PortalAccessTokenGenerationAttempts = 20;
     private const int PortalAccessTokenMaxAttempts = 5;
+    private const string ResetPurpose = "reset";
+    private const string ManualDeliveryChannel = "manual";
     private static readonly TimeSpan PortalActivationTokenLifetime = TimeSpan.FromHours(12);
     private static readonly TimeSpan PortalResetTokenLifetime = TimeSpan.FromHours(24);
 
@@ -58,6 +73,26 @@ public sealed class AuthService(
         user.SetRoles(roles);
 
         return await CreateAuthResponseAsync(user, cancellationToken);
+    }
+
+    public async Task ChangeOwnPasswordAsync(Guid userId, string currentPassword, string newPassword, CancellationToken cancellationToken)
+    {
+        ValidatePasswordChangeRequest(currentPassword, newPassword);
+
+        var user = await userRepository.GetByIdAsync(userId, cancellationToken);
+        if (user is null || !user.IsActive)
+        {
+            throw new UnauthorizedException();
+        }
+
+        if (!passwordHasher.Verify(currentPassword, user.PasswordHash))
+        {
+            throw new UnauthorizedException();
+        }
+
+        user.SetPasswordHash(passwordHasher.Hash(newPassword));
+        await refreshTokenRepository.RevokeActiveByUserIdAsync(userId, clock.UtcNow, cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
     }
 
     public async Task<AuthResponse> RefreshAsync(string refreshToken, CancellationToken cancellationToken)
@@ -131,92 +166,16 @@ public sealed class AuthService(
 
     public async Task<PortalActivationResult> ActivatePortalAsync(string token, string loginIdentifier, string password, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(token) || string.IsNullOrWhiteSpace(password))
-        {
-            throw new ValidationException("token y password son obligatorios");
-        }
-
-        if (password.Length < 8)
-        {
-            throw new ValidationException("La clave debe tener al menos 8 caracteres");
-        }
-
-        var normalizedLoginIdentifier = NormalizeIdentifier(loginIdentifier);
-        if (string.IsNullOrWhiteSpace(normalizedLoginIdentifier))
-        {
-            throw new ValidationException("login_identifier es obligatorio");
-        }
-
+        ValidatePortalActivationCredentials(token, password);
+        var normalizedLoginIdentifier = NormalizeRequiredIdentifier(loginIdentifier, "login_identifier es obligatorio");
         var now = clock.UtcNow;
-        var tokenHash = tokenService.ComputeRefreshTokenHash(NormalizeActivationToken(token));
-        var accessToken = await portalAccessTokenRepository.GetByTokenHashAsync(tokenHash, cancellationToken);
-        if (accessToken is null)
-        {
-            throw new UnauthorizedException("Token invalido o expirado");
-        }
 
-        if (!accessToken.IsUsable(now))
-        {
-            if (accessToken.UsedAt is null && accessToken.RevokedAt is null && accessToken.ExpiresAt <= now)
-            {
-                accessToken.Revoke(now);
-                await unitOfWork.SaveChangesAsync(cancellationToken);
-            }
+        var accessToken = await GetUsablePortalActivationTokenAsync(token, now, cancellationToken);
+        var patient = await GetPortalActivationPatientAsync(accessToken, now, cancellationToken);
+        await EnsurePortalActivationLoginIsAvailableAsync(normalizedLoginIdentifier, patient, accessToken, now, cancellationToken);
+        await UpsertPortalUserAsync(patient, normalizedLoginIdentifier, password, cancellationToken);
 
-            throw new UnauthorizedException("Token invalido o expirado");
-        }
-
-        var patient = await patientRepository.GetByIdAsync(accessToken.PacienteId, cancellationToken);
-        if (patient is null)
-        {
-            await RegisterFailedPortalActivationAttemptAsync(accessToken, now, cancellationToken);
-            throw new NotFoundException("Paciente no encontrado");
-        }
-
-        if (!patient.PortalHabilitado)
-        {
-            await RegisterFailedPortalActivationAttemptAsync(accessToken, now, cancellationToken);
-            throw new ConflictException("El paciente no tiene portal habilitado");
-        }
-
-        var existingPatientWithLogin = await patientRepository.GetByLoginIdentifierAsync(normalizedLoginIdentifier, cancellationToken);
-        if (existingPatientWithLogin is not null && existingPatientWithLogin.Id != patient.Id)
-        {
-            await RegisterFailedPortalActivationAttemptAsync(accessToken, now, cancellationToken);
-            throw new ConflictException("login_identifier ya existe");
-        }
-
-        var existingUserWithLogin = await userRepository.GetByIdentifierAsync(normalizedLoginIdentifier, cancellationToken);
-        if (existingUserWithLogin is not null && existingUserWithLogin.PatientId != patient.Id)
-        {
-            await RegisterFailedPortalActivationAttemptAsync(accessToken, now, cancellationToken);
-            throw new ConflictException("login_identifier ya existe");
-        }
-
-        var user = await userRepository.GetByPatientIdAsync(patient.Id, cancellationToken);
-        if (user is null)
-        {
-            var contactEmail = ResolveContactEmail(patient);
-            user = new User(
-                Guid.NewGuid(),
-                normalizedLoginIdentifier,
-                contactEmail,
-                passwordHasher.Hash(password),
-                true,
-                false,
-                patient.Id,
-                patient.Nombre);
-            await userRepository.AddAsync(user, cancellationToken);
-        }
-        else
-        {
-            user.ActivatePortalUser(normalizedLoginIdentifier, passwordHasher.Hash(password), ResolveContactEmail(patient));
-            user.LinkPatient(patient.Id);
-        }
-
-        patient.ConfigurePortal(true, false);
-        patient.SetLoginIdentifier(normalizedLoginIdentifier);
-        accessToken.MarkUsed(clock.UtcNow);
+        CompletePortalActivation(accessToken, patient, normalizedLoginIdentifier);
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return new PortalActivationResult(true, normalizedLoginIdentifier);
@@ -239,12 +198,12 @@ public sealed class AuthService(
         var token = new PortalAccessToken(
             Guid.NewGuid(),
             patient.Id,
-            "reset",
-            "manual",
+            ResetPurpose,
+            ManualDeliveryChannel,
             tokenService.ComputeRefreshTokenHash(tokenService.CreateNumericCode(PortalAccessTokenDigits)),
-            clock.UtcNow.Add(GetPortalAccessTokenLifetime("reset")),
+            clock.UtcNow.Add(GetPortalAccessTokenLifetime(ResetPurpose)),
             null);
-        token.SetIssuedToMasked(BuildIssuedToMasked(patient, "manual"));
+        token.SetIssuedToMasked(BuildIssuedToMasked(patient, ManualDeliveryChannel));
         await portalAccessTokenRepository.AddAsync(token, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
@@ -261,18 +220,18 @@ public sealed class AuthService(
         }
 
         var normalizedPurpose = purpose.Trim().ToLowerInvariant();
-        if (normalizedPurpose is not "activation" and not "reset")
+        if (normalizedPurpose is not "activation" and not ResetPurpose)
         {
             throw new ValidationException("purpose invalido");
         }
 
         var normalizedDeliveryChannel = deliveryChannel.Trim().ToLowerInvariant();
-        if (normalizedDeliveryChannel is not "manual" and not "whatsapp" and not "email")
+        if (normalizedDeliveryChannel is not ManualDeliveryChannel and not "whatsapp" and not "email")
         {
             throw new ValidationException("delivery_channel invalido");
         }
 
-        if (!patient.PortalHabilitado && string.Equals(normalizedPurpose, "reset", StringComparison.OrdinalIgnoreCase))
+        if (!patient.PortalHabilitado && string.Equals(normalizedPurpose, ResetPurpose, StringComparison.OrdinalIgnoreCase))
         {
             throw new ConflictException("No se puede emitir reset para un paciente sin portal habilitado");
         }
@@ -283,7 +242,7 @@ public sealed class AuthService(
             tokenResult.Token.Purpose,
             tokenResult.Token.DeliveryChannel,
             tokenResult.Token.ExpiresAt,
-            string.Equals(normalizedDeliveryChannel, "manual", StringComparison.OrdinalIgnoreCase) ? tokenResult.PlainCode : null);
+            string.Equals(normalizedDeliveryChannel, ManualDeliveryChannel, StringComparison.OrdinalIgnoreCase) ? tokenResult.PlainCode : null);
     }
 
     private async Task<AuthResponse> CreateAuthResponseAsync(User user, Guid refreshTokenId, CancellationToken cancellationToken)
@@ -409,6 +368,144 @@ public sealed class AuthService(
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
     }
+
+    private static void ValidatePortalActivationCredentials(string token, string password)
+    {
+        if (string.IsNullOrWhiteSpace(token) || string.IsNullOrWhiteSpace(password))
+        {
+            throw new ValidationException("token y password son obligatorios");
+        }
+
+        if (!AuthPasswordRules.HasMinimumLength(password))
+        {
+            throw new ValidationException(AuthPasswordRules.MinimumLengthMessage);
+        }
+    }
+
+    private static void ValidatePasswordChangeRequest(string currentPassword, string newPassword)
+    {
+        if (string.IsNullOrWhiteSpace(currentPassword) || string.IsNullOrWhiteSpace(newPassword))
+        {
+            throw new ValidationException("current_password y new_password son obligatorios");
+        }
+
+        if (!AuthPasswordRules.HasMinimumLength(newPassword))
+        {
+            throw new ValidationException(AuthPasswordRules.MinimumLengthMessage);
+        }
+
+        if (!AuthPasswordRules.IsDifferentFromCurrent(currentPassword, newPassword))
+        {
+            throw new ValidationException(AuthPasswordRules.DifferentPasswordMessage);
+        }
+    }
+
+    private static string NormalizeRequiredIdentifier(string? rawIdentifier, string errorMessage)
+    {
+        if (string.IsNullOrWhiteSpace(rawIdentifier))
+        {
+            throw new ValidationException(errorMessage);
+        }
+
+        return NormalizeIdentifier(rawIdentifier);
+    }
+
+    private async Task<PortalAccessToken> GetUsablePortalActivationTokenAsync(string token, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        var tokenHash = tokenService.ComputeRefreshTokenHash(NormalizeActivationToken(token));
+        var accessToken = await portalAccessTokenRepository.GetByTokenHashAsync(tokenHash, cancellationToken);
+        if (accessToken is null)
+        {
+            throw new UnauthorizedException("Token invalido o expirado");
+        }
+
+        if (accessToken.IsUsable(now))
+        {
+            return accessToken;
+        }
+
+        if (ShouldRevokeExpiredToken(accessToken, now))
+        {
+            accessToken.Revoke(now);
+            await unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+
+        throw new UnauthorizedException("Token invalido o expirado");
+    }
+
+    private async Task<Patient> GetPortalActivationPatientAsync(PortalAccessToken accessToken, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        var patient = await patientRepository.GetByIdAsync(accessToken.PacienteId, cancellationToken);
+        if (patient is null)
+        {
+            await RegisterFailedPortalActivationAttemptAsync(accessToken, now, cancellationToken);
+            throw new NotFoundException("Paciente no encontrado");
+        }
+
+        if (patient.PortalHabilitado)
+        {
+            return patient;
+        }
+
+        await RegisterFailedPortalActivationAttemptAsync(accessToken, now, cancellationToken);
+        throw new ConflictException("El paciente no tiene portal habilitado");
+    }
+
+    private async Task EnsurePortalActivationLoginIsAvailableAsync(
+        string normalizedLoginIdentifier,
+        Patient patient,
+        PortalAccessToken accessToken,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        var existingPatientWithLogin = await patientRepository.GetByLoginIdentifierAsync(normalizedLoginIdentifier, cancellationToken);
+        if (existingPatientWithLogin is not null && existingPatientWithLogin.Id != patient.Id)
+        {
+            await RegisterFailedPortalActivationAttemptAsync(accessToken, now, cancellationToken);
+            throw new ConflictException("login_identifier ya existe");
+        }
+
+        var existingUserWithLogin = await userRepository.GetByIdentifierAsync(normalizedLoginIdentifier, cancellationToken);
+        if (existingUserWithLogin is not null && existingUserWithLogin.PatientId != patient.Id)
+        {
+            await RegisterFailedPortalActivationAttemptAsync(accessToken, now, cancellationToken);
+            throw new ConflictException("login_identifier ya existe");
+        }
+    }
+
+    private async Task UpsertPortalUserAsync(Patient patient, string normalizedLoginIdentifier, string password, CancellationToken cancellationToken)
+    {
+        var user = await userRepository.GetByPatientIdAsync(patient.Id, cancellationToken);
+        var passwordHash = passwordHasher.Hash(password);
+        if (user is null)
+        {
+            var contactEmail = ResolveContactEmail(patient);
+            user = new User(new UserCreateParams(
+                Guid.NewGuid(),
+                normalizedLoginIdentifier,
+                contactEmail,
+                passwordHash,
+                true,
+                false,
+                patient.Id,
+                patient.Nombre));
+            await userRepository.AddAsync(user, cancellationToken);
+            return;
+        }
+
+        user.ActivatePortalUser(normalizedLoginIdentifier, passwordHash, ResolveContactEmail(patient));
+        user.LinkPatient(patient.Id);
+    }
+
+    private void CompletePortalActivation(PortalAccessToken accessToken, Patient patient, string normalizedLoginIdentifier)
+    {
+        patient.ConfigurePortal(true, false);
+        patient.SetLoginIdentifier(normalizedLoginIdentifier);
+        accessToken.MarkUsed(clock.UtcNow);
+    }
+
+    private static bool ShouldRevokeExpiredToken(PortalAccessToken accessToken, DateTimeOffset now) =>
+        accessToken.UsedAt is null && accessToken.RevokedAt is null && accessToken.ExpiresAt <= now;
 
     private static string ResolveContactEmail(Patient patient)
     {

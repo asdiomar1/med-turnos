@@ -707,7 +707,7 @@ public static class DatabaseInitializer
         if (existingUser is null)
         {
             authUserId = Guid.NewGuid();
-            existingUser = new User(authUserId, adminIdentifier, adminEmail, adminPasswordHash, true, true, null, PermissionConstants.AdminProfileName);
+            existingUser = new User(new UserCreateParams(authUserId, adminIdentifier, adminEmail, adminPasswordHash, true, true, null, PermissionConstants.AdminProfileName));
             await dbContext.Users.AddAsync(existingUser, cancellationToken);
         }
         else

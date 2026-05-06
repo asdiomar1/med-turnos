@@ -2,28 +2,30 @@ using MedicalCenter.Domain.Common;
 
 namespace MedicalCenter.Domain.Entities;
 
+public sealed record WhatsappTemplateCreateParams(
+    long Id,
+    string Key,
+    string Kind,
+    string MetaTemplateName,
+    string LanguageCode,
+    string Category,
+    bool Active,
+    string? Description);
+
 public sealed class WhatsappTemplate : Entity<long>
 {
     private WhatsappTemplate() { }
 
-    public WhatsappTemplate(
-        long id,
-        string key,
-        string kind,
-        string metaTemplateName,
-        string languageCode,
-        string category,
-        bool active,
-        string? description)
+    public WhatsappTemplate(WhatsappTemplateCreateParams p)
     {
-        Id = id;
-        Key = key;
-        Kind = kind;
-        MetaTemplateName = metaTemplateName;
-        LanguageCode = languageCode;
-        Category = category;
-        Active = active;
-        Description = description;
+        Id = p.Id;
+        Key = p.Key;
+        Kind = p.Kind;
+        MetaTemplateName = p.MetaTemplateName;
+        LanguageCode = p.LanguageCode;
+        Category = p.Category;
+        Active = p.Active;
+        Description = p.Description;
     }
 
     public string Key { get; private set; } = string.Empty;

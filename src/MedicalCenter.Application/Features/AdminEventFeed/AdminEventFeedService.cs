@@ -6,31 +6,15 @@ namespace MedicalCenter.Application.Features.AdminEventFeed;
 
 public sealed class AdminEventFeedService(IAdminEventFeedRepository repository) : IAdminEventFeedService
 {
-    public async Task<IReadOnlyCollection<AdminEventFeedItemDto>> ListAsync(
-        int limit,
-        DateTimeOffset? beforeOccurredAt,
-        long? beforeId,
-        Guid? actorUserId,
-        IReadOnlyCollection<string> actionCodes,
-        DateOnly? dateFrom,
-        DateOnly? dateTo,
-        CancellationToken cancellationToken)
+    public async Task<IReadOnlyCollection<AdminEventFeedItemDto>> ListAsync(AdminEventFeedQuery query, CancellationToken cancellationToken)
     {
-        var normalizedActionCodes = actionCodes
+        var normalizedActionCodes = query.ActionCodes
             .Select(NormalizeText)
             .Where(static value => !string.IsNullOrWhiteSpace(value))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
-        var items = await repository.ListAsync(
-            limit,
-            beforeOccurredAt,
-            beforeId,
-            actorUserId,
-            normalizedActionCodes,
-            dateFrom,
-            dateTo,
-            cancellationToken);
+        var items = await repository.ListAsync(query with { ActionCodes = normalizedActionCodes }, cancellationToken);
 
         return items.Select(Map).ToArray();
     }

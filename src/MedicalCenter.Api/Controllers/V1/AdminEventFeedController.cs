@@ -1,4 +1,5 @@
 using MedicalCenter.Api.Mappings;
+using MedicalCenter.Application.DTOs;
 using MedicalCenter.Application.Features.AdminEventFeed;
 using MedicalCenter.Contracts.AdminEventFeed;
 using Microsoft.AspNetCore.Authorization;
@@ -12,6 +13,7 @@ namespace MedicalCenter.Api.Controllers.V1;
 public sealed class AdminEventFeedController(IAdminEventFeedService adminEventFeedService) : ControllerBase
 {
     [HttpGet("action-codes")]
+    [ProducesResponseType(typeof(AdminEventActionCodeResponse[]), StatusCodes.Status200OK)]
     public IActionResult GetActionCodes()
     {
         var items = AdminEventFeedConstants.CatalogActionDefinitions
@@ -29,25 +31,16 @@ public sealed class AdminEventFeedController(IAdminEventFeedService adminEventFe
     }
 
     [HttpGet]
-    public async Task<IActionResult> List(
-        [FromQuery] int? limit,
-        [FromQuery] DateTimeOffset? beforeOccurredAt,
-        [FromQuery] long? beforeId,
-        [FromQuery] Guid? actorUserId,
-        [FromQuery(Name = "actionCodes")] string[] actionCodes,
-        [FromQuery] DateOnly? dateFrom,
-        [FromQuery] DateOnly? dateTo,
-        CancellationToken cancellationToken)
+    public async Task<IActionResult> List([FromQuery] AdminEventFeedListQuery query, CancellationToken cancellationToken)
     {
-        var items = await adminEventFeedService.ListAsync(
-            limit ?? 50,
-            beforeOccurredAt,
-            beforeId,
-            actorUserId,
-            actionCodes,
-            dateFrom,
-            dateTo,
-            cancellationToken);
+        var items = await adminEventFeedService.ListAsync(new AdminEventFeedQuery(
+            query.Limit ?? 50,
+            query.BeforeOccurredAt,
+            query.BeforeId,
+            query.ActorUserId,
+            query.ActionCodes,
+            query.DateFrom,
+            query.DateTo), cancellationToken);
 
         return Ok(items.Select(x => x.ToResponse()));
     }
@@ -58,4 +51,16 @@ public sealed class AdminEventFeedController(IAdminEventFeedService adminEventFe
         var options = await adminEventFeedService.GetFilterOptionsAsync(cancellationToken);
         return Ok(options.ToResponse());
     }
+}
+
+public sealed class AdminEventFeedListQuery
+{
+    public int? Limit { get; init; }
+    public DateTimeOffset? BeforeOccurredAt { get; init; }
+    public long? BeforeId { get; init; }
+    public Guid? ActorUserId { get; init; }
+    [FromQuery(Name = "actionCodes")]
+    public string[] ActionCodes { get; init; } = [];
+    public DateOnly? DateFrom { get; init; }
+    public DateOnly? DateTo { get; init; }
 }

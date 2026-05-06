@@ -28,7 +28,7 @@ public sealed class AppointmentsServiceAggregationTests
 
     private AppointmentsService CreateService()
     {
-        return new AppointmentsService(
+        var dataAccess = new AppointmentsDataAccessDependencies(
             _appointmentRepository,
             _scheduleRepository,
             _userRepository,
@@ -38,11 +38,15 @@ public sealed class AppointmentsServiceAggregationTests
             _medicoRepository,
             _referenteRepository,
             _obraSocialRepository,
-            _blockHistoryRepository,
+            _blockHistoryRepository);
+        var runtime = new AppointmentsRuntimeDependencies(
             _whatsappService,
             _unitOfWork,
             _idempotencyStore,
             _clock);
+        return new AppointmentsService(
+            dataAccess,
+            runtime);
     }
 
     [Fact]

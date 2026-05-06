@@ -26,11 +26,16 @@ public static class ApplicationServiceCollectionExtensions
 {
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
+        services.AddScoped<AuthServiceDependencies>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IPatientsService, PatientsService>();
         services.AddScoped<IProfessionalsService, ProfessionalsService>();
         services.AddScoped<ISchedulesService, SchedulesService>();
+        services.AddScoped<AppointmentsDataAccessDependencies>();
+        services.AddScoped<AppointmentsRuntimeDependencies>();
         services.AddScoped<IAppointmentsService, AppointmentsService>();
+        services.AddScoped<ConsultationsDataAccessDependencies>();
+        services.AddScoped<ConsultationsRuntimeDependencies>();
         services.AddScoped<IConsultationsService, ConsultationsService>();
         services.AddScoped<IOutOfHoursTurnsService, OutOfHoursTurnsService>();
         services.AddScoped<IStaffService, StaffService>();
@@ -42,7 +47,11 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<IWorkingDaysConfigService, WorkingDaysConfigService>();
         services.AddScoped<ICamposConfigService, CamposConfigService>();
         services.AddScoped<IWhatsappMessageSettingsService, WhatsappMessageSettingsService>();
+        services.AddScoped<WhatsappDataAccessDependencies>();
+        services.AddScoped<WhatsappRuntimeDependencies>();
         services.AddScoped<IWhatsappService, WhatsappService>();
+        services.AddScoped<WhatsappWebhookDataAccessDependencies>();
+        services.AddScoped<WhatsappWebhookRuntimeDependencies>();
         services.AddScoped<IWhatsappWebhookProcessor, WhatsappWebhookProcessor>();
         services.AddScoped<IImportPatientsService, ImportPatientsService>();
         services.AddScoped<IImportPatientsOrchestrator, ImportPatientsOrchestrator>();

@@ -9,17 +9,33 @@ using MedicalCenter.Domain.Entities;
 
 namespace MedicalCenter.Application.Features.WhatsApp;
 
-public sealed class WhatsappWebhookProcessor(
-    IWhatsappWebhookEventRepository webhookEventRepository,
-    IWhatsappMessageRepository messageRepository,
-    IWhatsappMessageActionRepository messageActionRepository,
-    IWhatsappMessageSettingsRepository messageSettingsRepository,
-    IAppointmentRepository appointmentRepository,
-    IBlockHistoryRepository blockHistoryRepository,
-    IWhatsAppSender sender,
-    IUnitOfWork unitOfWork,
-    IClock clock) : IWhatsappWebhookProcessor
+public sealed class WhatsappWebhookProcessor : IWhatsappWebhookProcessor
 {
+    private const string CancelacionRechazadaStatus = "cancelacion_rechazada";
+    private const string ReplyType = "reply";
+    private readonly IWhatsappWebhookEventRepository webhookEventRepository;
+    private readonly IWhatsappMessageRepository messageRepository;
+    private readonly IWhatsappMessageActionRepository messageActionRepository;
+    private readonly IWhatsappMessageSettingsRepository messageSettingsRepository;
+    private readonly IAppointmentRepository appointmentRepository;
+    private readonly IBlockHistoryRepository blockHistoryRepository;
+    private readonly IWhatsAppSender sender;
+    private readonly IUnitOfWork unitOfWork;
+    private readonly IClock clock;
+
+    public WhatsappWebhookProcessor(WhatsappWebhookDataAccessDependencies dataAccess, WhatsappWebhookRuntimeDependencies runtime)
+    {
+        webhookEventRepository = dataAccess.WebhookEventRepository;
+        messageRepository = dataAccess.MessageRepository;
+        messageActionRepository = dataAccess.MessageActionRepository;
+        messageSettingsRepository = dataAccess.MessageSettingsRepository;
+        appointmentRepository = dataAccess.AppointmentRepository;
+        blockHistoryRepository = dataAccess.BlockHistoryRepository;
+        sender = runtime.Sender;
+        unitOfWork = runtime.UnitOfWork;
+        clock = runtime.Clock;
+    }
+
     public async Task<WhatsappWebhookProcessingResult> ProcessAsync(JsonElement payload, CancellationToken cancellationToken)
     {
         var rawPayload = payload.GetRawText();
@@ -171,7 +187,7 @@ public sealed class WhatsappWebhookProcessor(
             $"cancelar_turno_mantener|{slotId:N}|{actionId:N}");
 
         var sendResult = await sender.SendRawAsync(promptPayload.ToJsonString(), cancellationToken);
-        var outgoingMessage = new WhatsappMessage(
+        var outgoingMessage = new WhatsappMessage(new WhatsappMessageCreateParams(
             Guid.NewGuid(),
             action.PatientId,
             action.SlotId,
@@ -181,7 +197,7 @@ public sealed class WhatsappWebhookProcessor(
             action.PhoneE164,
             $"cancelacion_prompt:{actionId:N}",
             "whatsapp_webhook",
-            promptPayload.ToJsonString());
+            promptPayload.ToJsonString()));
 
         if (!sendResult.Ok)
         {
@@ -242,7 +258,7 @@ public sealed class WhatsappWebhookProcessor(
             var appointment = await appointmentRepository.GetByIdAsync(slotId, cancellationToken);
             if (appointment is null)
             {
-                await SendStatusMessageAsync(action, "cancelacion_rechazada", cancellationToken);
+                await SendStatusMessageAsync(action, CancelacionRechazadaStatus, cancellationToken);
                 action.MarkFailed("Turno no encontrado.", clock.UtcNow);
                 await unitOfWork.SaveChangesAsync(cancellationToken);
                 return;
@@ -250,7 +266,7 @@ public sealed class WhatsappWebhookProcessor(
 
             if (!appointment.IsOccupied() || appointment.PatientId != action.PatientId)
             {
-                await SendStatusMessageAsync(action, "cancelacion_rechazada", cancellationToken);
+                await SendStatusMessageAsync(action, CancelacionRechazadaStatus, cancellationToken);
                 action.MarkRejected(incomingMessageId, clock.UtcNow);
                 await unitOfWork.SaveChangesAsync(cancellationToken);
                 return;
@@ -262,7 +278,7 @@ public sealed class WhatsappWebhookProcessor(
             }
             catch (InvalidOperationException exception)
             {
-                await SendStatusMessageAsync(action, "cancelacion_rechazada", cancellationToken);
+                await SendStatusMessageAsync(action, CancelacionRechazadaStatus, cancellationToken);
                 action.MarkFailed(exception.Message, clock.UtcNow);
                 await unitOfWork.SaveChangesAsync(cancellationToken);
                 return;
@@ -270,7 +286,7 @@ public sealed class WhatsappWebhookProcessor(
 
             await blockHistoryRepository.AddRangeAsync(
             [
-                new BlockHistory(
+                new BlockHistory(new BlockHistoryCreateParams(
                     Guid.NewGuid(),
                     appointment.Fecha,
                     appointment.Hora,
@@ -292,7 +308,7 @@ public sealed class WhatsappWebhookProcessor(
                     appointment.ReferenteId,
                     appointment.TandaId,
                     appointment.SesionesAutorizadas,
-                    appointment.CicloObraSocialId)
+                    appointment.CicloObraSocialId))
             ], cancellationToken);
 
             await SendStatusMessageAsync(action, "cancelacion_confirmada", cancellationToken);
@@ -313,7 +329,7 @@ public sealed class WhatsappWebhookProcessor(
         var requestJson = payload.ToJsonString();
         var sendResult = await sender.SendRawAsync(requestJson, cancellationToken);
 
-        var outgoingMessage = new WhatsappMessage(
+        var outgoingMessage = new WhatsappMessage(new WhatsappMessageCreateParams(
             Guid.NewGuid(),
             action.PatientId,
             action.SlotId,
@@ -323,7 +339,7 @@ public sealed class WhatsappWebhookProcessor(
             action.PhoneE164,
             $"{settingKey}:{action.Id:N}",
             "whatsapp_webhook",
-            requestJson);
+            requestJson));
 
         if (sendResult.Ok)
         {
@@ -356,7 +372,7 @@ public sealed class WhatsappWebhookProcessor(
             "cancelacion_mantener_confirmado" => "Perfecto. Tu turno sigue confirmado.",
             "cancelacion_turno_ya_cancelado" => "Ese turno ya fue cancelado anteriormente.",
             "cancelacion_accion_ya_resuelta" => "Ya registramos que decidiste mantener este turno. Si querés cancelarlo, respondenos nuevamente desde el recordatorio.",
-            "cancelacion_rechazada" => "No pudimos cancelar el turno porque ya no estaba disponible o cambió su estado. Si necesitás ayuda, comunicate con el centro.",
+            CancelacionRechazadaStatus => "No pudimos cancelar el turno porque ya no estaba disponible o cambió su estado. Si necesitás ayuda, comunicate con el centro.",
             _ => string.Empty
         };
     }
@@ -393,8 +409,8 @@ public sealed class WhatsappWebhookProcessor(
                     {
                         new JsonObject
                         {
-                            ["type"] = "reply",
-                            ["reply"] = new JsonObject
+                            ["type"] = ReplyType,
+                            [ReplyType] = new JsonObject
                             {
                                 ["id"] = cancelPayload,
                                 ["title"] = "Cancelar"
@@ -402,8 +418,8 @@ public sealed class WhatsappWebhookProcessor(
                         },
                         new JsonObject
                         {
-                            ["type"] = "reply",
-                            ["reply"] = new JsonObject
+                            ["type"] = ReplyType,
+                            [ReplyType] = new JsonObject
                             {
                                 ["id"] = keepPayload,
                                 ["title"] = "Mantener"
@@ -545,4 +561,30 @@ public sealed class WhatsappWebhookProcessor(
 
         return null;
     }
+}
+
+public sealed class WhatsappWebhookDataAccessDependencies(
+    IWhatsappWebhookEventRepository webhookEventRepository,
+    IWhatsappMessageRepository messageRepository,
+    IWhatsappMessageActionRepository messageActionRepository,
+    IWhatsappMessageSettingsRepository messageSettingsRepository,
+    IAppointmentRepository appointmentRepository,
+    IBlockHistoryRepository blockHistoryRepository)
+{
+    public IWhatsappWebhookEventRepository WebhookEventRepository { get; } = webhookEventRepository;
+    public IWhatsappMessageRepository MessageRepository { get; } = messageRepository;
+    public IWhatsappMessageActionRepository MessageActionRepository { get; } = messageActionRepository;
+    public IWhatsappMessageSettingsRepository MessageSettingsRepository { get; } = messageSettingsRepository;
+    public IAppointmentRepository AppointmentRepository { get; } = appointmentRepository;
+    public IBlockHistoryRepository BlockHistoryRepository { get; } = blockHistoryRepository;
+}
+
+public sealed class WhatsappWebhookRuntimeDependencies(
+    IWhatsAppSender sender,
+    IUnitOfWork unitOfWork,
+    IClock clock)
+{
+    public IWhatsAppSender Sender { get; } = sender;
+    public IUnitOfWork UnitOfWork { get; } = unitOfWork;
+    public IClock Clock { get; } = clock;
 }

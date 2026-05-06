@@ -28,7 +28,7 @@ public sealed class TurnoEnrichmentAssemblyTests
 
     private AppointmentsService CreateService()
     {
-        return new AppointmentsService(
+        var dataAccess = new AppointmentsDataAccessDependencies(
             _appointmentRepository,
             _scheduleRepository,
             _userRepository,
@@ -38,11 +38,15 @@ public sealed class TurnoEnrichmentAssemblyTests
             _medicoRepository,
             _referenteRepository,
             _obraSocialRepository,
-            _blockHistoryRepository,
+            _blockHistoryRepository);
+        var runtime = new AppointmentsRuntimeDependencies(
             _whatsappService,
             _unitOfWork,
             _idempotencyStore,
             _clock);
+        return new AppointmentsService(
+            dataAccess,
+            runtime);
     }
 
     [Fact]
@@ -69,7 +73,11 @@ public sealed class TurnoEnrichmentAssemblyTests
         _appointmentRepository.CountByRangeAsync(fecha, fecha, Arg.Any<CancellationToken>())
             .Returns(1);
 
-        var patient = new Patient(pacienteId, "Juan Pérez", "123456789", "DNI123", null, 1, false);
+        var patient = new Patient(
+            pacienteId,
+            "Juan Pérez",
+            new PatientAdministrativeInfo("123456789", "DNI123", null, 1),
+            new PatientPortalInfo(false));
         typeof(Patient).GetProperty(nameof(Patient.ObraSocialId))?.SetValue(patient, obraSocialId);
         _patientRepository.GetByIdsAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns([patient]);
@@ -190,6 +198,37 @@ public sealed class TurnoEnrichmentAssemblyTests
     }
 
     [Fact]
+    public async Task GetEnrichedByRangeAsync_ParticularAndZeroSessions_AreNormalizedToNull()
+    {
+        // Arrange
+        var fecha = new DateOnly(2024, 5, 2);
+        var appointment = CreateAppointment(fecha, new TimeOnly(9, 0), 1, 1, AppointmentStatus.Ocupado);
+        typeof(Appointment).GetProperty(nameof(Appointment.ModalidadCobro))?.SetValue(appointment, "particular");
+        typeof(Appointment).GetProperty(nameof(Appointment.SesionesAutorizadas))?.SetValue(appointment, 0);
+
+        _scheduleHourRepository.GetAsync(Arg.Any<CancellationToken>())
+            .Returns([new ScheduleHour(1, "09:00", 1, true)]);
+        _appointmentRepository.GetByRangeAsync(fecha, fecha, 0, 100, Arg.Any<CancellationToken>())
+            .Returns([appointment]);
+        _appointmentRepository.CountByRangeAsync(fecha, fecha, Arg.Any<CancellationToken>())
+            .Returns(1);
+        _cameraRepository.GetAsync(Arg.Any<CancellationToken>())
+            .Returns([]);
+        _appointmentRepository.GetBlockHistoryByRangeAsync(fecha, fecha, Arg.Any<CancellationToken>())
+            .Returns([]);
+
+        var service = CreateService();
+
+        // Act
+        var result = await service.GetEnrichedByRangeAsync(fecha, fecha, 0, 100, CancellationToken.None);
+
+        // Assert
+        var item = result.Items.Single();
+        Assert.Null(item.ModalidadCobro);
+        Assert.Null(item.SesionesAutorizadas);
+    }
+
+    [Fact]
     public async Task GetEnrichedByRangeAsync_PaginationParams_PropagateCorrectly()
     {
         // Arrange
@@ -238,23 +277,23 @@ public sealed class TurnoEnrichmentAssemblyTests
         var blockHistories = new[]
         {
             // Older validation — should NOT be selected
-            new BlockHistory(
+            new BlockHistory(new BlockHistoryCreateParams(
                 Guid.NewGuid(), fecha, new TimeOnly(9, 0), 1, slotId, 1,
                 "ocupado", null, null, null, false, "particular",
                 null, null, null, new DateTimeOffset(2024, 5, 2, 12, 0, 0, TimeSpan.Zero),
-                null, false, null, null, null, null),
+                null, false, null, null, null, null)),
             // Newer validation — SHOULD be selected
-            new BlockHistory(
+            new BlockHistory(new BlockHistoryCreateParams(
                 Guid.NewGuid(), fecha, new TimeOnly(9, 0), 1, slotId, 1,
                 "validado", null, null, null, false, "particular",
                 null, null, validatingUserId, new DateTimeOffset(2024, 5, 2, 14, 0, 0, TimeSpan.Zero),
-                null, false, null, null, null, null),
+                null, false, null, null, null, null)),
         };
 
         _appointmentRepository.GetBlockHistoryByRangeAsync(fecha, fecha, Arg.Any<CancellationToken>())
             .Returns(blockHistories);
 
-        var validatingUser = new User(validatingUserId, "validator", "v@t.com", "hash", true, true, null, "Validador Pérez");
+        var validatingUser = new User(new UserCreateParams(validatingUserId, "validator", "v@t.com", "hash", true, true, null, "Validador Pérez"));
         _userRepository.GetBasicByIdsAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns([validatingUser]);
 
@@ -506,7 +545,13 @@ public sealed class TurnoEnrichmentAssemblyTests
             .Returns(1);
 
         _patientRepository.GetByIdsAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns([new Patient(pacienteId, "Juan Pérez", "123456789", "DNI123", null, 1, false)]);
+            .Returns([
+                new Patient(
+                    pacienteId,
+                    "Juan Pérez",
+                    new PatientAdministrativeInfo("123456789", "DNI123", null, 1),
+                    new PatientPortalInfo(false))
+            ]);
 
         _appointmentRepository.GetBlockHistoryByRangeAsync(fecha, fecha, Arg.Any<CancellationToken>())
             .Returns([]);

@@ -2,48 +2,50 @@ using MedicalCenter.Domain.Common;
 
 namespace MedicalCenter.Domain.Entities;
 
+public sealed record AdminEventFeedEntryCreateParams(
+    long Id,
+    DateTimeOffset OccurredAt,
+    Guid? ActorUserId,
+    string ActorLabel,
+    string ActionCode,
+    string ActionFamily,
+    string EntityType,
+    string EntityId,
+    string? AgendaType,
+    Guid? PacienteId,
+    string? PacienteNombre,
+    int? MedicoId,
+    string? MedicoNombre,
+    string Title,
+    string Summary,
+    string SourceSystem,
+    string SourceRecordKey,
+    string MetadataJson);
+
 public sealed class AdminEventFeedEntry : Entity<long>
 {
     private AdminEventFeedEntry() { }
 
-    public AdminEventFeedEntry(
-        long id,
-        DateTimeOffset occurredAt,
-        Guid? actorUserId,
-        string actorLabel,
-        string actionCode,
-        string actionFamily,
-        string entityType,
-        string entityId,
-        string? agendaType,
-        Guid? pacienteId,
-        string? pacienteNombre,
-        int? medicoId,
-        string? medicoNombre,
-        string title,
-        string summary,
-        string sourceSystem,
-        string sourceRecordKey,
-        string metadataJson)
+    public AdminEventFeedEntry(AdminEventFeedEntryCreateParams p)
     {
-        Id = id;
-        OccurredAt = occurredAt;
-        ActorUserId = actorUserId;
-        ActorLabel = actorLabel;
-        ActionCode = actionCode;
-        ActionFamily = actionFamily;
-        EntityType = entityType;
-        EntityId = entityId;
-        AgendaType = agendaType;
-        PacienteId = pacienteId;
-        PacienteNombre = pacienteNombre;
-        MedicoId = medicoId;
-        MedicoNombre = medicoNombre;
-        Title = title;
-        Summary = summary;
-        SourceSystem = sourceSystem;
-        SourceRecordKey = sourceRecordKey;
-        MetadataJson = metadataJson;
+        Id = p.Id;
+        OccurredAt = p.OccurredAt;
+        ActorUserId = p.ActorUserId;
+        ActorLabel = p.ActorLabel;
+        ActionCode = p.ActionCode;
+        ActionFamily = p.ActionFamily;
+        EntityType = p.EntityType;
+        EntityId = p.EntityId;
+        AgendaType = p.AgendaType;
+        PacienteId = p.PacienteId;
+        PacienteNombre = p.PacienteNombre;
+        MedicoId = p.MedicoId;
+        MedicoNombre = p.MedicoNombre;
+        Title = p.Title;
+        Summary = p.Summary;
+        SourceSystem = p.SourceSystem;
+        SourceRecordKey = p.SourceRecordKey;
+        MetadataJson = p.MetadataJson;
         CreatedAt = DateTimeOffset.UtcNow;
     }
 
