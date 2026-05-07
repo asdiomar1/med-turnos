@@ -52,6 +52,34 @@ public static class AppointmentResponseMappings
             ObraSocialValidadaPorPerfil = x.ObraSocialValidadaPorPerfil.ToResponse(),
         };
 
+    public static AppointmentGroupResponse ToResponse(this AppointmentGroupSummary x) =>
+        new() { Fecha = x.Fecha, Slots = x.Slots.Select(s => s.ToResponse()).ToArray() };
+
+    public static TandaAvailabilityResponse ToResponse(this TandaAvailabilitySummary x) =>
+        new() { Fecha = x.Fecha, TotalSlots = x.TotalSlots, Ocupados = x.Ocupados, Libres = x.Libres };
+
+    public static TandaAvailabilityDetailResponse ToResponse(this TandaAvailabilityDetailSummary x) =>
+        new()
+        {
+            Fecha = x.Fecha, Hora = x.Hora, CamaraId = x.CamaraId, Lugar = x.Lugar,
+            Estado = x.Estado, TandaId = x.TandaId, PacienteId = x.PacienteId,
+            EsBloqueCompleto = x.EsBloqueCompleto,
+        };
+
+    public static TandaAvailabilityAggregatedResponse ToResponse(this TandaAvailabilityAggregatedSummary x) =>
+        new()
+        {
+            Fecha = x.Fecha,
+            Hora = x.Hora,
+            CamaraId = x.CamaraId,
+            CamaraNombre = x.CamaraNombre,
+            Capacidad = x.Capacidad,
+            LibresCount = x.LibresCount,
+            TieneDisponibilidad = x.TieneDisponibilidad,
+            TieneBloqueCompletoPosible = x.TieneBloqueCompletoPosible,
+            BloqueadoPorPaciente = x.BloqueadoPorPaciente
+        };
+
     public static TurnoEnrichedResponse ToTurnoEnrichedResponse(this TurnoEnrichedSummary x) =>
         new()
         {
@@ -114,34 +142,6 @@ public static class AppointmentResponseMappings
                 Id = x.ObraSocialValidadaPorPerfil.Id,
                 Nombre = x.ObraSocialValidadaPorPerfil.Nombre,
             },
-        };
-
-    public static AppointmentGroupResponse ToResponse(this AppointmentGroupSummary x) =>
-        new() { Fecha = x.Fecha, Slots = x.Slots.Select(s => s.ToResponse()).ToArray() };
-
-    public static TandaAvailabilityResponse ToResponse(this TandaAvailabilitySummary x) =>
-        new() { Fecha = x.Fecha, TotalSlots = x.TotalSlots, Ocupados = x.Ocupados, Libres = x.Libres };
-
-    public static TandaAvailabilityDetailResponse ToResponse(this TandaAvailabilityDetailSummary x) =>
-        new()
-        {
-            Fecha = x.Fecha, Hora = x.Hora, CamaraId = x.CamaraId, Lugar = x.Lugar,
-            Estado = x.Estado, TandaId = x.TandaId, PacienteId = x.PacienteId,
-            EsBloqueCompleto = x.EsBloqueCompleto,
-        };
-
-    public static TandaAvailabilityAggregatedResponse ToResponse(this TandaAvailabilityAggregatedSummary x) =>
-        new()
-        {
-            Fecha = x.Fecha,
-            Hora = x.Hora,
-            CamaraId = x.CamaraId,
-            CamaraNombre = x.CamaraNombre,
-            Capacidad = x.Capacidad,
-            LibresCount = x.LibresCount,
-            TieneDisponibilidad = x.TieneDisponibilidad,
-            TieneBloqueCompletoPosible = x.TieneBloqueCompletoPosible,
-            BloqueadoPorPaciente = x.BloqueadoPorPaciente
         };
 
     /// <summary>

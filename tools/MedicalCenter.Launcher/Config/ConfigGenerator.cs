@@ -73,7 +73,7 @@ public static class ConfigGenerator
             {
                 // File exists - merge missing keys only
                 ConsoleWriter.Warning("appsettings.Development.json exists - merging missing keys");
-                MergeAppSettings(appSettingsPath);
+                MergeAppSettings();
                 return new ConfigResult(false, true, appSettingsPath);
             }
 
@@ -182,7 +182,7 @@ public static class ConfigGenerator
         return JsonSerializer.Serialize(config, IndentedJsonOptions);
     }
 
-    private static void MergeAppSettings(string path)
+    private static void MergeAppSettings()
     {
         try
         {
