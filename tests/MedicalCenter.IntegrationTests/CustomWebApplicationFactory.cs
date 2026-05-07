@@ -1,4 +1,5 @@
 using MedicalCenter.Infrastructure.Persistence;
+using MedicalCenter.Infrastructure.Seed;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -27,6 +28,10 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
             .Options;
         using var context = new MedicalCenterDbContext(options);
         await context.Database.EnsureCreatedAsync();
+
+        // Ensure RBAC schema and seed minimal data for auth tests
+        await DatabaseInitializer.EnsureRbacSchemaAsync(context);
+        await DatabaseInitializer.ResetAndSeedRbacAsync(context, minimal: true);
     }
 
     public new async Task DisposeAsync()
