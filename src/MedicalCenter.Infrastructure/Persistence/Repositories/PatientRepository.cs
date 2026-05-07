@@ -17,11 +17,11 @@ public sealed class PatientRepository(MedicalCenterDbContext dbContext) : IPatie
 
         if (!string.IsNullOrWhiteSpace(search))
         {
-            var normalized = search.Trim().ToLower();
+            var normalized = search.Trim();
             query = query.Where(x =>
-                x.Nombre.ToLower().Contains(normalized) ||
-                (x.DocumentoIdentidad != null && x.DocumentoIdentidad.ToLower().Contains(normalized)) ||
-                (x.Email != null && x.Email.ToLower().Contains(normalized)));
+                EF.Functions.ILike(x.Nombre, $"%{normalized}%") ||
+                (x.DocumentoIdentidad != null && EF.Functions.ILike(x.DocumentoIdentidad, $"%{normalized}%")) ||
+                (x.Email != null && EF.Functions.ILike(x.Email, $"%{normalized}%")));
         }
 
         return await query.OrderBy(x => x.Nombre).ToListAsync(cancellationToken);
@@ -32,10 +32,10 @@ public sealed class PatientRepository(MedicalCenterDbContext dbContext) : IPatie
 
     public Task<Patient?> GetByDocumentoAsync(string documentoIdentidad, CancellationToken cancellationToken)
     {
-        var normalized = documentoIdentidad.Trim().ToLower();
+        var normalized = documentoIdentidad.Trim();
         return dbContext.Patients.FirstOrDefaultAsync(
-            x => x.DocumentoIdentidad.ToLower() == normalized
-                || (x.DocumentoIdentidadNormalizado != null && x.DocumentoIdentidadNormalizado.ToLower() == normalized),
+            x => EF.Functions.ILike(x.DocumentoIdentidad, normalized)
+                || (x.DocumentoIdentidadNormalizado != null && EF.Functions.ILike(x.DocumentoIdentidadNormalizado, normalized)),
             cancellationToken);
     }
 
@@ -43,7 +43,7 @@ public sealed class PatientRepository(MedicalCenterDbContext dbContext) : IPatie
         string.IsNullOrWhiteSpace(loginIdentifier)
             ? Task.FromResult<Patient?>(null)
             : dbContext.Patients.FirstOrDefaultAsync(
-                x => x.LoginIdentifier != null && x.LoginIdentifier.ToLower() == loginIdentifier.Trim().ToLower(),
+                x => x.LoginIdentifier != null && EF.Functions.ILike(x.LoginIdentifier, loginIdentifier.Trim()),
                 cancellationToken);
 
     public Task<Patient?> GetByPortalIdentifierAsync(string identifier, CancellationToken cancellationToken)
@@ -53,13 +53,13 @@ public sealed class PatientRepository(MedicalCenterDbContext dbContext) : IPatie
             return Task.FromResult<Patient?>(null);
         }
 
-        var normalized = identifier.Trim().ToLower();
+        var normalized = identifier.Trim();
         return dbContext.Patients.FirstOrDefaultAsync(
             x =>
-                (x.LoginIdentifier != null && x.LoginIdentifier.ToLower() == normalized) ||
-                x.DocumentoIdentidad.ToLower() == normalized ||
-                (x.DocumentoIdentidadNormalizado != null && x.DocumentoIdentidadNormalizado.ToLower() == normalized) ||
-                (x.Email != null && x.Email.ToLower() == normalized),
+                (x.LoginIdentifier != null && EF.Functions.ILike(x.LoginIdentifier, normalized)) ||
+                EF.Functions.ILike(x.DocumentoIdentidad, normalized) ||
+                (x.DocumentoIdentidadNormalizado != null && EF.Functions.ILike(x.DocumentoIdentidadNormalizado, normalized)) ||
+                (x.Email != null && EF.Functions.ILike(x.Email, normalized)),
             cancellationToken);
     }
 

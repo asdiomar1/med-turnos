@@ -13,14 +13,14 @@ public sealed class UserRepository(MedicalCenterDbContext dbContext) : IUserRepo
         string.IsNullOrWhiteSpace(identifier)
             ? Task.FromResult<User?>(null)
             : dbContext.Users.FirstOrDefaultAsync(
-                x => x.Identifier.ToLower() == identifier.Trim().ToLower(),
+                x => EF.Functions.ILike(x.Identifier, identifier.Trim()),
                 cancellationToken);
 
     public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken) =>
         string.IsNullOrWhiteSpace(email)
             ? Task.FromResult<User?>(null)
             : dbContext.Users.FirstOrDefaultAsync(
-                x => x.Email.ToLower() == email.Trim().ToLower(),
+                x => EF.Functions.ILike(x.Email, email.Trim()),
                 cancellationToken);
 
     public async Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
