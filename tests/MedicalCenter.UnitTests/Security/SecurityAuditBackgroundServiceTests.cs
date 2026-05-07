@@ -15,18 +15,20 @@ public sealed class SecurityAuditBackgroundServiceTests
         var service = new SecurityAuditBackgroundService(channel, logger);
         var cts = new CancellationTokenSource();
 
+        TestLoggerProvider.Clear();
         var executeTask = service.StartAsync(cts.Token);
 
         var evt = new SecurityEvent("unauthorized_access", "Test message", "user-123", "/api/test");
         await channel.Writer.WriteAsync(evt);
 
-        // Give it a moment to process
-        await Task.Delay(100);
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        while (!TestLoggerProvider.HasEvent("unauthorized_access") && DateTime.UtcNow < deadline)
+            await Task.Delay(10);
+
         cts.Cancel();
 
         try { await executeTask; } catch (OperationCanceledException) { }
 
-        // Verify the logger captured it via TestLoggerProvider
         Assert.True(TestLoggerProvider.HasEvent("unauthorized_access"));
     }
 
