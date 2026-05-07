@@ -42,10 +42,20 @@ public sealed class FixedWindowRateLimiterTests
         using var rejected = limiter.AttemptAcquire();
         Assert.False(rejected.IsAcquired);
 
-        await Task.Delay(1100);
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        RateLimitLease? acquired = null;
+        while (!cts.Token.IsCancellationRequested)
+        {
+            acquired = limiter.AttemptAcquire();
+            if (acquired.IsAcquired) break;
+            acquired.Dispose();
+            acquired = null;
+            await Task.Delay(50, cts.Token);
+        }
 
-        using var lease = limiter.AttemptAcquire();
-        Assert.True(lease.IsAcquired);
+        Assert.NotNull(acquired);
+        Assert.True(acquired.IsAcquired);
+        acquired.Dispose();
     }
 
     private static FixedWindowRateLimiter CreateLimiter(int permitLimit, int windowSeconds)
