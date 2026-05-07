@@ -398,3 +398,6 @@ tmp-fix-author-name.sql
 sonar-issues*.json
 .sonarqube/
 nul
+
+# Worktree guides
+WORKTREE_*.md
