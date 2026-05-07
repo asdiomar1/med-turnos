@@ -3,6 +3,9 @@
 > **Objetivo**: Alcanzar 80% de cobertura en código nuevo para pasar el quality gate de SonarCloud.
 > **Restricción**: El quality gate "Sonar way" (80% en `new_coverage`) **no se puede modificar**.
 > **Estrategia**: Trabajo en paralelo sin conflictos — cada tarea afecta archivos diferentes.
+> **Estado**: 4 tareas completadas (T1-T4) | 13 tareas pendientes | Proposal: `sdd/coverage-analysis-sonar/proposal`
+
+> 📋 **Última actualización**: 2026-05-07 — Se agregaron tareas T14-T16 para fixes de Sonar, se marcaron T1-T4 como completadas
 
 ---
 
@@ -23,25 +26,37 @@
 ### Dependencias entre tareas
 
 ```
-T1 (Sonar exclusions) ─── independiente, se hace primero
-                        │
-T2 (Unit: Appointments) ─┤
-T3 (Unit: Consultations) ─┤─── todos independientes entre sí
-T4 (Unit: Catalogs) ─────┤
-T5 (Unit: Patients) ─────┤
-T6 (Unit: Professionals) ─┤
-T7 (Unit: ClinicalHistory) ┤
-T8 (Unit: OutOfHours) ────┤
-                        │
-T9 (Integration: AppointmentsRepo) ─── independiente de T2-T8
-T10 (Integration: Auth) ────────────── independiente
-T11 (Integration: AppointmentsCtrl) ── independiente
-                        │
-T12 (Unit: WhatsApp) ──── independiente (más compleja)
-T13 (Unit: RbacAdminRepo) ─ independiente
+T1 (Sonar exclusions) ─────── ✅ COMPLETED
+                              │
+T2 (Unit: Appointments) ───── ✅ COMPLETED
+T3 (Unit: Consultations) ──── ✅ COMPLETED
+T4 (Unit: Catalogs) ───────── ✅ COMPLETED
+                              │
+T14-T16 (Sonar fixes) ────────┤─── independientes, Phase 1 (Quick Wins)
+                              │
+T5 (Unit: Patients) ──────────┤
+T6 (Unit: Professionals) ──────┤─── independientes, Phase 2 (Unit Tests)
+T7 (Unit: ClinicalHistory) ────┤
+T8 (Unit: OutOfHours) ────────┤
+                              │
+T9 (Integration: AppointmentsRepo) ───┤
+T10 (Integration: Auth) ───────────────┤── independientes, Phase 3 (Integration)
+T11 (Integration: AppointmentsCtrl) ──┤
+T13 (Unit: RbacAdminRepo) ────────────┤
+                              │
+T12 (Unit: WhatsApp) ───────── independiente, Phase 4 (Optional)
 ```
 
 Cada tarea es un **PR independiente**. Se pueden asignar a distintas personas sin riesgo de colisiones.
+
+### Fases de implementación
+
+| Fase | Tareas | Duración | Descripción |
+|------|--------|----------|-------------|
+| **Phase 1** | T14, T14a, T15, T16 | ~2 horas | Quick wins - fixes de Sonar rápidos |
+| **Phase 2** | T5, T6, T7, T8 | ~3-4 días | Unit tests para servicios sin cobertura |
+| **Phase 3** | T9, T10, T11, T13 | ~2-3 días | Integration tests para repos y controllers |
+| **Phase 4** | T12 | ~3-4 días | Opcional - WhatsApp services complejos |
 
 ---
 
@@ -219,6 +234,156 @@ CatalogsService suele ser CRUD simple con lógica de búsqueda/filtrado. Tests u
 
 ### ✅ Criterios de aceptación
 - [ ] Mismos criterios que T2
+
+---
+
+## T14 — Fix CA1862: `PatientRepository.cs` string comparison
+
+| Campo | Valor |
+|-------|-------|
+| **Prioridad** | 🔴 **Alta** |
+| **Archivo** | `src/MedicalCenter.Infrastructure/Persistence/Repositories/PatientRepository.cs` |
+| **Líneas afectadas** | 22, 23, 24, 37, 38, 46, 59, 60, 61, 62 (10 issues) |
+| **Severidad** | INFO |
+| **Duración estimada** | 1-2 horas |
+| **Asignable a** | Cualquiera |
+
+### Especificación
+
+Reemplazar uso de `.ToLower().Contains(...)` o `.ToLower() == ...` por sobrecargas con `StringComparison.OrdinalIgnoreCase` para mejorar performance y legibilidad.
+
+**Patrón actual** (incorrecto):
+```csharp
+.Where(p => p.FirstName.ToLower().Contains(searchTerm.ToLower()))
+```
+
+**Patrón corregido**:
+```csharp
+.Where(p => p.FirstName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
+```
+
+### Métodos a modificar
+
+| Método | Líneas | Cambio |
+|--------|--------|--------|
+| `SearchAsync` | 22-24 | Usar `StringComparison.OrdinalIgnoreCase` |
+| `SearchAsync` | 37-38 | Usar `StringComparison.OrdinalIgnoreCase` |
+| `SearchAsync` | 46 | Usar `StringComparison.OrdinalIgnoreCase` |
+| `SearchAsync` | 59-62 | Usar `StringComparison.OrdinalIgnoreCase` |
+
+### ✅ Criterios de aceptación
+- [ ] Ningún uso de `.ToLower()` para comparaciones de strings
+- [ ] Todos los métodos de búsqueda usan `StringComparison.OrdinalIgnoreCase`
+- [ ] El comportamiento es idéntico (case-insensitive matching)
+- [ ] CI pasa sin errores
+
+### ❌ Fuera de alcance
+- No modificar lógica de negocio
+- No agregar nuevos métodos
+
+---
+
+## T14a — Fix CA1862: `UserRepository.cs` string comparison
+
+| Campo | Valor |
+|-------|-------|
+| **Prioridad** | 🔴 **Alta** |
+| **Archivo** | `src/MedicalCenter.Infrastructure/Persistence/Repositories/UserRepository.cs` |
+| **Líneas afectadas** | 16, 23 (2 issues) |
+| **Severidad** | INFO |
+| **Duración estimada** | 30 minutos |
+| **Asignable a** | Cualquiera |
+
+### Especificación
+
+Mismo patrón que T14, aplicado a UserRepository.
+
+**Patrón actual** (incorrecto):
+```csharp
+.Where(u => u.Email.ToLower() == email.ToLower())
+```
+
+**Patrón corregido**:
+```csharp
+.Where(u => u.Email.Equals(email, StringComparison.OrdinalIgnoreCase))
+```
+
+### ✅ Criterios de aceptación
+- [ ] Ningún uso de `.ToLower()` para comparaciones de strings
+- [ ] CI pasa sin errores
+
+---
+
+## T15 — Fix S1172: Unused parameter in `ConfigGenerator.cs`
+
+| Campo | Valor |
+|-------|-------|
+| **Prioridad** | 🔴 **Alta** |
+| **Archivo** | `src/MedicalCenter.Cli/Generators/ConfigGenerator.cs` |
+| **Línea afectada** | 185 |
+| **Severidad** | MAJOR |
+| **Duración estimada** | 5 minutos |
+| **Asignable a** | Cualquiera |
+
+### Especificación
+
+El método `MergeAppSettings` tiene un parámetro `path` que no se utiliza.
+
+**Patrón actual** (incorrecto):
+```csharp
+private static void MergeAppSettings(string path, string environment)
+{
+    // 'path' no se usa en el método
+}
+```
+
+**Opción A - Remover parámetro** (si no se usa en ningún llamador):
+```csharp
+private static void MergeAppSettings(string environment)
+```
+
+**Opción B - Usar el parámetro** (si debería usarse):
+Revisar si el path debería usarse para cargar configuración.
+
+### ✅ Criterios de aceptación
+- [ ] Parámetro no utilizado removido o utilizado correctamente
+- [ ] Todos los llamadores actualizados
+- [ ] CI pasa sin errores
+
+---
+
+## T16 — Fix S4136: Non-adjacent overloads in `AppointmentResponseMappings.cs`
+
+| Campo | Valor |
+|-------|-------|
+| **Prioridad** | 🟡 **Media** |
+| **Archivo** | `src/MedicalCenter.Api/Mappings/AppointmentResponseMappings.cs` |
+| **Líneas afectadas** | 10, 119 |
+| **Severidad** | MINOR |
+| **Duración estimada** | 1 minuto |
+| **Asignable a** | Cualquiera |
+
+### Especificación
+
+Las sobrecargas del método `ToResponse` deben estar agrupadas juntas según la convención S4136.
+
+**Patrón actual** (incorrecto):
+```csharp
+// Línea 10
+public static AppointmentResponse ToResponse(this Appointment appointment) { ... }
+
+// ... otros métodos ...
+
+// Línea 119
+public static AppointmentResponse ToResponse(this Appointment appointment, Patient patient) { ... }
+```
+
+**Patrón corregido**:
+Mover ambas sobrecargas de `ToResponse` para que estén adyacentes en el archivo.
+
+### ✅ Criterios de aceptación
+- [ ] Todas las sobrecargas de `ToResponse` están agrupadas
+- [ ] CI pasa sin errores
 
 ---
 
@@ -573,37 +738,56 @@ Usa SQL directo (no EF Core queries simples). Requiere integration tests con Pos
 
 ---
 
-## 📊 Proyección de cobertura
+## 📊 Estado actual y proyección
 
-### Después de T1 (exclusiones)
+### ✅ Estado actual (T1-T4 completados)
+
+| Concepto | Valor |
+|----------|-------|
+| Tareas completadas | 4 de 17 |
+| Servicios con tests unitarios | Appointments, Consultations, Catalogs |
+| Exclusiones Sonar configuradas | DatabaseInitializer.cs, Migrations |
+| Cobertura estimada actual | ~40-50% |
+
+### Después de T1 (exclusiones) — ✅ COMPLETADO
 
 | Concepto | Valor |
 |----------|-------|
 | Líneas totales nuevas excluidas | ~600 (DatabaseInitializer) |
 | Cobertura estimada después de T1 | ~40-45% (sin migrations + sin initializer) |
 
-### Después de T2 + T3 + T4 + T5 (servicios principales)
+### Después de T14-T16 (Sonar fixes) — Phase 1
 
 | Concepto | Valor |
 |----------|-------|
-| Líneas nuevas cubiertas | ~1.500 (de servicios) |
+| Issues Sonar resueltos | 14 issues (CA1862, S1172, S4136) |
+| Calidad de código | Mejorada |
+| Esfuerzo | ~2 horas |
+
+### Después de T5 + T6 + T7 + T8 (servicios sin cobertura)
+
+| Concepto | Valor |
+|----------|-------|
+| Líneas nuevas cubiertas | ~750 (Patients, Professionals, ClinicalHistory, OutOfHours) |
 | Cobertura estimada acumulada | ~60-65% |
+| Esfuerzo | ~3-4 días |
 
-### Después de T9 + T10 + T11 (integration tests)
+### Después de T9 + T10 + T11 + T13 (integration tests)
 
 | Concepto | Valor |
 |----------|-------|
-| Líneas nuevas cubiertas | ~800 (repos + controllers) |
+| Líneas nuevas cubiertas | ~1.000 (repos + controllers + Rbac) |
 | Cobertura estimada acumulada | ~75-80% 🎯 |
+| Esfuerzo | ~2-3 días |
 
 ---
 
 ## ✅ Checklist global
 
-- [ ] **T1** — Excluir `DatabaseInitializer.cs` de Sonar
-- [ ] **T2** — Unit tests: `AppointmentsService` (Persona A)
-- [ ] **T3** — Unit tests: `ConsultationsService` (Persona B)
-- [ ] **T4** — Unit tests: `CatalogsService` (Persona C)
+- [x] **T1** — Excluir `DatabaseInitializer.cs` de Sonar
+- [x] **T2** — Unit tests: `AppointmentsService` (Persona A)
+- [x] **T3** — Unit tests: `ConsultationsService` (Persona B)
+- [x] **T4** — Unit tests: `CatalogsService` (Persona C)
 - [ ] **T5** — Unit tests: `PatientsService` (Persona C)
 - [ ] **T6** — Unit tests: `ProfessionalsService` (Persona D)
 - [ ] **T7** — Unit tests: `ClinicalHistoryService` (Persona D)
@@ -611,7 +795,11 @@ Usa SQL directo (no EF Core queries simples). Requiere integration tests con Pos
 - [ ] **T9** — Integration tests: `AppointmentRepository` (Persona F)
 - [ ] **T10** — Integration tests: Auth/Login (Persona F)
 - [ ] **T11** — Integration tests: AppointmentsController (Persona G)
-- [ ] **T12** — Unit tests: WhatsApp services (Persona H)
+- [ ] **T12** — Unit tests: WhatsApp services (Persona H) - Opcional
 - [ ] **T13** — Integration tests: RbacAdminRepository (Persona I)
+- [ ] **T14** — Fix CA1862: `PatientRepository.cs` string comparison
+- [ ] **T14a** — Fix CA1862: `UserRepository.cs` string comparison
+- [ ] **T15** — Fix S1172: Unused parameter in `ConfigGenerator.cs`
+- [ ] **T16** — Fix S4136: Non-adjacent overloads in `AppointmentResponseMappings.cs`
 - [ ] **Final** — Verificar quality gate en SonarCloud (`new_coverage >= 80%`)
 - [ ] **Final** — Una vez en verde, eliminar exclusiones temporales (si las hay)
