@@ -5,6 +5,8 @@ param(
     [string]$PullRequest = "",
     [string]$Severities = "BLOCKER,CRITICAL,MAJOR,MINOR,INFO",
     [string]$Statuses = "OPEN,CONFIRMED,REOPENED",
+    [string]$HotspotStatuses = "TO_REVIEW,REVIEWED",
+    [switch]$IncludeHotspots = $true,
     [string]$OutputFile = "sonar-issues.json",
     [string]$ApiBaseUrl = "",
     [int]$PageSize = 500
@@ -99,6 +101,72 @@ do {
     $page++
 } while ($allIssues.Count -lt $total)
 
+$allHotspots = @()
+if ($IncludeHotspots) {
+    $hotspotStatusValues = $HotspotStatuses.Split(",") | ForEach-Object { $_.Trim() } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+    $seenHotspotKeys = @{}
+
+    foreach ($hotspotStatus in $hotspotStatusValues) {
+        $hotspotPage = 1
+        $hotspotTotal = $null
+        $hotspotsForStatus = @()
+
+        do {
+            $hotspotQuery = @{
+                projectKey = $ProjectKey
+                p = $hotspotPage
+                ps = $PageSize
+                status = $hotspotStatus
+            }
+
+            if (-not [string]::IsNullOrWhiteSpace($Branch)) {
+                $hotspotQuery["branch"] = $Branch
+            }
+
+            if (-not [string]::IsNullOrWhiteSpace($PullRequest)) {
+                $hotspotQuery["pullRequest"] = $PullRequest
+            }
+
+            $hotspotQueryString = ($hotspotQuery.GetEnumerator() | ForEach-Object {
+                    "{0}={1}" -f [uri]::EscapeDataString($_.Key), [uri]::EscapeDataString($_.Value)
+                }) -join "&"
+
+            $hotspotUrl = "$ApiBaseUrl/hotspots/search?$hotspotQueryString"
+            try {
+                $hotspotResponse = Invoke-RestMethod -Method Get -Uri $hotspotUrl -Headers $headers
+            }
+            catch {
+                Write-Host "Error consultando Sonar Hotspots API URL: $hotspotUrl" -ForegroundColor Red
+                if ($_.Exception.Response -and $_.Exception.Response.GetResponseStream()) {
+                    $reader = New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream())
+                    $body = $reader.ReadToEnd()
+                    if (-not [string]::IsNullOrWhiteSpace($body)) {
+                        Write-Host "Response body: $body" -ForegroundColor Yellow
+                    }
+                }
+                throw
+            }
+
+            if ($null -eq $hotspotTotal) {
+                $hotspotTotal = [int]$hotspotResponse.paging.total
+            }
+
+            if ($hotspotResponse.hotspots) {
+                $hotspotsForStatus += $hotspotResponse.hotspots
+            }
+
+            $hotspotPage++
+        } while ($hotspotsForStatus.Count -lt $hotspotTotal)
+
+        foreach ($hotspot in $hotspotsForStatus) {
+            if ($hotspot -and $hotspot.key -and -not $seenHotspotKeys.ContainsKey($hotspot.key)) {
+                $seenHotspotKeys[$hotspot.key] = $true
+                $allHotspots += $hotspot
+            }
+        }
+    }
+}
+
 $payload = [ordered]@{
     exportedAt = (Get-Date).ToString("o")
     projectKey = $ProjectKey
@@ -106,7 +174,9 @@ $payload = [ordered]@{
     pullRequest = $PullRequest
     total = $allIssues.Count
     issues = $allIssues
+    hotspotsTotal = $allHotspots.Count
+    hotspots = $allHotspots
 }
 
 $payload | ConvertTo-Json -Depth 100 | Out-File -FilePath $OutputFile -Encoding UTF8
-Write-Host "Export completado: $OutputFile ($($allIssues.Count) issues)"
+Write-Host "Export completado: $OutputFile ($($allIssues.Count) issues, $($allHotspots.Count) hotspots)"
