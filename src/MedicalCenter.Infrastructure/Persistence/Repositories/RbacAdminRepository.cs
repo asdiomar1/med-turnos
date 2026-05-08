@@ -355,8 +355,8 @@ public sealed class RbacAdminRepository : IRbacAdminRepository
                 "update public.users set \"IsActive\" = @active where \"Id\" = @id;",
                 cancellationToken,
                 transaction,
-                new NpgsqlParameter<bool>("active", command.Active),
-                new NpgsqlParameter<Guid>("id", authUserId));
+                new NpgsqlParameter("active", command.Active),
+                new NpgsqlParameter("id", authUserId));
             await transaction.CommitAsync(cancellationToken);
 
             await _cache.RemoveAsync(RolesCacheKey, cancellationToken);
@@ -532,7 +532,7 @@ public sealed class RbacAdminRepository : IRbacAdminRepository
             limit 1;
             """;
 
-        var rows = await QueryAsync(sql, reader => reader.GetGuid(0), cancellationToken, transaction, new NpgsqlParameter<Guid>("authUserId", authUserId));
+        var rows = await QueryAsync(sql, reader => (Guid?)reader.GetGuid(0), cancellationToken, transaction, new NpgsqlParameter("authUserId", authUserId));
         return rows.SingleOrDefault();
     }
 
@@ -545,7 +545,7 @@ public sealed class RbacAdminRepository : IRbacAdminRepository
             limit 1;
             """;
 
-        var rows = await QueryAsync<Guid?>(sql, reader => reader.IsDBNull(0) ? null : reader.GetGuid(0), cancellationToken, transaction, new NpgsqlParameter<Guid>("profileId", profileId));
+        var rows = await QueryAsync<Guid?>(sql, reader => reader.IsDBNull(0) ? null : reader.GetGuid(0), cancellationToken, transaction, new NpgsqlParameter("profileId", profileId));
         return rows.SingleOrDefault();
     }
 
@@ -564,7 +564,7 @@ public sealed class RbacAdminRepository : IRbacAdminRepository
             limit 1;
             """;
 
-        var rows = await QueryAsync(sql, reader => reader.GetGuid(0), cancellationToken, transaction, new NpgsqlParameter<Guid>("userId", userId));
+        var rows = await QueryAsync(sql, reader => (Guid?)reader.GetGuid(0), cancellationToken, transaction, new NpgsqlParameter("userId", userId));
         return rows.SingleOrDefault();
     }
 
@@ -661,7 +661,7 @@ public sealed class RbacAdminRepository : IRbacAdminRepository
             "delete from public.rbac_user_roles where user_id = @userId;",
             cancellationToken,
             transaction,
-            new NpgsqlParameter<Guid>("userId", userId));
+            new NpgsqlParameter("userId", userId));
 
         if (slugs.Length == 0)
         {
@@ -683,17 +683,14 @@ public sealed class RbacAdminRepository : IRbacAdminRepository
             """,
             cancellationToken,
             transaction,
-            new NpgsqlParameter<Guid>("userId", userId),
-            new NpgsqlParameter<string>("primarySlug", primarySlug),
+            new NpgsqlParameter("userId", userId),
+            new NpgsqlParameter("primarySlug", primarySlug),
             CreateTextArrayParameter("roleSlugs", slugs));
     }
 
     private static NpgsqlParameter<string[]> CreateTextArrayParameter(string parameterName, string[] values)
     {
-        return new NpgsqlParameter<string[]>(parameterName, values)
-        {
-            DataTypeName = "text[]"
-        };
+        return new NpgsqlParameter<string[]>(parameterName, values) { DataTypeName = "text[]" };
     }
 
     private async Task RebuildEffectivePermissionsForRoleAsync(long roleId, CancellationToken cancellationToken, IDbContextTransaction? transaction = null)

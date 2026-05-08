@@ -796,7 +796,7 @@ Usa SQL directo (no EF Core queries simples). Requiere integration tests con Pos
 - [ ] **T10** — Integration tests: Auth/Login (Persona F)
 - [ ] **T11** — Integration tests: AppointmentsController (Persona G)
 - [ ] **T12** — Unit tests: WhatsApp services (Persona H) - Opcional
-- [ ] **T13** — Integration tests: RbacAdminRepository (Persona I)
+- [x] **T13** — Integration tests: RbacAdminRepository (Persona I)
 - [ ] **T14** — Fix CA1862: `PatientRepository.cs` string comparison
 - [ ] **T14a** — Fix CA1862: `UserRepository.cs` string comparison
 - [ ] **T15** — Fix S1172: Unused parameter in `ConfigGenerator.cs`
