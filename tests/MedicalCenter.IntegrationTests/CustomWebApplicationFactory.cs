@@ -1,4 +1,5 @@
 using MedicalCenter.Infrastructure.Persistence;
+using MedicalCenter.Infrastructure.Seed;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -21,12 +22,6 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
     public async Task InitializeAsync()
     {
         await _postgres.StartAsync();
-
-        var options = new DbContextOptionsBuilder<MedicalCenterDbContext>()
-            .UseNpgsql(_postgres.GetConnectionString())
-            .Options;
-        using var context = new MedicalCenterDbContext(options);
-        await context.Database.EnsureCreatedAsync();
     }
 
     public new async Task DisposeAsync()
@@ -42,7 +37,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
             {
                 ["ConnectionStrings:DefaultConnection"] = _postgres.GetConnectionString(),
                 ["Jwt:SecretKey"] = "this-is-a-32-char-long-secret-key!",
-                ["SkipDatabaseInitialization"] = "true"
+                ["SkipDatabaseInitialization"] = "false"
             });
         });
 
