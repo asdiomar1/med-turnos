@@ -456,7 +456,7 @@ public static class DatabaseInitializer
         }
     }
 
-    private static async Task EnsureRbacSchemaAsync(MedicalCenterDbContext dbContext, CancellationToken cancellationToken)
+    public static async Task EnsureRbacSchemaAsync(MedicalCenterDbContext dbContext, CancellationToken cancellationToken = default)
     {
         await dbContext.Database.ExecuteSqlRawAsync("""
             CREATE EXTENSION IF NOT EXISTS pgcrypto;
@@ -575,6 +575,17 @@ public static class DatabaseInitializer
 
     private static async Task ResetAndSeedRbacAsync(MedicalCenterDbContext dbContext, CancellationToken cancellationToken)
     {
+        await ResetAndSeedRbacAsync(dbContext, minimal: false, cancellationToken);
+    }
+
+    /// <summary>
+    /// Seeds RBAC data. When minimal=true, seeds only essential data for auth tests:
+    /// - 1 role: staff
+    /// - 3 permissions: app.admin_panel.access, portal.access, dashboard.read
+    /// - Assigns permissions to the staff role
+    /// </summary>
+    public static async Task ResetAndSeedRbacAsync(MedicalCenterDbContext dbContext, bool minimal, CancellationToken cancellationToken = default)
+    {
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
         try
         {
@@ -586,52 +597,16 @@ public static class DatabaseInitializer
                 delete from public.rbac_permissions;
                 """, cancellationToken);
 
-            foreach (var permission in Permissions)
+            if (minimal)
             {
-                await dbContext.Database.ExecuteSqlRawAsync("""
-                    insert into public.rbac_permissions (id, key, nombre, descripcion, modulo, is_system, created_at, updated_at)
-                    values ({0}, {1}, {2}, {3}, {4}, true, now(), now());
-                    """,
-                    new object[] { permission.Id, permission.Key, permission.Nombre, permission.Descripcion!, permission.Modulo },
-                    cancellationToken);
+                // Minimal seed for tests: 1 role + essential permissions
+                await SeedMinimalRbacAsync(dbContext, cancellationToken);
             }
-
-            foreach (var role in Roles)
+            else
             {
-                await dbContext.Database.ExecuteSqlRawAsync("""
-                    insert into public.rbac_roles (id, slug, nombre, descripcion, activo, is_system, is_staff, default_home, created_at, updated_at)
-                    values ({0}, {1}, {2}, {3}, true, true, {4}, {5}, now(), now());
-                    """,
-                    new object[] { role.Id, role.Slug, role.Nombre, role.Descripcion!, role.IsStaff, role.DefaultHome },
-                    cancellationToken);
+                // Full seed with all roles and permissions (dev data)
+                await SeedFullRbacAsync(dbContext, cancellationToken);
             }
-
-            foreach (var (roleSlug, permissionKeys) in RolePermissions)
-            {
-                var normalizedKeys = permissionKeys
-                    .Where(x => !string.IsNullOrWhiteSpace(x))
-                    .Select(x => x.Trim())
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .ToArray();
-
-                foreach (var permissionKey in normalizedKeys)
-                {
-                    await dbContext.Database.ExecuteSqlRawAsync("""
-                        insert into public.rbac_role_permissions (role_id, permission_id, granted, created_at)
-                        select r.id, p.id, true, now()
-                        from public.rbac_roles r
-                        join public.rbac_permissions p on p.key = {1}
-                        where r.slug = {0};
-                        """,
-                        [roleSlug, permissionKey],
-                        cancellationToken);
-                }
-            }
-
-            await dbContext.Database.ExecuteSqlRawAsync("""
-                select setval('public.rbac_permissions_id_seq', (select coalesce(max(id), 1) from public.rbac_permissions), true);
-                select setval('public.rbac_roles_id_seq', (select coalesce(max(id), 1) from public.rbac_roles), true);
-                """, cancellationToken);
 
             await transaction.CommitAsync(cancellationToken);
         }
@@ -640,6 +615,103 @@ public static class DatabaseInitializer
             await transaction.RollbackAsync(cancellationToken);
             throw;
         }
+    }
+
+    private static async Task SeedMinimalRbacAsync(MedicalCenterDbContext dbContext, CancellationToken cancellationToken)
+    {
+        // Minimal permissions needed for auth tests
+        var minimalPermissions = new (long Id, string Key, string Nombre, string? Descripcion, string Modulo)[]
+        {
+            (1, PermissionConstants.AppAdminPanelAccess, "Acceso panel interno", "Permite ingresar al panel de administración", PermissionConstants.ModuleApp),
+            (2, PermissionConstants.PortalAccess, "Acceso portal paciente", "Permite ingresar al portal paciente", PermissionConstants.ModulePortal),
+            (3, PermissionConstants.DashboardRead, "Ver dashboard", "Permite leer métricas y agenda del dashboard", PermissionConstants.ModuleDashboard)
+        };
+
+        foreach (var permission in minimalPermissions)
+        {
+            await dbContext.Database.ExecuteSqlRawAsync("""
+                insert into public.rbac_permissions (id, key, nombre, descripcion, modulo, is_system, created_at, updated_at)
+                values ({0}, {1}, {2}, {3}, {4}, true, now(), now());
+                """,
+                new object[] { permission.Id, permission.Key, permission.Nombre, permission.Descripcion!, permission.Modulo },
+                cancellationToken);
+        }
+
+        // Single staff role for tests
+        await dbContext.Database.ExecuteSqlRawAsync("""
+            insert into public.rbac_roles (id, slug, nombre, descripcion, activo, is_system, is_staff, default_home, created_at, updated_at)
+            values (1, 'staff', 'Staff', 'Rol de prueba para tests de autenticación', true, true, true, '/usuario', now(), now());
+            """, cancellationToken);
+
+        // Assign all minimal permissions to staff role
+        foreach (var permission in minimalPermissions)
+        {
+            await dbContext.Database.ExecuteSqlRawAsync("""
+                insert into public.rbac_role_permissions (role_id, permission_id, granted, created_at)
+                select r.id, p.id, true, now()
+                from public.rbac_roles r
+                join public.rbac_permissions p on p.key = {1}
+                where r.slug = {0};
+                """,
+                ["staff", permission.Key],
+                cancellationToken);
+        }
+
+        // Reset sequences
+        await dbContext.Database.ExecuteSqlRawAsync("""
+            select setval('public.rbac_permissions_id_seq', (select coalesce(max(id), 1) from public.rbac_permissions), true);
+            select setval('public.rbac_roles_id_seq', (select coalesce(max(id), 1) from public.rbac_roles), true);
+            """, cancellationToken);
+    }
+
+    private static async Task SeedFullRbacAsync(MedicalCenterDbContext dbContext, CancellationToken cancellationToken)
+    {
+        foreach (var permission in Permissions)
+        {
+            await dbContext.Database.ExecuteSqlRawAsync("""
+                insert into public.rbac_permissions (id, key, nombre, descripcion, modulo, is_system, created_at, updated_at)
+                values ({0}, {1}, {2}, {3}, {4}, true, now(), now());
+                """,
+                new object[] { permission.Id, permission.Key, permission.Nombre, permission.Descripcion!, permission.Modulo },
+                cancellationToken);
+        }
+
+        foreach (var role in Roles)
+        {
+            await dbContext.Database.ExecuteSqlRawAsync("""
+                insert into public.rbac_roles (id, slug, nombre, descripcion, activo, is_system, is_staff, default_home, created_at, updated_at)
+                values ({0}, {1}, {2}, {3}, true, true, {4}, {5}, now(), now());
+                """,
+                new object[] { role.Id, role.Slug, role.Nombre, role.Descripcion!, role.IsStaff, role.DefaultHome },
+                cancellationToken);
+        }
+
+        foreach (var (roleSlug, permissionKeys) in RolePermissions)
+        {
+            var normalizedKeys = permissionKeys
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Select(x => x.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
+            foreach (var permissionKey in normalizedKeys)
+            {
+                await dbContext.Database.ExecuteSqlRawAsync("""
+                    insert into public.rbac_role_permissions (role_id, permission_id, granted, created_at)
+                    select r.id, p.id, true, now()
+                    from public.rbac_roles r
+                    join public.rbac_permissions p on p.key = {1}
+                    where r.slug = {0};
+                    """,
+                    [roleSlug, permissionKey],
+                    cancellationToken);
+            }
+        }
+
+        await dbContext.Database.ExecuteSqlRawAsync("""
+            select setval('public.rbac_permissions_id_seq', (select coalesce(max(id), 1) from public.rbac_permissions), true);
+            select setval('public.rbac_roles_id_seq', (select coalesce(max(id), 1) from public.rbac_roles), true);
+            """, cancellationToken);
     }
 
     private static async Task EnsureCatalogDataAsync(MedicalCenterDbContext dbContext, CancellationToken cancellationToken)
