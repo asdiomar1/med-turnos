@@ -98,7 +98,7 @@ jobs:
             /d:sonar.token="${SONAR_TOKEN}" \
             /d:sonar.qualitygate.wait=true \
             /d:sonar.qualitygate.timeout=600 \
-            /d:sonar.exclusions="**/Migrations/**,**/DatabaseInitializer.cs" \
+            /d:sonar.exclusions="**/Migrations/**" \
             /d:sonar.cs.vstest.reportsPaths="TestResults/sonar/**/*.trx" \
             /d:sonar.cs.opencover.reportsPaths="TestResults/sonar/**/coverage.opencover.xml" \
             ${REGION_ARG}
@@ -107,7 +107,8 @@ jobs:
         run: dotnet restore MedicalCenter.sln
 
       - name: Build
-        run: dotnet build MedicalCenter.sln --configuration Release --no-restore
+        # Avoid intermittent MSBuild file lock races in CI (deps.json)
+        run: dotnet build MedicalCenter.sln --configuration Release --no-restore -m:1 /p:BuildInParallel=false
 
       - name: Test with coverage
         shell: bash
