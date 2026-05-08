@@ -13,14 +13,14 @@ namespace MedicalCenter.IntegrationTests.Persistence;
 
 public sealed class RbacAdminRepositoryTests : IClassFixture<CustomWebApplicationFactory>
 {
-    private readonly CustomWebApplicationFactory _factory;
+    private static CustomWebApplicationFactory _factory = null!;
 
     public RbacAdminRepositoryTests(CustomWebApplicationFactory factory)
     {
         _factory = factory;
     }
 
-    private DbContextOptions<MedicalCenterDbContext> CreateOptions() =>
+    private static DbContextOptions<MedicalCenterDbContext> CreateOptions() =>
         new DbContextOptionsBuilder<MedicalCenterDbContext>()
             .UseNpgsql(_factory.ConnectionString)
             .Options;
@@ -43,19 +43,19 @@ public sealed class RbacAdminRepositoryTests : IClassFixture<CustomWebApplicatio
         public Task<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default) => Task.FromResult<T?>(default);
     }
 
-    private RbacAdminRepository MakeRepo(MedicalCenterDbContext ctx, ICacheService? cache = null) =>
+    private static RbacAdminRepository MakeRepo(MedicalCenterDbContext ctx, ICacheService? cache = null) =>
         new(ctx, cache ?? new PassThroughCache());
 
     // --- Data Seeding Helpers ---
 
-    private async Task SeedPermissionAsync(MedicalCenterDbContext ctx, string key, string name)
+    private static async Task SeedPermissionAsync(MedicalCenterDbContext ctx, string key, string name)
     {
         await ctx.Database.ExecuteSqlRawAsync(
             "INSERT INTO public.rbac_permissions (key, nombre, modulo, is_system) VALUES ({0}, {1}, 'test', true) ON CONFLICT (key) DO NOTHING;",
             key, name);
     }
 
-    private async Task<long> SeedRoleAsync(MedicalCenterDbContext ctx, string slug, string name, bool isSystem = false, bool isStaff = true)
+    private static async Task<long> SeedRoleAsync(MedicalCenterDbContext ctx, string slug, string name, bool isSystem = false, bool isStaff = true)
     {
         await ctx.Database.ExecuteSqlRawAsync(
             "INSERT INTO public.rbac_roles (slug, nombre, descripcion, activo, is_system, is_staff, default_home) VALUES ({0}, {1}, 'test', true, {2}, {3}, '/test') ON CONFLICT (slug) DO UPDATE SET activo = true;",
@@ -65,7 +65,7 @@ public sealed class RbacAdminRepositoryTests : IClassFixture<CustomWebApplicatio
         return id;
     }
 
-    private async Task SeedRolePermissionAsync(MedicalCenterDbContext ctx, long roleId, string permissionKey)
+    private static async Task SeedRolePermissionAsync(MedicalCenterDbContext ctx, long roleId, string permissionKey)
     {
         var permId = await ctx.Database.SqlQueryRaw<long>("SELECT id as \"Value\" FROM public.rbac_permissions WHERE key = {0}", permissionKey).FirstOrDefaultAsync();
         if (permId > 0)

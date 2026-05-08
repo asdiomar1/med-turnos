@@ -27,7 +27,7 @@ public sealed class WhatsappServiceTests
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
     private readonly IClock _clock = Substitute.For<IClock>();
 
-    private IWhatsappService Sut => new WhatsappService(
+    private WhatsappService Sut => new WhatsappService(
         new WhatsappDataAccessDependencies(
             _appointmentRepository,
             _patientRepository,
