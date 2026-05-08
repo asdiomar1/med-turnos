@@ -22,16 +22,6 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
     public async Task InitializeAsync()
     {
         await _postgres.StartAsync();
-
-        var options = new DbContextOptionsBuilder<MedicalCenterDbContext>()
-            .UseNpgsql(_postgres.GetConnectionString())
-            .Options;
-        using var context = new MedicalCenterDbContext(options);
-        await context.Database.EnsureCreatedAsync();
-
-        // Ensure RBAC schema and seed minimal data for auth tests
-        await DatabaseInitializer.EnsureRbacSchemaAsync(context);
-        await DatabaseInitializer.ResetAndSeedRbacAsync(context, minimal: true);
     }
 
     public new async Task DisposeAsync()
@@ -47,7 +37,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
             {
                 ["ConnectionStrings:DefaultConnection"] = _postgres.GetConnectionString(),
                 ["Jwt:SecretKey"] = "this-is-a-32-char-long-secret-key!",
-                ["SkipDatabaseInitialization"] = "true"
+                ["SkipDatabaseInitialization"] = "false"
             });
         });
 
