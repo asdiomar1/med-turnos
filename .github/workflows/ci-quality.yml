@@ -107,7 +107,8 @@ jobs:
         run: dotnet restore MedicalCenter.sln
 
       - name: Build
-        run: dotnet build MedicalCenter.sln --configuration Release --no-restore
+        # Avoid intermittent MSBuild file lock races in CI (deps.json)
+        run: dotnet build MedicalCenter.sln --configuration Release --no-restore -m:1 /p:BuildInParallel=false
 
       - name: Test with coverage
         shell: bash
