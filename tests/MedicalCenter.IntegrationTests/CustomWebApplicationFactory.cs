@@ -1,4 +1,5 @@
 using MedicalCenter.Infrastructure.Persistence;
+using MedicalCenter.Infrastructure.Seed;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
