@@ -1,3 +1,4 @@
+using System.IO.Hashing;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -1807,7 +1808,7 @@ public sealed class AppointmentsService : IAppointmentsService
     private static Guid DeterministicGuid(string seed, string suffix)
     {
         Span<byte> hash = stackalloc byte[16];
-        MD5.HashData(Encoding.UTF8.GetBytes($"{seed}:{suffix}"), hash);
+        XxHash128.Hash(Encoding.UTF8.GetBytes($"{seed}:{suffix}"), hash);
         return new Guid(hash);
     }
 
