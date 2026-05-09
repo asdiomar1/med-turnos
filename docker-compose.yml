@@ -15,7 +15,7 @@ services:
       Jwt__SecretKey: change-this-secret-in-production-with-at-least-32-chars
       Seed__AdminIdentifier: admin
       Seed__AdminEmail: admin@medicalcenter.local
-      Seed__AdminPassword: Admin123!
+      Seed__AdminSecret: Admin123!
       R2__AccountId: ${R2_ACCOUNT_ID:-set-via-env}
       R2__AccessKeyId: ${R2_ACCESS_KEY_ID:-set-via-env}
       R2__SecretAccessKey: ${R2_SECRET_ACCESS_KEY:-set-via-env}
