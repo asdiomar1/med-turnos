@@ -5,7 +5,7 @@
 > **Estrategia**: Trabajo en paralelo sin conflictos — cada tarea afecta archivos diferentes.
 > **Estado**: En seguimiento auditable (T1-T16 + Final) | Basado en evidencia local + CI/Sonar cuando aplique
 
-> 📋 **Última actualización**: 2026-05-08 — Se auditó el plan contra el estado real del repositorio y se ajustó con snapshot de `sonar-issues-main.json` (branch `main`).
+> 📋 **Última actualización**: 2026-05-08 — Se auditó el plan contra el estado real del repositorio. El snapshot `sonar-issues-main.json` incluye **issues** (`issues`, `total`) y **security hotspots** (`hotspots`, `hotspotsTotal`) vía `scripts/sonar/export-issues.ps1` (branch `main`).
 
 ---
 
@@ -15,7 +15,7 @@
 
 - El proyecto esta en fase de estabilizacion de calidad y cobertura.
 - Seguimiento de Sonar en esta etapa: priorizar **tendencia de mejora** y reduccion de issues sobre cierre estricto inmediato del quality gate.
-- Progreso observado: se redujo de **200+ issues** a **6 issues abiertos** en `main`.
+- Progreso observado: se redujo de **200+ issues** a **6 issues abiertos** en `main` (code smells en tests). Los **security hotspots** son aparte en Sonar y en el JSON de export (`hotspots`).
 
 ### Estado ejecutivo por bloque
 
@@ -30,11 +30,15 @@
 
 ### Snapshot Sonar actual (`sonar-issues-main.json`)
 
+El archivo de export combina la API **`issues/search`** con **`hotspots/search`**. No mezclar: lo que ves como “Security Hotspots” en el panel **no** aparece dentro del array `issues`.
+
+#### Issues (code smells / reglas Roslyn, etc.)
+
 | Metrica | Valor |
 |--------|-------|
 | Exportado | 2026-05-08 16:35:48 (-03:00) |
 | Branch | `main` |
-| Total de issues abiertos | **6** |
+| Total (`total` / `issues.length`) | **6** |
 | Severidad | 6 `INFO` |
 | Tipo | 6 `CODE_SMELL` |
 | Regla dominante | `CA1822` (5 issues) |
@@ -44,6 +48,16 @@
 |--------|------------------|--------|
 | `tests/MedicalCenter.IntegrationTests/Persistence/RbacAdminRepositoryTests.cs` | 5 | `CA1822` |
 | `tests/MedicalCenter.UnitTests/Features/WhatsApp/WhatsappServiceTests.cs` | 1 | `CA1859` |
+
+#### Security hotspots (revisión de seguridad)
+
+| Metrica | Valor |
+|--------|-------|
+| En el JSON | Campo **`hotspotsTotal`** y lista **`hotspots`** (cada ítem trae `status` típico `TO_REVIEW` o `REVIEWED`) |
+| Regenerar export | `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\sonar\export-issues.ps1 -Branch main -OutputFile sonar-issues-main.json` |
+| Fix aplicado | PR #40 — `fix/sonar-security-hotspots` (S7631, S7636, S7637 ×8, S6470, S6471, S4790) |
+
+> Tras cada export, conviene anotar en esta sección el valor de `hotspotsTotal` y, si el quality gate exige cierre, cuántos quedan en `TO_REVIEW`.
 
 ### Politica de actualizacion durante estabilizacion
 
@@ -816,6 +830,7 @@ Usa SQL directo (no EF Core queries simples). Requiere integration tests con Pos
 |------|----------------|-----------|
 | **T7** | Confirmar cobertura objetivo del servicio (`ClinicalHistoryService`) con evidencia de cobertura | Alta |
 | **Issues Sonar abiertos** | Resolver 6 code smells INFO en tests (`CA1822` x5, `CA1859` x1) | Alta |
+| **Security hotspots** | ✅ Fix aplicado en PR #40 — pendiente confirmación en panel Sonar tras merge | Media |
 | **Final** | Ejecutar CI/Sonar y confirmar quality gate al cierre de estabilizacion | Alta |
 
 ### Tareas completadas con desvio (referencia)
@@ -835,3 +850,4 @@ Usa SQL directo (no EF Core queries simples). Requiere integration tests con Pos
 - En cada cierre de ciclo, adjuntar referencia de run de CI y resultado de SonarCloud para actualizar el estado de **Final (Quality Gate)**.
 - Mantener `T1` como desvío temporal mientras siga activa la medición de cobertura real sin exclusión de `DatabaseInitializer.cs`.
 - Priorizar cleanup de los 6 issues INFO actuales en tests (`CA1822` y `CA1859`) como quick wins antes del cierre de estabilización.
+- Tratar **security hotspots** en paralelo: no están en `issues`; usar export `hotspots` o el panel Sonar y reflejar el conteo en esta sección.

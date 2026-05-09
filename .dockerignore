@@ -1,0 +1,34 @@
+# ─── Build tools / artifacts ───────────────────────────────────────────────
+**/bin/
+**/obj/
+
+# ─── Version control ────────────────────────────────────────────────────────
+.git/
+.gitignore
+.gitattributes
+
+# ─── CI / GitHub ────────────────────────────────────────────────────────────
+.github/
+
+# ─── Tests ──────────────────────────────────────────────────────────────────
+tests/
+
+# ─── Scripts / tooling ──────────────────────────────────────────────────────
+scripts/
+
+# ─── SDD / docs artifacts ───────────────────────────────────────────────────
+openspec/
+docs/
+
+# ─── Markdown / docs ────────────────────────────────────────────────────────
+*.md
+README*
+COVERAGE_IMPROVEMENT_PLAN.md
+
+# ─── Sonar export ───────────────────────────────────────────────────────────
+sonar-issues*.json
+
+# ─── Solution-level files (not needed in image) ─────────────────────────────
+*.sln
+*.user
+global.json
