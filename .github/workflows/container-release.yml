@@ -44,7 +44,7 @@ jobs:
 
       - name: Checkout current commit (workflow_dispatch)
         if: ${{ github.event_name == 'workflow_dispatch' }}
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4 # NOSONAR: intentionally pinned to github.sha; workflow_dispatch is gated by repository permissions and the job-level github.repository guard (line 18)
         with:
           ref: ${{ github.sha }}
           fetch-depth: 0
