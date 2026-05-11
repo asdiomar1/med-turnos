@@ -37,7 +37,7 @@ public static class SimpleResponseMappings
 
     // Professional mappings
     public static MedicoResponse ToResponse(this MedicoSummaryDto x) =>
-        new() { Id = x.Id, Nombre = x.Nombre };
+        new() { Id = x.Id, Nombre = x.Nombre, MedicoNombre = x.Nombre };
 
     public static ReferenteResponse ToResponse(this ReferenteSummaryDto x) =>
         new() { Id = x.Id, Nombre = x.Nombre, Tipo = x.Tipo, Activo = x.Activo, Orden = x.Orden, CreatedAt = x.CreatedAt, UpdatedAt = x.UpdatedAt };
@@ -154,6 +154,37 @@ public static class SimpleResponseMappings
             OcupacionPorcentaje = x.OcupacionPorcentaje, AptoParaCierre = x.AptoParaCierre,
             Alertas = x.Alertas.Select(a => a.ToResponse()).ToArray(),
             GeneradoEn = x.GeneradoEn,
+            Turnos = x.Turnos.Select(t => t.ToResponse()).ToArray()
+        };
+
+    public static DailyClosingTurnoResponse ToResponse(this DailyClosingTurnoDto x) =>
+        new()
+        {
+            SlotId = x.SlotId,
+            TurnoFueraHorarioId = x.TurnoFueraHorarioId,
+            SlotIds = x.SlotIds,
+            PacienteId = x.PacienteId,
+            Fecha = x.Fecha,
+            Hora = x.Hora,
+            CamaraId = x.CamaraId,
+            CamaraNombre = x.CamaraNombre,
+            PacienteNumeroDia = x.PacienteNumeroDia,
+            NombrePaciente = x.NombrePaciente,
+            SesionNumero = x.SesionNumero,
+            ModalidadCobro = x.ModalidadCobro,
+            ObraSocialId = x.ObraSocialId,
+            ObraSocialNombre = x.ObraSocialNombre,
+            ObraSocialAbreviatura = x.ObraSocialAbreviatura,
+            Importe = x.Importe,
+            NumeroAutorizacion = x.NumeroAutorizacion,
+            SesionesAutorizadas = x.SesionesAutorizadas,
+            CicloObraSocialId = x.CicloObraSocialId,
+            EsNuevoIngreso = x.EsNuevoIngreso,
+            MedicoId = x.MedicoId,
+            MedicoNombre = x.MedicoNombre,
+            EsMonoxido = x.EsMonoxido,
+            EsOxibarica = x.EsOxibarica,
+            Asistio = x.Asistio
         };
 
     public static DailyClosingResponse ToResponse(this DailyClosingSummaryDto x) =>

@@ -19,7 +19,7 @@ public static class AppointmentResponseMappings
             NumeroAutorizacion = x.NumeroAutorizacion, SesionesAutorizadas = x.SesionesAutorizadas,
             CicloObraSocialId = x.CicloObraSocialId, IniciarNuevoCicloObraSocial = x.IniciarNuevoCicloObraSocial,
             ConvenioCorroborado = x.ConvenioCorroborado, MedicoId = x.MedicoId, MedicoUserId = x.MedicoUserId,
-            EsNuevoIngreso = x.EsNuevoIngreso, EsMonoxido = x.EsMonoxido,
+            MedicoNombre = x.MedicoNombre, EsNuevoIngreso = x.EsNuevoIngreso, EsMonoxido = x.EsMonoxido,
             MonoxidoOrdenMedica = x.MonoxidoOrdenMedica, MonoxidoResumenClinico = x.MonoxidoResumenClinico,
             CreatedAt = x.CreatedAt, UpdatedAt = x.UpdatedAt,
             ObraSocialValidadaPor = x.ObraSocialValidadaPor, ObraSocialValidadaAt = x.ObraSocialValidadaAt,
@@ -41,7 +41,7 @@ public static class AppointmentResponseMappings
             NumeroAutorizacion = x.NumeroAutorizacion, SesionesAutorizadas = x.SesionesAutorizadas,
             CicloObraSocialId = x.CicloObraSocialId, IniciarNuevoCicloObraSocial = x.IniciarNuevoCicloObraSocial,
             ConvenioCorroborado = x.ConvenioCorroborado, MedicoId = x.MedicoId, MedicoUserId = x.MedicoUserId,
-            EsNuevoIngreso = x.EsNuevoIngreso, EsMonoxido = x.EsMonoxido,
+            MedicoNombre = x.MedicoNombre, EsNuevoIngreso = x.EsNuevoIngreso, EsMonoxido = x.EsMonoxido,
             MonoxidoOrdenMedica = x.MonoxidoOrdenMedica, MonoxidoResumenClinico = x.MonoxidoResumenClinico,
             Camara = x.CamaraId.HasValue && cameras.TryGetValue(x.CamaraId.Value, out var found) ? found : null,
             CreatedAt = x.CreatedAt, UpdatedAt = x.UpdatedAt,
@@ -101,6 +101,7 @@ public static class AppointmentResponseMappings
             SesionesAutorizadas = x.SesionesAutorizadas,
             CicloObraSocialId = x.CicloObraSocialId,
             MedicoId = x.MedicoId,
+            MedicoNombre = x.Medico?.Nombre,
             EsNuevoIngreso = x.EsNuevoIngreso,
             ObraSocialValidadaPor = x.ObraSocialValidadaPor,
             ObraSocialValidadaAt = x.ObraSocialValidadaAt,
@@ -115,6 +116,7 @@ public static class AppointmentResponseMappings
             {
                 Id = x.Medico.Id,
                 Nombre = x.Medico.Nombre,
+                MedicoNombre = x.Medico.Nombre,
                 Activo = x.Medico.Activo,
             },
             Referente = x.Referente is null ? null : new ReferenteEnrichedResponse

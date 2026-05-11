@@ -58,6 +58,9 @@ public sealed class TurnoEnrichedResponse
     [JsonPropertyName("medico_id")]
     public int? MedicoId { get; init; }
 
+    [JsonPropertyName("medico_nombre")]
+    public string? MedicoNombre { get; init; }
+
     [JsonPropertyName("es_nuevo_ingreso")]
     public bool? EsNuevoIngreso { get; init; }
 
@@ -104,10 +107,13 @@ public sealed class PacienteEnrichedResponse
 public sealed class MedicoEnrichedResponse
 {
     [JsonPropertyName("id")]
-    public int Id { get; init; }
+    public Guid? Id { get; init; }
 
     [JsonPropertyName("nombre")]
     public string? Nombre { get; init; }
+
+    [JsonPropertyName("medico_nombre")]
+    public string? MedicoNombre { get; init; }
 
     [JsonPropertyName("activo")]
     public bool? Activo { get; init; }

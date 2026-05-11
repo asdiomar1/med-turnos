@@ -8,6 +8,7 @@ public sealed class CampoConfig : Entity<Guid>
 
     public CampoConfig(string nombre, string tipo, int orden)
     {
+        Id = Guid.NewGuid();
         Nombre = nombre;
         Tipo = tipo;
         Orden = orden;

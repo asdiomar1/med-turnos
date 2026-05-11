@@ -21,7 +21,8 @@ jobs:
           (
             github.event_name == 'workflow_run' &&
             github.event.workflow_run.conclusion == 'success' &&
-            github.event.workflow_run.event == 'push'
+            github.event.workflow_run.event == 'push' &&
+            github.event.workflow_run.head_repository.full_name == github.repository
           )
         )
       }}
@@ -33,10 +34,19 @@ jobs:
       security-events: write
 
     steps:
-      - name: Checkout source commit
+      # NOTE: S7631 mitigation - workflow_run is guarded by github.repository check at job level (line 18).
+      - name: Checkout trusted main (workflow_run)
+        if: ${{ github.event_name == 'workflow_run' }}
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
         with:
-          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+          ref: refs/heads/main
+          fetch-depth: 0
+
+      - name: Checkout current commit (workflow_dispatch)
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4 # NOSONAR: intentionally pinned to github.sha; workflow_dispatch is gated by repository permissions and the job-level github.repository guard (line 18)
+        with:
+          ref: ${{ github.sha }}
           fetch-depth: 0
 
       - name: Compute image variables

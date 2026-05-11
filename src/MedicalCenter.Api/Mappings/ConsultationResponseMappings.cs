@@ -25,7 +25,8 @@ public static class ConsultationResponseMappings
             Motivo = x.Motivo, ReferidoTercero = x.ReferidoTercero, ModalidadCobro = x.ModalidadCobro,
             ObraSocialId = x.ObraSocialId, NumeroAutorizacion = x.NumeroAutorizacion,
             ObraSocialValidadaPor = x.ObraSocialValidadaPor, ObraSocialValidadaAt = x.ObraSocialValidadaAt,
-            MedicoId = x.MedicoId, EsNuevoIngreso = x.EsNuevoIngreso, ReferenteId = x.ReferenteId,
+            MedicoId = x.MedicoId, MedicoUserId = x.MedicoUserId, MedicoNombre = x.MedicoNombre,
+            EsNuevoIngreso = x.EsNuevoIngreso, ReferenteId = x.ReferenteId,
             TandaId = x.TandaId, SesionesAutorizadas = x.SesionesAutorizadas,
             CicloObraSocialId = x.CicloObraSocialId, CreatedAt = x.CreatedAt,
             Paciente = x.Paciente is null ? null : new BlockHistoryPatientResponse { Nombre = x.Paciente.Nombre },
@@ -40,7 +41,7 @@ public static class ConsultationResponseMappings
         new()
         {
             Id = x.Id, Fecha = x.Fecha, Hora = x.Hora, Estado = x.Estado,
-            PacienteId = x.PacienteId, MedicoId = x.MedicoId, MedicoUserId = x.MedicoUserId,
+            PacienteId = x.PacienteId, MedicoId = x.MedicoId, MedicoUserId = x.MedicoUserId, MedicoNombre = x.MedicoNombre,
             MotivoCancelacion = x.MotivoCancelacion, ObservacionesAdmin = x.ObservacionesAdmin,
             ConfirmadoPor = x.ConfirmadoPor, ConfirmadoAt = x.ConfirmadoAt,
             CerradoPor = x.CerradoPor, CerradoAt = x.CerradoAt,

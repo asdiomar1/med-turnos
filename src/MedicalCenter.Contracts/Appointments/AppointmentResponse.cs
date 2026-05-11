@@ -87,6 +87,9 @@ public sealed class AppointmentResponse
     [JsonPropertyName("medico_user_id")]
     public Guid? MedicoUserId { get; init; }
 
+    [JsonPropertyName("medico_nombre")]
+    public string? MedicoNombre { get; init; }
+
     [JsonPropertyName("es_nuevo_ingreso")]
     public bool EsNuevoIngreso { get; init; }
 

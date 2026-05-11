@@ -24,6 +24,7 @@ public sealed record TurnoEnrichedSummary(
     Guid? CicloObraSocialId,
     int? MedicoId,
     bool? EsNuevoIngreso,
+    bool? EsMonoxido,
     Guid? ObraSocialValidadaPor,
     DateTimeOffset? ObraSocialValidadaAt,
     PacienteEnrichedSummary? Paciente,
@@ -35,13 +36,13 @@ public sealed record TurnoEnrichedSummary(
 
 public sealed record PacienteEnrichedSummary(Guid Id, string? Nombre, string? Email, int? ObraSocialId);
 
-public sealed record MedicoEnrichedSummary(int Id, string? Nombre, bool? Activo);
+public sealed record MedicoEnrichedSummary(Guid? Id, string? Nombre, bool? Activo);
 
 public sealed record ReferenteEnrichedSummary(int Id, string? Nombre, string? Tipo, bool? Activo);
 
 public sealed record CamaraEnrichedSummary(int Id, string? Nombre, int? Capacidad);
 
-public sealed record ObraSocialEnrichedSummary(int Id, string? Nombre, bool? Activa, bool? TieneConvenio);
+public sealed record ObraSocialEnrichedSummary(int Id, string? Nombre, bool? Activa, bool? TieneConvenio, string? Abreviatura);
 
 /// <summary>
 /// Minimal user lookup with just Id and Nombre — avoids role loading overhead.

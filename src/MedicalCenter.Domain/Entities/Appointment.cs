@@ -39,6 +39,7 @@ public sealed class Appointment : Entity<Guid>
     public bool ConvenioCorroborado { get; private set; }
     public int? MedicoId { get; private set; }
     public Guid? MedicoUserId { get; private set; }
+    public string? MedicoNombre { get; private set; }
     public bool EsNuevoIngreso { get; private set; }
     public bool EsMonoxido { get; private set; }
     public bool MonoxidoOrdenMedica { get; private set; }
@@ -52,7 +53,7 @@ public sealed class Appointment : Entity<Guid>
     public DateTimeOffset? ApartadoTs { get; private set; }
     public DateTimeOffset UpdatedAt { get; private set; }
 
-    public bool IsReservable() => Status is AppointmentStatus.Libre or AppointmentStatus.Cancelado;
+    public bool IsReservable() => Status is AppointmentStatus.Libre or AppointmentStatus.Cancelado or AppointmentStatus.Reprogramado;
     public bool IsOccupied() => Status is AppointmentStatus.Ocupado;
 
     public void Reserve(Guid patientId, string? notes = null, bool esTanda = false, Guid? tandaId = null, AppointmentOperativeData? operative = null)
@@ -133,6 +134,21 @@ public sealed class Appointment : Entity<Guid>
         Touch();
     }
 
+    public void Reschedule(string? notes = null)
+    {
+        if (Status != AppointmentStatus.Ocupado && Status != AppointmentStatus.Apartado)
+        {
+            throw new InvalidOperationException("Solo se pueden reprogramar turnos ocupados o apartados.");
+        }
+
+        Status = AppointmentStatus.Reprogramado;
+        PatientId = null;
+        ApartadoPorUserId = null;
+        ApartadoTs = null;
+        Notes = notes;
+        Touch();
+    }
+
     public void Cancel(string? notes = null)
     {
         if (!IsOccupied())
@@ -150,6 +166,27 @@ public sealed class Appointment : Entity<Guid>
         Notes = notes;
         ApartadoPorUserId = null;
         ApartadoTs = null;
+        Touch();
+    }
+
+    public void Release(string? notes = null)
+    {
+        if (!IsOccupied() && Status != AppointmentStatus.Apartado)
+        {
+            throw new InvalidOperationException("Solo se pueden liberar turnos ocupados o apartados.");
+        }
+
+        PatientId = null;
+        ProfessionalId = null;
+        BlockId = null;
+        TandaId = null;
+        EsBloqueCompleto = false;
+        EsTanda = false;
+        Status = AppointmentStatus.Libre;
+        Notes = notes;
+        ApartadoPorUserId = null;
+        ApartadoTs = null;
+        ApplyOperativeData(AppointmentOperativeData.Empty);
         Touch();
     }
 
@@ -197,6 +234,7 @@ public sealed class Appointment : Entity<Guid>
         ConvenioCorroborado = operative.ConvenioCorroborado;
         MedicoId = operative.MedicoId;
         MedicoUserId = operative.MedicoUserId;
+        MedicoNombre = null;
         EsNuevoIngreso = operative.EsNuevoIngreso;
         EsMonoxido = operative.EsMonoxido;
         MonoxidoOrdenMedica = operative.MonoxidoOrdenMedica;

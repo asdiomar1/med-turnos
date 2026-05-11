@@ -82,8 +82,10 @@ public sealed class TurnoEnrichmentAssemblyTests
         _patientRepository.GetByIdsAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns([patient]);
 
+        var medicoGuid = Guid.NewGuid();
         var medico = new Medico("Dr. García", 1);
         typeof(Medico).GetProperty(nameof(Medico.Id))?.SetValue(medico, medicoId);
+        typeof(Medico).GetProperty(nameof(Medico.IdGuid))?.SetValue(medico, medicoGuid);
         _medicoRepository.GetByIdsAsync(Arg.Any<IEnumerable<int>>(), Arg.Any<CancellationToken>())
             .Returns([medico]);
 
@@ -124,7 +126,7 @@ public sealed class TurnoEnrichmentAssemblyTests
         Assert.Equal(obraSocialId, item.Paciente.ObraSocialId);
 
         Assert.NotNull(item.Medico);
-        Assert.Equal(medicoId, item.Medico.Id);
+        Assert.Equal(medicoGuid, item.Medico.Id);
         Assert.Equal("Dr. García", item.Medico.Nombre);
         Assert.True(item.Medico.Activo);
 
@@ -281,13 +283,13 @@ public sealed class TurnoEnrichmentAssemblyTests
                 Guid.NewGuid(), fecha, new TimeOnly(9, 0), 1, slotId, 1,
                 "ocupado", null, null, null, false, "particular",
                 null, null, null, new DateTimeOffset(2024, 5, 2, 12, 0, 0, TimeSpan.Zero),
-                null, false, null, null, null, null)),
+                null, null, null, false, null, null, null, null)),
             // Newer validation — SHOULD be selected
             new BlockHistory(new BlockHistoryCreateParams(
                 Guid.NewGuid(), fecha, new TimeOnly(9, 0), 1, slotId, 1,
                 "validado", null, null, null, false, "particular",
                 null, null, validatingUserId, new DateTimeOffset(2024, 5, 2, 14, 0, 0, TimeSpan.Zero),
-                null, false, null, null, null, null)),
+                null, null, null, false, null, null, null, null)),
         };
 
         _appointmentRepository.GetBlockHistoryByRangeAsync(fecha, fecha, Arg.Any<CancellationToken>())

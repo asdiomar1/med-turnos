@@ -44,7 +44,6 @@ public sealed class TurnoEnrichedEndpointTests : IClassFixture<CustomWebApplicat
 
         await using (var seedCtx = new MedicalCenterDbContext(options))
         {
-            await seedCtx.Database.EnsureCreatedAsync();
         seedCtx.Patients.Add(new Patient(
             pacienteId,
             "María García",
@@ -109,7 +108,6 @@ public sealed class TurnoEnrichedEndpointTests : IClassFixture<CustomWebApplicat
 
         await using (var seedCtx = new MedicalCenterDbContext(options))
         {
-            await seedCtx.Database.EnsureCreatedAsync();
             seedCtx.Appointments.Add(new Appointment(Guid.NewGuid(), Guid.NewGuid(), fecha, new TimeOnly(9, 0), 1, camaraId));
             seedCtx.Appointments.Add(new Appointment(Guid.NewGuid(), Guid.NewGuid(), fecha, new TimeOnly(10, 0), 1, camaraId));
             seedCtx.Appointments.Add(new Appointment(Guid.NewGuid(), Guid.NewGuid(), fecha, new TimeOnly(11, 0), 1, camaraId));
@@ -138,7 +136,6 @@ public sealed class TurnoEnrichedEndpointTests : IClassFixture<CustomWebApplicat
 
         await using (var ctx = new MedicalCenterDbContext(options))
         {
-            await ctx.Database.EnsureCreatedAsync();
             // No appointments seeded
         }
 

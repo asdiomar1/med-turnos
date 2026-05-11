@@ -35,7 +35,6 @@ public sealed class AppointmentRepositoryTests : IClassFixture<CustomWebApplicat
 
         await using (var ctx = new MedicalCenterDbContext(opts))
         {
-            await ctx.Database.EnsureCreatedAsync();
             ctx.Appointments.Add(new Appointment(id, Guid.NewGuid(), new DateOnly(2031, 1, 1), new TimeOnly(9, 0), 1));
             await ctx.SaveChangesAsync();
         }
@@ -86,7 +85,6 @@ public sealed class AppointmentRepositoryTests : IClassFixture<CustomWebApplicat
 
         await using (var ctx = new MedicalCenterDbContext(opts))
         {
-            await ctx.Database.EnsureCreatedAsync();
             ctx.Appointments.AddRange(
                 new Appointment(id1, Guid.NewGuid(), new DateOnly(2031, 1, 2), new TimeOnly(9, 0), 1),
                 new Appointment(id2, Guid.NewGuid(), new DateOnly(2031, 1, 2), new TimeOnly(10, 0), 1),
@@ -113,7 +111,6 @@ public sealed class AppointmentRepositoryTests : IClassFixture<CustomWebApplicat
 
         await using (var ctx = new MedicalCenterDbContext(opts))
         {
-            await ctx.Database.EnsureCreatedAsync();
             await MakeRepo(ctx).AddAsync(
                 new Appointment(id, Guid.NewGuid(), new DateOnly(2031, 1, 3), new TimeOnly(9, 0), 1),
                 CancellationToken.None);
@@ -138,7 +135,6 @@ public sealed class AppointmentRepositoryTests : IClassFixture<CustomWebApplicat
 
         await using (var ctx = new MedicalCenterDbContext(opts))
         {
-            await ctx.Database.EnsureCreatedAsync();
             ctx.Appointments.AddRange(
                 new Appointment(Guid.NewGuid(), scheduleId, targetDate, new TimeOnly(9, 0), 1),
                 new Appointment(Guid.NewGuid(), scheduleId, targetDate, new TimeOnly(10, 0), 2),
@@ -174,7 +170,6 @@ public sealed class AppointmentRepositoryTests : IClassFixture<CustomWebApplicat
 
         await using (var ctx = new MedicalCenterDbContext(opts))
         {
-            await ctx.Database.EnsureCreatedAsync();
             ctx.Appointments.AddRange(
                 new Appointment(Guid.NewGuid(), scheduleId, new DateOnly(2031, 2, 1), new TimeOnly(9, 0), 1),
                 new Appointment(Guid.NewGuid(), scheduleId, new DateOnly(2031, 2, 2), new TimeOnly(9, 0), 1),
@@ -200,7 +195,6 @@ public sealed class AppointmentRepositoryTests : IClassFixture<CustomWebApplicat
 
         await using (var ctx = new MedicalCenterDbContext(opts))
         {
-            await ctx.Database.EnsureCreatedAsync();
             for (var i = 0; i < 5; i++)
             {
                 ctx.Appointments.Add(new Appointment(
@@ -237,7 +231,6 @@ public sealed class AppointmentRepositoryTests : IClassFixture<CustomWebApplicat
 
         await using (var ctx = new MedicalCenterDbContext(opts))
         {
-            await ctx.Database.EnsureCreatedAsync();
             ctx.Appointments.AddRange(
                 new Appointment(Guid.NewGuid(), scheduleId, new DateOnly(2031, 4, 1), new TimeOnly(9, 0), 1),
                 new Appointment(Guid.NewGuid(), scheduleId, new DateOnly(2031, 4, 2), new TimeOnly(9, 0), 1));
@@ -271,7 +264,6 @@ public sealed class AppointmentRepositoryTests : IClassFixture<CustomWebApplicat
 
         await using (var ctx = new MedicalCenterDbContext(opts))
         {
-            await ctx.Database.EnsureCreatedAsync();
             var appt = new Appointment(Guid.NewGuid(), Guid.NewGuid(), fecha, new TimeOnly(9, 0), 1);
             appt.Reserve(patientId);
             ctx.Appointments.Add(appt);
@@ -297,7 +289,6 @@ public sealed class AppointmentRepositoryTests : IClassFixture<CustomWebApplicat
 
         await using (var ctx = new MedicalCenterDbContext(opts))
         {
-            await ctx.Database.EnsureCreatedAsync();
             var appt = new Appointment(Guid.NewGuid(), Guid.NewGuid(), new DateOnly(2031, 5, 2), new TimeOnly(9, 0), 1);
             appt.Reserve(patientId);
             ctx.Appointments.Add(appt);
@@ -322,7 +313,6 @@ public sealed class AppointmentRepositoryTests : IClassFixture<CustomWebApplicat
 
         await using (var ctx = new MedicalCenterDbContext(opts))
         {
-            await ctx.Database.EnsureCreatedAsync();
             var appt = new Appointment(Guid.NewGuid(), Guid.NewGuid(), fecha, new TimeOnly(10, 0), 1);
             appt.Reserve(patientId);
             ctx.Appointments.Add(appt);
@@ -344,7 +334,6 @@ public sealed class AppointmentRepositoryTests : IClassFixture<CustomWebApplicat
 
         await using (var ctx = new MedicalCenterDbContext(opts))
         {
-            await ctx.Database.EnsureCreatedAsync();
             var appt = new Appointment(Guid.NewGuid(), Guid.NewGuid(), new DateOnly(2031, 6, 2), new TimeOnly(10, 0), 1);
             appt.Reserve(patientId);
             ctx.Appointments.Add(appt);
@@ -371,7 +360,6 @@ public sealed class AppointmentRepositoryTests : IClassFixture<CustomWebApplicat
 
         await using (var ctx = new MedicalCenterDbContext(opts))
         {
-            await ctx.Database.EnsureCreatedAsync();
             ctx.Appointments.AddRange(
                 new Appointment(Guid.NewGuid(), scheduleId, fecha, hora, 1, cameraId),
                 new Appointment(Guid.NewGuid(), scheduleId, fecha, hora, 2, cameraId),
@@ -411,7 +399,6 @@ public sealed class AppointmentRepositoryTests : IClassFixture<CustomWebApplicat
 
         await using (var ctx = new MedicalCenterDbContext(opts))
         {
-            await ctx.Database.EnsureCreatedAsync();
             var a1 = new Appointment(Guid.NewGuid(), Guid.NewGuid(), new DateOnly(2031, 8, 1), new TimeOnly(9, 0), 1);
             a1.AssignTanda(tandaId);
             var a2 = new Appointment(Guid.NewGuid(), Guid.NewGuid(), new DateOnly(2031, 8, 1), new TimeOnly(10, 0), 1);
@@ -449,7 +436,6 @@ public sealed class AppointmentRepositoryTests : IClassFixture<CustomWebApplicat
 
         await using (var ctx = new MedicalCenterDbContext(opts))
         {
-            await ctx.Database.EnsureCreatedAsync();
             ctx.Appointments.AddRange(
                 new Appointment(Guid.NewGuid(), Guid.NewGuid(), new DateOnly(2031, 9, 1), new TimeOnly(9, 0), 3, cameraId),
                 new Appointment(Guid.NewGuid(), Guid.NewGuid(), new DateOnly(2031, 9, 1), new TimeOnly(10, 0), 5, cameraId),
@@ -489,7 +475,6 @@ public sealed class AppointmentRepositoryTests : IClassFixture<CustomWebApplicat
 
         await using (var ctx = new MedicalCenterDbContext(opts))
         {
-            await ctx.Database.EnsureCreatedAsync();
             ctx.Appointments.Add(new Appointment(id, Guid.NewGuid(), new DateOnly(2031, 10, 1), new TimeOnly(9, 0), 1));
             await ctx.SaveChangesAsync();
         }
@@ -516,7 +501,6 @@ public sealed class AppointmentRepositoryTests : IClassFixture<CustomWebApplicat
 
         await using (var ctx = new MedicalCenterDbContext(opts))
         {
-            await ctx.Database.EnsureCreatedAsync();
             var appt = new Appointment(id, Guid.NewGuid(), new DateOnly(2031, 10, 2), new TimeOnly(9, 0), 1);
             appt.Reserve(Guid.NewGuid());
             ctx.Appointments.Add(appt);
@@ -547,7 +531,6 @@ public sealed class AppointmentRepositoryTests : IClassFixture<CustomWebApplicat
         var opts = CreateOptions();
 
         await using var ctx = new MedicalCenterDbContext(opts);
-        await ctx.Database.EnsureCreatedAsync();
         ctx.Appointments.Add(new Appointment(id, Guid.NewGuid(), new DateOnly(2031, 11, 1), new TimeOnly(9, 0), 1));
 
         var result = await MakeRepo(ctx).TryCommitAsync(CancellationToken.None);
@@ -570,7 +553,6 @@ public sealed class AppointmentRepositoryTests : IClassFixture<CustomWebApplicat
 
         await using (var ctx = new MedicalCenterDbContext(opts))
         {
-            await ctx.Database.EnsureCreatedAsync();
             ctx.Appointments.AddRange(
                 new Appointment(id1, Guid.NewGuid(), new DateOnly(2031, 11, 2), new TimeOnly(9, 0), 1),
                 new Appointment(id2, Guid.NewGuid(), new DateOnly(2031, 11, 2), new TimeOnly(10, 0), 1),
@@ -606,7 +588,6 @@ public sealed class AppointmentRepositoryTests : IClassFixture<CustomWebApplicat
 
         await using (var ctx = new MedicalCenterDbContext(opts))
         {
-            await ctx.Database.EnsureCreatedAsync();
         }
 
         await using var commandCtx = new MedicalCenterDbContext(opts);
@@ -632,7 +613,6 @@ public sealed class AppointmentRepositoryTests : IClassFixture<CustomWebApplicat
 
         await using (var ctx = new MedicalCenterDbContext(opts))
         {
-            await ctx.Database.EnsureCreatedAsync();
             var existing = new Appointment(Guid.NewGuid(), Guid.NewGuid(), fecha, new TimeOnly(9, 0), 1);
             existing.Reserve(patientId);
             ctx.Appointments.Add(existing);

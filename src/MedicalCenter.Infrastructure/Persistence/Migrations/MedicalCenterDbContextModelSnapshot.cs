@@ -191,6 +191,11 @@ namespace MedicalCenter.Infrastructure.Persistence.Migrations
                     b.Property<int?>("MedicoId")
                         .HasColumnType("integer");
 
+                    b.Property<string>("MedicoNombre")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("medico_nombre");
+
                     b.Property<Guid?>("MedicoUserId")
                         .HasColumnType("uuid")
                         .HasColumnName("medico_user_id");
@@ -319,6 +324,15 @@ namespace MedicalCenter.Infrastructure.Persistence.Migrations
 
                     b.Property<int?>("MedicoId")
                         .HasColumnType("integer");
+
+                    b.Property<string>("MedicoNombre")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("medico_nombre");
+
+                    b.Property<Guid?>("MedicoUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("medico_user_id");
 
                     b.Property<string>("ModalidadCobro")
                         .IsRequired()
@@ -696,6 +710,11 @@ namespace MedicalCenter.Infrastructure.Persistence.Migrations
                     b.Property<int?>("MedicoId")
                         .HasColumnType("integer");
 
+                    b.Property<string>("MedicoNombre")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("medico_nombre");
+
                     b.Property<Guid?>("MedicoUserId")
                         .HasColumnType("uuid")
                         .HasColumnName("medico_user_id");
@@ -977,6 +996,9 @@ namespace MedicalCenter.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
+
+                    b.Property<Guid?>("IdGuid")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Nombre")
                         .IsRequired()

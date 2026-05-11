@@ -39,10 +39,11 @@ public sealed class TurnoEnrichedResponseTests
                 Email = "juan@test.com",
                 ObraSocialId = 3,
             },
-            Medico = new MedicoEnrichedResponse
+           Medico = new MedicoEnrichedResponse
             {
-                Id = 5,
+                Id = Guid.NewGuid(),
                 Nombre = "Dr. García",
+                MedicoNombre = "Dr. García",
                 Activo = true,
             },
             Referente = new ReferenteEnrichedResponse
@@ -169,7 +170,7 @@ public sealed class TurnoEnrichedResponseTests
         // Arrange
         var medico = new MedicoEnrichedResponse
         {
-            Id = 1,
+            Id = Guid.NewGuid(),
             Nombre = "Dr. García",
             Activo = true,
         };

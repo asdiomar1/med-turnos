@@ -20,6 +20,7 @@ public sealed class Medico : Entity<int>
     public int Orden { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
     public Guid? PerfilId { get; private set; }
+    public Guid? IdGuid { get; private set; }
 
     public void UpdateNombre(string nombre)
     {
@@ -29,4 +30,5 @@ public sealed class Medico : Entity<int>
     public void SetActive(bool activo) => Activo = activo;
     public void SetOrden(int orden) => Orden = orden;
     public void SetPerfil(Guid? perfilId) => PerfilId = perfilId;
+    public void SetIdGuid(Guid? idGuid) => IdGuid = idGuid;
 }

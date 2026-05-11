@@ -721,7 +721,7 @@ public sealed class AppointmentsService : IAppointmentsService
             target.Reserve(source.PatientId.Value, source.Notes, source.EsTanda, source.TandaId, CopyOperativeData(source));
             // Stage source history BEFORE cancel so it still has operative data.
             StageHistory(source, "reprogramado", actorUserId, null, sourcePatientId, sourceTandaId);
-            source.Cancel("Reprogramado");
+            source.Reschedule("Reprogramado");
             // Stage target history AFTER reserve so it carries the newly assigned operative data.
             StageHistory(target, "recibido_reprogramado", actorUserId, null, target.PatientId, target.TandaId);
         }
@@ -785,10 +785,14 @@ public sealed class AppointmentsService : IAppointmentsService
             var targetSlot = orderedTargetGroup[i];
             try
             {
-                targetSlot.Reserve(sourcePatientId.Value, sourceSlot.Notes, sourceSlot.EsTanda, tandaId, CopyOperativeData(sourceSlot));
+                if (sourceSlot.PatientId.HasValue)
+                {
+                    targetSlot.Reserve(sourceSlot.PatientId.Value, sourceSlot.Notes, sourceSlot.EsTanda, tandaId, CopyOperativeData(sourceSlot));
+                }
+                
                 targetSlot.AssignBlock(newBlockId, sourceSlot.EsTanda, tandaId, CopyOperativeData(sourceSlot));
                 targetSlot.AssignTanda(tandaId);
-                sourceSlot.Cancel("Reprogramado");
+                sourceSlot.Reschedule("Reprogramado");
             }
             catch (InvalidOperationException exception)
             {
@@ -954,6 +958,7 @@ public sealed class AppointmentsService : IAppointmentsService
     private readonly record struct TurnoLookupIds(
         Guid[] PatientIds,
         int[] MedicoIds,
+        Guid[] MedicoUserIds,
         int[] ReferenteIds,
         int[] ObraSocialIds,
         int[] CameraIds);
@@ -961,6 +966,7 @@ public sealed class AppointmentsService : IAppointmentsService
     private sealed record TurnoEnrichmentLookups(
         Dictionary<Guid, Patient> PatientById,
         Dictionary<int, Medico> MedicoById,
+        Dictionary<Guid, Medico> MedicoByUserId,
         Dictionary<int, Referente> ReferenteById,
         Dictionary<int, ObraSocial> ObraSocialById,
         Dictionary<int, Camera> CameraById,
@@ -979,6 +985,11 @@ public sealed class AppointmentsService : IAppointmentsService
             .Select(a => a.MedicoId!.Value)
             .Distinct()
             .ToArray();
+        var medicoUserIds = appointments
+            .Where(a => a.MedicoUserId.HasValue)
+            .Select(a => a.MedicoUserId!.Value)
+            .Distinct()
+            .ToArray();
         var referenteIds = appointments
             .Where(a => a.ReferenteId.HasValue)
             .Select(a => a.ReferenteId!.Value)
@@ -995,7 +1006,7 @@ public sealed class AppointmentsService : IAppointmentsService
             .Distinct()
             .ToArray();
 
-        return new TurnoLookupIds(patientIds, medicoIds, referenteIds, obraSocialIds, cameraIds);
+        return new TurnoLookupIds(patientIds, medicoIds, medicoUserIds, referenteIds, obraSocialIds, cameraIds);
     }
 
     private async Task<TurnoEnrichmentLookups> LoadTurnoEnrichmentLookupsAsync(
@@ -1009,6 +1020,9 @@ public sealed class AppointmentsService : IAppointmentsService
             : [];
         var medicos = ids.MedicoIds.Length > 0
             ? await medicoRepository.GetByIdsAsync(ids.MedicoIds, cancellationToken)
+            : [];
+        var medicosByUser = ids.MedicoUserIds.Length > 0
+            ? await medicoRepository.GetByMedicoUserIdsAsync(ids.MedicoUserIds, cancellationToken)
             : [];
         var referentes = ids.ReferenteIds.Length > 0
             ? await referenteRepository.GetByIdsAsync(ids.ReferenteIds, cancellationToken)
@@ -1040,6 +1054,7 @@ public sealed class AppointmentsService : IAppointmentsService
         return new TurnoEnrichmentLookups(
             patients.ToDictionary(p => p.Id),
             medicos.ToDictionary(m => m.Id),
+            medicosByUser.Where(m => m.PerfilId.HasValue).ToDictionary(m => m.PerfilId!.Value),
             referentes.ToDictionary(r => r.Id),
             obrasSociales.ToDictionary(o => o.Id),
             cameras.Where(c => c.Activa).ToDictionary(c => c.Id),
@@ -1083,6 +1098,7 @@ public sealed class AppointmentsService : IAppointmentsService
             CicloObraSocialId: appointment.CicloObraSocialId,
             MedicoId: appointment.MedicoId,
             EsNuevoIngreso: appointment.EsNuevoIngreso,
+            EsMonoxido: appointment.EsMonoxido,
             ObraSocialValidadaPor: hasValidation ? latestValidation?.ObraSocialValidadaPor : null,
             ObraSocialValidadaAt: hasValidation ? latestValidation?.ObraSocialValidadaAt : null,
             Paciente: patient,
@@ -1111,12 +1127,22 @@ public sealed class AppointmentsService : IAppointmentsService
 
     private static MedicoEnrichedSummary? MapMedicoEnrichedSummary(Appointment appointment, TurnoEnrichmentLookups lookups)
     {
-        if (!appointment.MedicoId.HasValue || !lookups.MedicoById.TryGetValue(appointment.MedicoId.Value, out var medico))
+        Medico? medico = null;
+        if (appointment.MedicoUserId.HasValue && lookups.MedicoByUserId.TryGetValue(appointment.MedicoUserId.Value, out var medicoByUser))
+        {
+            medico = medicoByUser;
+        }
+        else if (appointment.MedicoId.HasValue && lookups.MedicoById.TryGetValue(appointment.MedicoId.Value, out var medicoById))
+        {
+            medico = medicoById;
+        }
+
+        if (medico is null)
         {
             return null;
         }
 
-        return new MedicoEnrichedSummary(medico.Id, medico.Nombre, medico.Activo);
+        return new MedicoEnrichedSummary(medico.IdGuid, medico.Nombre, medico.Activo);
     }
 
     private static ReferenteEnrichedSummary? MapReferenteEnrichedSummary(Appointment appointment, TurnoEnrichmentLookups lookups)
@@ -1146,7 +1172,7 @@ public sealed class AppointmentsService : IAppointmentsService
             return null;
         }
 
-        return new ObraSocialEnrichedSummary(obraSocial.Id, obraSocial.Nombre, obraSocial.Activa, obraSocial.TieneConvenio);
+        return new ObraSocialEnrichedSummary(obraSocial.Id, obraSocial.Nombre, obraSocial.Activa, obraSocial.TieneConvenio, obraSocial.Abreviatura);
     }
 
     private static UserBasicLookupSummary? MapObraSocialValidadaPorPerfilSummary(
@@ -1185,9 +1211,7 @@ public sealed class AppointmentsService : IAppointmentsService
         var patient = appointment.PatientId.HasValue
             ? await patientRepository.GetByIdAsync(appointment.PatientId.Value, cancellationToken)
             : null;
-        var medico = appointment.MedicoId.HasValue
-            ? await medicoRepository.GetByIdAsync(appointment.MedicoId.Value, cancellationToken)
-            : null;
+        var medico = await ResolveMedicoAsync(appointment.MedicoUserId, appointment.MedicoId, cancellationToken);
         var referente = appointment.ReferenteId.HasValue
             ? await referenteRepository.GetByIdAsync(appointment.ReferenteId.Value, cancellationToken)
             : null;
@@ -1611,6 +1635,8 @@ public sealed class AppointmentsService : IAppointmentsService
                 null,
                 null,
                 null,
+                null,
+                null,
                 false,
                 null,
                 null,
@@ -1682,9 +1708,7 @@ public sealed class AppointmentsService : IAppointmentsService
         var patient = history.PacienteId.HasValue
             ? await patientRepository.GetByIdAsync(history.PacienteId.Value, cancellationToken)
             : null;
-        var medico = history.MedicoId.HasValue
-            ? await medicoRepository.GetByIdAsync(history.MedicoId.Value, cancellationToken)
-            : null;
+        var medico = await ResolveMedicoAsync(history.MedicoUserId, history.MedicoId, cancellationToken);
         var referente = history.ReferenteId.HasValue
             ? await referenteRepository.GetByIdAsync(history.ReferenteId.Value, cancellationToken)
             : null;
@@ -1716,6 +1740,8 @@ public sealed class AppointmentsService : IAppointmentsService
             history.ObraSocialValidadaPor,
             history.ObraSocialValidadaAt,
             history.MedicoId,
+            history.MedicoUserId,
+            history.MedicoNombre,
             history.EsNuevoIngreso,
             history.ReferenteId,
             history.TandaId,
@@ -1728,6 +1754,21 @@ public sealed class AppointmentsService : IAppointmentsService
             obraSocial is null ? null : new ObraSocialSummaryDto(obraSocial.Id, obraSocial.Nombre, obraSocial.Activa, obraSocial.TieneConvenio, obraSocial.Orden, obraSocial.Abreviatura, obraSocial.CreatedAt),
             realizadoPor is null ? null : new GuidLookupSummary(realizadoPor.Id, realizadoPor.Nombre ?? string.Empty),
             validatedBy is null ? null : new GuidLookupSummary(validatedBy.Id, validatedBy.Nombre ?? string.Empty));
+    }
+
+    private async Task<Medico?> ResolveMedicoAsync(Guid? medicoUserId, int? medicoId, CancellationToken cancellationToken)
+    {
+        if (medicoUserId.HasValue)
+        {
+            return await medicoRepository.GetByMedicoUserIdAsync(medicoUserId.Value, cancellationToken);
+        }
+
+        if (medicoId.HasValue)
+        {
+            return await medicoRepository.GetByIdAsync(medicoId.Value, cancellationToken);
+        }
+
+        return null;
     }
 
     private static AppointmentOperativeData MapOperative(AppointmentOperativeCommand command) =>
@@ -1762,7 +1803,7 @@ public sealed class AppointmentsService : IAppointmentsService
             Guid.NewGuid(), appointment.Fecha, appointment.Hora, appointment.CameraId,
             appointment.Id, appointment.Lugar, accion, patientId, actorUserId, motivo,
             appointment.ReferidoTercero, appointment.ModalidadCobro, appointment.ObraSocialId,
-            appointment.NumeroAutorizacion, null, null, appointment.MedicoId,
+            appointment.NumeroAutorizacion, null, null, appointment.MedicoId, appointment.MedicoUserId, null,
             appointment.EsNuevoIngreso, appointment.ReferenteId, tandaId,
             appointment.SesionesAutorizadas, appointment.CicloObraSocialId))]);
     }
@@ -1782,7 +1823,7 @@ public sealed class AppointmentsService : IAppointmentsService
             Guid.NewGuid(), first.Fecha, first.Hora, first.CameraId,
             null, null, accion, patientId, actorUserId, motivo,
             first.ReferidoTercero, first.ModalidadCobro, first.ObraSocialId,
-            first.NumeroAutorizacion, null, null, first.MedicoId,
+            first.NumeroAutorizacion, null, null, first.MedicoId, first.MedicoUserId, null,
             first.EsNuevoIngreso, first.ReferenteId, tandaId,
             first.SesionesAutorizadas, first.CicloObraSocialId))]);
     }
@@ -1800,7 +1841,7 @@ public sealed class AppointmentsService : IAppointmentsService
             Guid.NewGuid(), x.Appt.Fecha, x.Appt.Hora, x.Appt.CameraId,
             x.Appt.Id, x.Appt.Lugar, accion, x.PatientId, actorUserId, motivo,
             x.Appt.ReferidoTercero, x.Appt.ModalidadCobro, x.Appt.ObraSocialId,
-            x.Appt.NumeroAutorizacion, null, null, x.Appt.MedicoId,
+            x.Appt.NumeroAutorizacion, null, null, x.Appt.MedicoId, x.Appt.MedicoUserId, null,
             x.Appt.EsNuevoIngreso, x.Appt.ReferenteId, x.TandaId,
             x.Appt.SesionesAutorizadas, x.Appt.CicloObraSocialId))).ToArray());
     }

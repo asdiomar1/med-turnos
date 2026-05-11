@@ -43,6 +43,7 @@ public sealed class CamposConfigService(
 
     public async Task<CampoConfigSummaryDto> UpdateAsync(Guid actorUserId, Guid id, string nombre, string tipo, CancellationToken cancellationToken)
     {
+        EnsureEntityId(id);
         var campoConfig = await repository.GetByIdAsync(id, cancellationToken) ?? throw new NotFoundException("Campo no encontrado.");
         var previousNombre = campoConfig.Nombre;
         var previousTipo = campoConfig.Tipo;
@@ -67,6 +68,7 @@ public sealed class CamposConfigService(
 
     public async Task DeleteAsync(Guid actorUserId, Guid id, CancellationToken cancellationToken)
     {
+        EnsureEntityId(id);
         var campoConfig = await repository.GetByIdAsync(id, cancellationToken) ?? throw new NotFoundException("Campo no encontrado.");
 
         await RegisterCatalogEventAsync(
@@ -95,6 +97,14 @@ public sealed class CamposConfigService(
         if (string.IsNullOrWhiteSpace(nombre))
         {
             throw new ValidationException("Nombre requerido.");
+        }
+    }
+
+    private static void EnsureEntityId(Guid id)
+    {
+        if (id == Guid.Empty)
+        {
+            throw new ValidationException("Identificador de campo inválido.");
         }
     }
 

@@ -21,8 +21,10 @@ public sealed class ReferenteRepository(MedicalCenterDbContext dbContext) : IRef
         }
 
         return query.FirstOrDefaultAsync(x =>
-            string.Equals(x.Nombre.Trim(), normalizedName.Trim(), StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(x.Tipo, normalizedType, StringComparison.OrdinalIgnoreCase), cancellationToken);
+            x.Nombre.Trim().Equals(normalizedName, StringComparison.OrdinalIgnoreCase) &&
+            (normalizedType.Equals("agencia", StringComparison.OrdinalIgnoreCase)
+                ? x.Tipo.Equals("agencia", StringComparison.OrdinalIgnoreCase) || x.Tipo.Equals("institucion", StringComparison.OrdinalIgnoreCase)
+                : x.Tipo.Equals(normalizedType, StringComparison.OrdinalIgnoreCase)), cancellationToken);
     }
 
     public async Task<int> GetNextOrderAsync(CancellationToken cancellationToken)

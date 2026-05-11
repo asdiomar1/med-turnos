@@ -286,6 +286,84 @@ public sealed class ConsultationsServiceTests
     }
 
     [Fact]
+    public async Task AssignAsync_WithMedicoId_AssignsAndCompletesIdempotency()
+    {
+        var actorUserId = Guid.NewGuid();
+        var patientId = Guid.NewGuid();
+        var slotId = Guid.NewGuid();
+        var slotDate = new DateOnly(2026, 5, 2);
+        var slot = new ConsultationSlot(slotId, slotDate, new TimeOnly(12, 0));
+        const int medicoId = 7;
+
+        userRepository.GetByIdAsync(actorUserId, Arg.Any<CancellationToken>()).Returns(BuildStaffActor(actorUserId, "consultas.asignar"));
+        patientRepository.GetByIdAsync(patientId, Arg.Any<CancellationToken>()).Returns(BuildPatient(patientId));
+        medicoRepository.GetByIdAsync(medicoId, Arg.Any<CancellationToken>()).Returns(new Medico("Dr. Legado", 1));
+        consultationRepository.GetByIdAsync(slotId, Arg.Any<CancellationToken>()).Returns(slot);
+        consultationRepository.GetByDateAsync(slotDate, Arg.Any<CancellationToken>()).Returns([]);
+        idempotencyStore.ReserveAsync(Arg.Any<string>(), "idem-mid", Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new IdempotencyReservationResult(IdempotencyReservationState.Acquired));
+
+        var result = await Sut.AssignAsync(actorUserId, slotId, "idem-mid",
+            new AssignConsultationCommand(patientId, MedicoId: medicoId, ObservacionesAdmin: null, MedicoUserId: null),
+            CancellationToken.None);
+
+        Assert.Equal("confirmada", result.Estado);
+        Assert.Equal(medicoId, result.MedicoId);
+        Assert.Null(result.MedicoUserId);
+        await idempotencyStore.Received(1).CompleteAsync(
+            $"consultas.asignaciones:{slotId}", "idem-mid", Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task AssignAsync_WithInactiveMedicoId_ThrowsConflictException()
+    {
+        var actorUserId = Guid.NewGuid();
+        var patientId = Guid.NewGuid();
+        var slotId = Guid.NewGuid();
+        const int medicoId = 5;
+        var inactiveMedico = new Medico("Dr. Baja", 1);
+        inactiveMedico.SetActive(false);
+
+        userRepository.GetByIdAsync(actorUserId, Arg.Any<CancellationToken>()).Returns(BuildStaffActor(actorUserId, "consultas.asignar"));
+        patientRepository.GetByIdAsync(patientId, Arg.Any<CancellationToken>()).Returns(BuildPatient(patientId));
+        medicoRepository.GetByIdAsync(medicoId, Arg.Any<CancellationToken>()).Returns(inactiveMedico);
+        idempotencyStore.ReserveAsync(Arg.Any<string>(), "idem-mid-inactive", Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new IdempotencyReservationResult(IdempotencyReservationState.Acquired));
+
+        await Assert.ThrowsAsync<ConflictException>(() => Sut.AssignAsync(actorUserId, slotId, "idem-mid-inactive",
+            new AssignConsultationCommand(patientId, MedicoId: medicoId, ObservacionesAdmin: null, MedicoUserId: null),
+            CancellationToken.None));
+
+        await idempotencyStore.Received(1).FailAsync(
+            $"consultas.asignaciones:{slotId}", "idem-mid-inactive", Arg.Any<CancellationToken>());
+        await unitOfWork.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task AssignAsync_WithMedicoIdNotFound_ThrowsNotFoundException()
+    {
+        var actorUserId = Guid.NewGuid();
+        var patientId = Guid.NewGuid();
+        var slotId = Guid.NewGuid();
+        const int medicoId = 99;
+
+        userRepository.GetByIdAsync(actorUserId, Arg.Any<CancellationToken>()).Returns(BuildStaffActor(actorUserId, "consultas.asignar"));
+        patientRepository.GetByIdAsync(patientId, Arg.Any<CancellationToken>()).Returns(BuildPatient(patientId));
+        medicoRepository.GetByIdAsync(medicoId, Arg.Any<CancellationToken>()).Returns((Medico?)null);
+        idempotencyStore.ReserveAsync(Arg.Any<string>(), "idem-mid-nf", Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new IdempotencyReservationResult(IdempotencyReservationState.Acquired));
+
+        await Assert.ThrowsAsync<NotFoundException>(() => Sut.AssignAsync(actorUserId, slotId, "idem-mid-nf",
+            new AssignConsultationCommand(patientId, MedicoId: medicoId, ObservacionesAdmin: null, MedicoUserId: null),
+            CancellationToken.None));
+
+        await idempotencyStore.Received(1).FailAsync(
+            $"consultas.asignaciones:{slotId}", "idem-mid-nf", Arg.Any<CancellationToken>());
+        await unitOfWork.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task CancelAsync_WhenSlotNotFound_ThrowsAndFailsIdempotency()
     {
         var actorUserId = Guid.NewGuid();

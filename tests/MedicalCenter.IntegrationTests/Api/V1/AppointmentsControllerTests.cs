@@ -237,7 +237,7 @@ public sealed class AppointmentsControllerTests : IClassFixture<CustomWebApplica
 
         var assignResponse = await SendAuthorizedAsync(
             HttpMethod.Post,
-            $"/api/v1/turnos/{source.AppointmentId}/asignaciones?idempotencyKey=assign-{source.AppointmentId:N}",
+            $"/api/v1/turnos/{source.AppointmentId}/asignaciones",
             token,
             JsonContent.Create(new AssignAppointmentRequest
             {
@@ -249,7 +249,8 @@ public sealed class AppointmentsControllerTests : IClassFixture<CustomWebApplica
                 EsMonoxido = false,
                 MonoxidoOrdenMedica = false,
                 MonoxidoResumenClinico = false
-            }));
+            }),
+            $"assign-{source.AppointmentId:N}");
 
         Assert.Equal(HttpStatusCode.OK, assignResponse.StatusCode);
 
@@ -298,9 +299,10 @@ public sealed class AppointmentsControllerTests : IClassFixture<CustomWebApplica
 
         var cancelResponse = await SendAuthorizedAsync(
             HttpMethod.Post,
-            $"/api/v1/turnos/{source.AppointmentId}/cancelaciones?idempotencyKey=cancel-{source.AppointmentId:N}",
+            $"/api/v1/turnos/{source.AppointmentId}/cancelaciones",
             token,
-            JsonContent.Create(new CancelAppointmentRequest { Motivo = "Cambio de agenda" }));
+            JsonContent.Create(new CancelAppointmentRequest { Motivo = "Cambio de agenda" }),
+            $"cancel-{source.AppointmentId:N}");
 
         Assert.Equal(HttpStatusCode.OK, cancelResponse.StatusCode);
 
@@ -332,7 +334,7 @@ public sealed class AppointmentsControllerTests : IClassFixture<CustomWebApplica
 
         var holdResponse = await SendAuthorizedAsync(
             HttpMethod.Post,
-            $"/api/v1/turnos/{holdSlot.AppointmentId}/apartados?idempotencyKey=hold-{holdSlot.AppointmentId:N}",
+            $"/api/v1/turnos/{holdSlot.AppointmentId}/apartados",
             token,
             JsonContent.Create(new HoldAppointmentRequest
             {
@@ -343,7 +345,8 @@ public sealed class AppointmentsControllerTests : IClassFixture<CustomWebApplica
                 EsNuevoIngreso = false,
                 MonoxidoOrdenMedica = false,
                 MonoxidoResumenClinico = false
-            }));
+            }),
+            $"hold-{holdSlot.AppointmentId:N}");
 
         Assert.Equal(HttpStatusCode.OK, holdResponse.StatusCode);
         var held = await holdResponse.Content.ReadFromJsonAsync<AppointmentApiResponse>();
@@ -353,7 +356,7 @@ public sealed class AppointmentsControllerTests : IClassFixture<CustomWebApplica
 
         var confirmResponse = await SendAuthorizedAsync(
             HttpMethod.Post,
-            $"/api/v1/turnos/{holdSlot.AppointmentId}/apartados/confirmaciones?idempotencyKey=confirm-{holdSlot.AppointmentId:N}",
+            $"/api/v1/turnos/{holdSlot.AppointmentId}/apartados/confirmaciones",
             token,
             JsonContent.Create(new ConfirmHeldAppointmentRequest
             {
@@ -364,7 +367,8 @@ public sealed class AppointmentsControllerTests : IClassFixture<CustomWebApplica
                 EsNuevoIngreso = false,
                 MonoxidoOrdenMedica = false,
                 MonoxidoResumenClinico = false
-            }));
+            }),
+            $"confirm-{holdSlot.AppointmentId:N}");
 
         Assert.Equal(HttpStatusCode.OK, confirmResponse.StatusCode);
         var confirmed = await confirmResponse.Content.ReadFromJsonAsync<AppointmentApiResponse>();
@@ -374,7 +378,7 @@ public sealed class AppointmentsControllerTests : IClassFixture<CustomWebApplica
 
         var releaseHoldResponse = await SendAuthorizedAsync(
             HttpMethod.Post,
-            $"/api/v1/turnos/{releaseSlot.AppointmentId}/apartados?idempotencyKey=hold-{releaseSlot.AppointmentId:N}",
+            $"/api/v1/turnos/{releaseSlot.AppointmentId}/apartados",
             token,
             JsonContent.Create(new HoldAppointmentRequest
             {
@@ -385,15 +389,17 @@ public sealed class AppointmentsControllerTests : IClassFixture<CustomWebApplica
                 EsNuevoIngreso = false,
                 MonoxidoOrdenMedica = false,
                 MonoxidoResumenClinico = false
-            }));
+            }),
+            $"hold-{releaseSlot.AppointmentId:N}");
 
         Assert.Equal(HttpStatusCode.OK, releaseHoldResponse.StatusCode);
 
         var releaseResponse = await SendAuthorizedAsync(
             HttpMethod.Post,
-            $"/api/v1/turnos/{releaseSlot.AppointmentId}/apartados/liberaciones?idempotencyKey=release-{releaseSlot.AppointmentId:N}",
+            $"/api/v1/turnos/{releaseSlot.AppointmentId}/apartados/liberaciones",
             token,
-            JsonContent.Create(new ReleaseHeldAppointmentRequest { Motivo = "Libre nuevamente" }));
+            JsonContent.Create(new ReleaseHeldAppointmentRequest { Motivo = "Libre nuevamente" }),
+            $"release-{releaseSlot.AppointmentId:N}");
 
         Assert.Equal(HttpStatusCode.OK, releaseResponse.StatusCode);
         var released = await releaseResponse.Content.ReadFromJsonAsync<AppointmentApiResponse>();
@@ -418,7 +424,7 @@ public sealed class AppointmentsControllerTests : IClassFixture<CustomWebApplica
 
         var blockResponse = await SendAuthorizedAsync(
             HttpMethod.Post,
-            "/api/v1/turnos/bloques/asignaciones?idempotencyKey=block-4601",
+            "/api/v1/turnos/bloques/asignaciones",
             token,
             JsonContent.Create(new AssignBlockAppointmentsRequest
             {
@@ -433,7 +439,8 @@ public sealed class AppointmentsControllerTests : IClassFixture<CustomWebApplica
                 EsMonoxido = false,
                 MonoxidoOrdenMedica = false,
                 MonoxidoResumenClinico = false
-            }));
+            }),
+            "block-4601");
 
         Assert.Equal(HttpStatusCode.OK, blockResponse.StatusCode);
 
@@ -565,9 +572,10 @@ public sealed class AppointmentsControllerTests : IClassFixture<CustomWebApplica
 
         var cancelTandaResponse = await SendAuthorizedAsync(
             HttpMethod.Post,
-            $"/api/v1/turnos/tandas/{tandaId}/cancelaciones?idempotencyKey=cancel-tanda-{tandaId:N}",
+            $"/api/v1/turnos/tandas/{tandaId}/cancelaciones",
             token,
-            JsonContent.Create(new CancelTandaRequest { Motivo = "Fin de jornada" }));
+            JsonContent.Create(new CancelTandaRequest { Motivo = "Fin de jornada" }),
+            $"cancel-tanda-{tandaId:N}");
 
         Assert.Equal(HttpStatusCode.OK, cancelTandaResponse.StatusCode);
         var cancelledTanda = await cancelTandaResponse.Content.ReadFromJsonAsync<AppointmentApiResponse[]>();
@@ -607,7 +615,7 @@ public sealed class AppointmentsControllerTests : IClassFixture<CustomWebApplica
 
         var response = await SendAuthorizedAsync(
             HttpMethod.Post,
-            "/api/v1/turnos/bloques/cancelaciones?idempotencyKey=cancel-block-4701",
+            "/api/v1/turnos/bloques/cancelaciones",
             token,
             JsonContent.Create(new CancelBlockAppointmentsRequest
             {
@@ -616,7 +624,8 @@ public sealed class AppointmentsControllerTests : IClassFixture<CustomWebApplica
                 CamaraId = cameraId,
                 PacienteId = patientId,
                 Motivo = "Cambio de agenda"
-            }));
+            }),
+            "cancel-block-4701");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
@@ -637,13 +646,14 @@ public sealed class AppointmentsControllerTests : IClassFixture<CustomWebApplica
 
         var rescheduleTandaResponse = await SendAuthorizedAsync(
             HttpMethod.Post,
-            $"/api/v1/turnos/{source.AppointmentId}/reprogramaciones/tanda?idempotencyKey=reschedule-tanda-{source.AppointmentId:N}",
+            $"/api/v1/turnos/{source.AppointmentId}/reprogramaciones/tanda",
             token,
             JsonContent.Create(new RescheduleAppointmentRequest
             {
                 TargetSlotId = target.AppointmentId,
                 Scope = "tanda"
-            }));
+            }),
+            $"reschedule-tanda-{source.AppointmentId:N}");
 
         Assert.Equal(HttpStatusCode.OK, rescheduleTandaResponse.StatusCode);
         var rescheduledTanda = await rescheduleTandaResponse.Content.ReadFromJsonAsync<AppointmentApiResponse>();
@@ -656,13 +666,14 @@ public sealed class AppointmentsControllerTests : IClassFixture<CustomWebApplica
 
         var rescheduleBlockResponse = await SendAuthorizedAsync(
             HttpMethod.Post,
-            $"/api/v1/turnos/{sourceBlock.AppointmentId}/reprogramaciones/bloque?idempotencyKey=reschedule-block-{sourceBlock.AppointmentId:N}",
+            $"/api/v1/turnos/{sourceBlock.AppointmentId}/reprogramaciones/bloque",
             token,
             JsonContent.Create(new RescheduleAppointmentRequest
             {
                 TargetSlotId = targetBlock.AppointmentId,
                 Scope = "bloque_tanda"
-            }));
+            }),
+            $"reschedule-block-{sourceBlock.AppointmentId:N}");
 
         Assert.Equal(HttpStatusCode.OK, rescheduleBlockResponse.StatusCode);
         var rescheduledBlock = await rescheduleBlockResponse.Content.ReadFromJsonAsync<AppointmentApiResponse>();
@@ -682,13 +693,14 @@ public sealed class AppointmentsControllerTests : IClassFixture<CustomWebApplica
 
         var response = await SendAuthorizedAsync(
             HttpMethod.Post,
-            $"/api/v1/turnos/{source.AppointmentId}/reprogramaciones?idempotencyKey=reschedule-{source.AppointmentId:N}",
+            $"/api/v1/turnos/{source.AppointmentId}/reprogramaciones",
             token,
             JsonContent.Create(new RescheduleAppointmentRequest
             {
                 TargetSlotId = target.AppointmentId,
                 Scope = "normal"
-            }));
+            }),
+            $"reschedule-{source.AppointmentId:N}");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
@@ -750,13 +762,22 @@ public sealed class AppointmentsControllerTests : IClassFixture<CustomWebApplica
         return tokenString;
     }
 
-    private async Task<HttpResponseMessage> SendAuthorizedAsync(HttpMethod method, string url, string token, HttpContent? content = null)
+    private async Task<HttpResponseMessage> SendAuthorizedAsync(
+        HttpMethod method, 
+        string url, 
+        string token, 
+        HttpContent? content = null,
+        string? idempotencyKey = null)
     {
         using var request = new HttpRequestMessage(method, url)
         {
             Content = content
         };
         request.Headers.TryAddWithoutValidation("Authorization", $"Bearer {token}");
+        if (!string.IsNullOrEmpty(idempotencyKey))
+        {
+            request.Headers.Add("Idempotency-Key", idempotencyKey);
+        }
 
         return await _client.SendAsync(request);
     }
@@ -764,7 +785,6 @@ public sealed class AppointmentsControllerTests : IClassFixture<CustomWebApplica
     private async Task SeedPatientAsync(Guid patientId)
     {
         await using var ctx = CreateDbContext();
-        await ctx.Database.EnsureCreatedAsync();
 
         ctx.Patients.Add(new Patient(
             patientId,
@@ -778,7 +798,6 @@ public sealed class AppointmentsControllerTests : IClassFixture<CustomWebApplica
     private async Task SeedStaffUserAsync(Guid userId)
     {
         await using var ctx = CreateDbContext();
-        await ctx.Database.EnsureCreatedAsync();
 
         ctx.Users.Add(new User(new UserCreateParams(userId, $"viewer-{userId:N}", $"viewer-{userId:N}@medicalcenter.local", "hashed-password", true, true)));
 
@@ -788,7 +807,6 @@ public sealed class AppointmentsControllerTests : IClassFixture<CustomWebApplica
     private async Task SeedPortalUserAsync(Guid userId, Guid patientId)
     {
         await using var ctx = CreateDbContext();
-        await ctx.Database.EnsureCreatedAsync();
 
         if (!await ctx.Users.AnyAsync(x => x.Id == userId))
         {
@@ -800,7 +818,6 @@ public sealed class AppointmentsControllerTests : IClassFixture<CustomWebApplica
     private async Task SeedStaffActorWithPermissionsAsync(Guid userId, params string[] permissions)
     {
         await using var ctx = CreateDbContext();
-        await ctx.Database.EnsureCreatedAsync();
 
         if (!await ctx.Users.AnyAsync(x => x.Id == userId))
         {
@@ -866,7 +883,6 @@ public sealed class AppointmentsControllerTests : IClassFixture<CustomWebApplica
     private async Task SeedCameraAsync(int cameraId, int capacity, bool active, string name)
     {
         await using var ctx = CreateDbContext();
-        await ctx.Database.EnsureCreatedAsync();
 
         if (await ctx.Cameras.AnyAsync(x => x.Id == cameraId))
         {
@@ -880,7 +896,6 @@ public sealed class AppointmentsControllerTests : IClassFixture<CustomWebApplica
     private async Task SeedScheduleHourAsync(int id, string hora, int orden, bool active)
     {
         await using var ctx = CreateDbContext();
-        await ctx.Database.EnsureCreatedAsync();
 
         if (await ctx.ScheduleHours.AnyAsync(x => x.Id == id || x.Hora == hora || x.Orden == orden))
         {
@@ -896,7 +911,6 @@ public sealed class AppointmentsControllerTests : IClassFixture<CustomWebApplica
         var scheduleId = Guid.NewGuid();
 
         await using var ctx = CreateDbContext();
-        await ctx.Database.EnsureCreatedAsync();
 
         if (!await ctx.Cameras.AnyAsync(x => x.Id == cameraId))
         {

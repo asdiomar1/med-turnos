@@ -105,7 +105,7 @@ public sealed class DashboardService(
         var items = appointments.ToArray();
         return new Metrics(
             items.Length,
-            items.Count(x => x.Status == AppointmentStatus.Libre),
+            items.Count(x => x.Status is AppointmentStatus.Libre or AppointmentStatus.Reprogramado),
             items.Count(x => x.Status == AppointmentStatus.Ocupado),
             items.Count(x => x.Status == AppointmentStatus.Apartado),
             items.Count(x => x.Status == AppointmentStatus.Cancelado));
