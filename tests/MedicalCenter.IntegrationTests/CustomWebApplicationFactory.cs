@@ -22,6 +22,12 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
     public async Task InitializeAsync()
     {
         await _postgres.StartAsync();
+
+        // Apply migrations to ensure test database has latest schema
+        var services = Services.BuildServiceProvider();
+        using var scope = services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<MedicalCenterDbContext>();
+        await dbContext.Database.MigrateAsync();
     }
 
     public new async Task DisposeAsync()
