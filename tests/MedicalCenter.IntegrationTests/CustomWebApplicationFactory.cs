@@ -23,12 +23,24 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
     {
         await _postgres.StartAsync();
 
-        // Apply migrations using direct connection (before webhost configures services)
-        var optionsBuilder = new DbContextOptionsBuilder<MedicalCenterDbContext>();
-        optionsBuilder.UseNpgsql(_postgres.GetConnectionString());
-        
-        await using var dbContext = new MedicalCenterDbContext(optionsBuilder.Options);
-        await dbContext.Database.MigrateAsync();
+        // Wait for database to be ready with retry (GitHub Actions can have timing issues)
+        var maxRetries = 3;
+        for (int i = 0; i < maxRetries; i++)
+        {
+            try
+            {
+                var optionsBuilder = new DbContextOptionsBuilder<MedicalCenterDbContext>();
+                optionsBuilder.UseNpgsql(_postgres.GetConnectionString());
+                
+                await using var dbContext = new MedicalCenterDbContext(optionsBuilder.Options);
+                await dbContext.Database.MigrateAsync();
+                break;
+            }
+            catch (Exception) when (i < maxRetries - 1)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(2));
+            }
+        }
     }
 
     public new async Task DisposeAsync()
