@@ -721,7 +721,7 @@ public sealed class AppointmentsService : IAppointmentsService
             target.Reserve(source.PatientId.Value, source.Notes, source.EsTanda, source.TandaId, CopyOperativeData(source));
             // Stage source history BEFORE cancel so it still has operative data.
             StageHistory(source, "reprogramado", actorUserId, null, sourcePatientId, sourceTandaId);
-            source.Cancel("Reprogramado");
+            source.Reschedule("Reprogramado");
             // Stage target history AFTER reserve so it carries the newly assigned operative data.
             StageHistory(target, "recibido_reprogramado", actorUserId, null, target.PatientId, target.TandaId);
         }
@@ -785,10 +785,14 @@ public sealed class AppointmentsService : IAppointmentsService
             var targetSlot = orderedTargetGroup[i];
             try
             {
-                targetSlot.Reserve(sourcePatientId.Value, sourceSlot.Notes, sourceSlot.EsTanda, tandaId, CopyOperativeData(sourceSlot));
+                if (sourceSlot.PatientId.HasValue)
+                {
+                    targetSlot.Reserve(sourceSlot.PatientId.Value, sourceSlot.Notes, sourceSlot.EsTanda, tandaId, CopyOperativeData(sourceSlot));
+                }
+                
                 targetSlot.AssignBlock(newBlockId, sourceSlot.EsTanda, tandaId, CopyOperativeData(sourceSlot));
                 targetSlot.AssignTanda(tandaId);
-                sourceSlot.Cancel("Reprogramado");
+                sourceSlot.Reschedule("Reprogramado");
             }
             catch (InvalidOperationException exception)
             {
@@ -1083,6 +1087,7 @@ public sealed class AppointmentsService : IAppointmentsService
             CicloObraSocialId: appointment.CicloObraSocialId,
             MedicoId: appointment.MedicoId,
             EsNuevoIngreso: appointment.EsNuevoIngreso,
+            EsMonoxido: appointment.EsMonoxido,
             ObraSocialValidadaPor: hasValidation ? latestValidation?.ObraSocialValidadaPor : null,
             ObraSocialValidadaAt: hasValidation ? latestValidation?.ObraSocialValidadaAt : null,
             Paciente: patient,
@@ -1146,7 +1151,7 @@ public sealed class AppointmentsService : IAppointmentsService
             return null;
         }
 
-        return new ObraSocialEnrichedSummary(obraSocial.Id, obraSocial.Nombre, obraSocial.Activa, obraSocial.TieneConvenio);
+        return new ObraSocialEnrichedSummary(obraSocial.Id, obraSocial.Nombre, obraSocial.Activa, obraSocial.TieneConvenio, obraSocial.Abreviatura);
     }
 
     private static UserBasicLookupSummary? MapObraSocialValidadaPorPerfilSummary(

@@ -33,6 +33,7 @@ jobs:
       security-events: write
 
     steps:
+      # NOTE: S7631 mitigation - workflow_run is guarded by github.repository check at job level (line 18).
       - name: Checkout source commit
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
         with:

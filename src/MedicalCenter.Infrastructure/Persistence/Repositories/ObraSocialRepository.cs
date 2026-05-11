@@ -37,7 +37,7 @@ public sealed class ObraSocialRepository : IObraSocialRepository
             query = query.Where(x => x.Id != exceptId.Value);
         }
 
-        return query.FirstOrDefaultAsync(x => string.Equals(x.Nombre, normalizedName, StringComparison.OrdinalIgnoreCase), cancellationToken);
+        return query.FirstOrDefaultAsync(x => x.Nombre.Equals(normalizedName, StringComparison.OrdinalIgnoreCase), cancellationToken);
     }
 
     public async Task AddAsync(ObraSocial obraSocial, CancellationToken cancellationToken)
@@ -60,4 +60,7 @@ public sealed class ObraSocialRepository : IObraSocialRepository
             .Where(x => distinctIds.Contains(x.Id))
             .ToListAsync(cancellationToken);
     }
+
+    public Task InvalidateCacheAsync(CancellationToken cancellationToken) =>
+        _cache.RemoveAsync(CacheKey, cancellationToken);
 }

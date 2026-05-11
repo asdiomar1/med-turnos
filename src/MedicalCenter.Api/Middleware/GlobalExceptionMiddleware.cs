@@ -24,6 +24,7 @@ public sealed class GlobalExceptionMiddleware(RequestDelegate next, ILogger<Glob
         var (statusCode, response) = exception switch
         {
             ValidationException validation => (HttpStatusCode.BadRequest, new ApiErrorResponse { Error = validation.Message, Code = validation.Code, Details = validation.Details }),
+            UnauthorizedAccessException => (HttpStatusCode.Unauthorized, new ApiErrorResponse { Error = "No autorizado", Code = "unauthorized" }),
             UnauthorizedException unauthorized => (HttpStatusCode.Unauthorized, new ApiErrorResponse { Error = unauthorized.Message, Code = unauthorized.Code }),
             ForbiddenException forbidden => (HttpStatusCode.Forbidden, new ApiErrorResponse { Error = forbidden.Message, Code = forbidden.Code }),
             NotFoundException notFound => (HttpStatusCode.NotFound, new ApiErrorResponse { Error = notFound.Message, Code = notFound.Code }),

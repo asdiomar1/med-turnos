@@ -54,6 +54,33 @@ public sealed record DashboardWeeklyVolumeItemDto(
     int Apartados,
     int Cancelados);
 
+public sealed record DailyClosingTurnoDto(
+    Guid? SlotId,
+    Guid? TurnoFueraHorarioId,
+    int[]? SlotIds,
+    Guid? PacienteId,
+    DateOnly Fecha,
+    string Hora,
+    int? CamaraId,
+    string? CamaraNombre,
+    int PacienteNumeroDia,
+    string? NombrePaciente,
+    int SesionNumero,
+    string? ModalidadCobro,
+    int? ObraSocialId,
+    string? ObraSocialNombre,
+    string? ObraSocialAbreviatura,
+    decimal Importe,
+    string? NumeroAutorizacion,
+    int? SesionesAutorizadas,
+    Guid? CicloObraSocialId,
+    bool EsNuevoIngreso,
+    int? MedicoId,
+    string? MedicoNombre,
+    bool EsMonoxido,
+    bool EsOxibarica,
+    bool Asistio);
+
 public sealed record DailyClosingPreviewDto(
     DateOnly Fecha,
     int TotalTurnos,
@@ -64,18 +91,19 @@ public sealed record DailyClosingPreviewDto(
     decimal OcupacionPorcentaje,
     bool AptoParaCierre,
     IReadOnlyCollection<DashboardAlertDto> Alertas,
-    DateTimeOffset GeneradoEn);
+    DateTimeOffset GeneradoEn,
+    IReadOnlyCollection<DailyClosingTurnoDto> Turnos);
 
 public sealed record DailyClosingSummaryDto(
-    Guid Id,
+    Guid? Id,
     DateOnly Fecha,
     string Estado,
     string? DetallesJson,
-    Guid CreatedByUserId,
+    Guid? CreatedByUserId,
     Guid? ConfirmedByUserId,
     Guid? ReopenedByUserId,
     string? MotivoReapertura,
-    DateTimeOffset CreatedAt,
-    DateTimeOffset UpdatedAt,
+    DateTimeOffset? CreatedAt,
+    DateTimeOffset? UpdatedAt,
     DateTimeOffset? ConfirmedAt,
     DateTimeOffset? ReopenedAt);

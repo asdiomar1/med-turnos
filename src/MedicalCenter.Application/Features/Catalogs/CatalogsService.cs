@@ -123,6 +123,7 @@ public sealed class CatalogsService(
             $"Se actualizó la obra social \"{previousNombre}\" → \"{obraSocial.Nombre}\"."),
             cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        await obraSocialRepository.InvalidateCacheAsync(cancellationToken);
         return obraSocial.ToSummary();
     }
 
@@ -140,6 +141,7 @@ public sealed class CatalogsService(
             $"La obra social \"{obraSocial.Nombre}\" quedó {(obraSocial.Activa ? "activa" : "inactiva")}."),
             cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        await obraSocialRepository.InvalidateCacheAsync(cancellationToken);
         return obraSocial.ToSummary();
     }
 
@@ -157,6 +159,7 @@ public sealed class CatalogsService(
             $"La obra social \"{obraSocial.Nombre}\" quedó con convenio={(obraSocial.TieneConvenio ? "sí" : "no")}."),
             cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        await obraSocialRepository.InvalidateCacheAsync(cancellationToken);
         return obraSocial.ToSummary();
     }
 

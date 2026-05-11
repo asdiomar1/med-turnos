@@ -9,4 +9,5 @@ public interface IObraSocialRepository
     Task<ObraSocial?> GetByNormalizedNameAsync(string normalizedName, int? exceptId, CancellationToken cancellationToken);
     Task<IReadOnlyCollection<ObraSocial>> GetByIdsAsync(IEnumerable<int> ids, CancellationToken cancellationToken);
     Task AddAsync(ObraSocial obraSocial, CancellationToken cancellationToken);
+    Task InvalidateCacheAsync(CancellationToken cancellationToken);
 }

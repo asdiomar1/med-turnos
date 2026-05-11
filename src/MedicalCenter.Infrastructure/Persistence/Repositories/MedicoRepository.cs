@@ -28,7 +28,7 @@ public sealed class MedicoRepository(MedicalCenterDbContext dbContext) : IMedico
             query = query.Where(x => x.Id != exceptId.Value);
         }
 
-        return query.FirstOrDefaultAsync(x => string.Equals(x.Nombre, normalizedName, StringComparison.OrdinalIgnoreCase), cancellationToken);
+        return dbContext.Medicos.FirstOrDefaultAsync(x => x.Nombre.Equals(normalizedName, StringComparison.OrdinalIgnoreCase), cancellationToken);
     }
 
     public async Task<int> GetNextOrderAsync(CancellationToken cancellationToken)

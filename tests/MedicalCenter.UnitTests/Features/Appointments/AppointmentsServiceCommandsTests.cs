@@ -738,6 +738,47 @@ public sealed class AppointmentsServiceCommandsTests : IClassFixture<Appointment
     }
 
     [Fact]
+    public async Task RescheduleAsync_SingleScope_SetsSourceStatusToReprogramado()
+    {
+        // Arrange
+        var actorUserId = Guid.NewGuid();
+        var sourceSlotId = Guid.NewGuid();
+        var targetSlotId = Guid.NewGuid();
+        var patientId = Guid.NewGuid();
+        var idempotencyKey = "idem-reschedule-status";
+        var operation = $"turnos.reprogramaciones:{sourceSlotId}";
+        var futureDate = _fixture.GetTodayInArgentina().AddDays(1);
+
+        var sourceAppointment = new AppointmentBuilder()
+            .WithId(sourceSlotId)
+            .WithFecha(futureDate)
+            .WithHora(9, 0)
+            .AsOcupado(patientId)
+            .Build();
+
+        var targetAppointment = new AppointmentBuilder()
+            .WithId(targetSlotId)
+            .WithFecha(futureDate)
+            .WithHora(11, 0)
+            .AsLibre()
+            .Build();
+
+        _fixture.AppointmentRepository.GetByIdAsync(sourceSlotId, Arg.Any<CancellationToken>()).Returns(sourceAppointment);
+        _fixture.AppointmentRepository.GetByIdAsync(targetSlotId, Arg.Any<CancellationToken>()).Returns(targetAppointment);
+        _fixture.AppointmentRepository.TryCommitAsync(Arg.Any<CancellationToken>()).Returns(true);
+        _fixture.IdempotencyStore.SetupAcquired(operation, idempotencyKey);
+
+        var sut = _fixture.CreateSut();
+        var command = new RescheduleAppointmentCommand(targetSlotId, "normal");
+
+        // Act
+        await sut.RescheduleAsync(actorUserId, sourceSlotId, idempotencyKey, command, CancellationToken.None);
+
+        // Assert
+        Assert.Equal(AppointmentStatus.Reprogramado, sourceAppointment.Status);
+    }
+
+    [Fact]
     public async Task RescheduleAsync_WhenSourceNotFound_ThrowsNotFoundException()
     {
         // Arrange

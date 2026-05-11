@@ -1,8 +1,9 @@
 using MedicalCenter.Api.Extensions;
 using MedicalCenter.Api.Mappings;
 using MedicalCenter.Application.Features.DailyClosings;
-using MedicalCenter.Contracts.Dashboards;
+using MedicalCenter.Contracts.Common;
 using MedicalCenter.Contracts.DailyClosings;
+using MedicalCenter.Contracts.Dashboards;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -20,12 +21,13 @@ public sealed class DailyClosingsController(IDailyClosingsService dailyClosingsS
         return Ok((await dailyClosingsService.GetDetailAsync(date, null, cancellationToken)).ToResponse());
     }
 
+    [HttpGet("preview")]
     [HttpPost("preview")]
-    public async Task<IActionResult> Preview([FromBody] PreviewDailyClosingRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> Preview([FromBody(EmptyBodyBehavior = Microsoft.AspNetCore.Mvc.ModelBinding.EmptyBodyBehavior.Allow)] PreviewDailyClosingRequest? request, [FromQuery] DateOnly? fecha, CancellationToken cancellationToken)
     {
-        request ??= new PreviewDailyClosingRequest();
-        var result = await dailyClosingsService.PreviewAsync(request.Fecha ?? DateOnly.FromDateTime(DateTime.UtcNow), cancellationToken);
-        return Ok(result.ToResponse());
+        var date = request?.Fecha ?? fecha ?? DateOnly.FromDateTime(DateTime.UtcNow);
+        var result = await dailyClosingsService.PreviewAsync(date, cancellationToken);
+        return Ok(new DataResponse<DailyClosingPreviewResponse> { Data = result.ToResponse() });
     }
 
     [HttpPost("confirmar")]

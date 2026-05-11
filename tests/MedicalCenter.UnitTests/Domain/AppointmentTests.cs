@@ -69,4 +69,31 @@ public sealed class AppointmentTests
         Assert.Equal(AppointmentStatus.Libre, appointment.Status);
         Assert.Null(appointment.PatientId);
     }
+    [Fact]
+    public void Status_CanBeReprogramado()
+    {
+        var status = AppointmentStatus.Reprogramado;
+        Assert.Equal((int)5, (int)status);
+    }
+    [Fact]
+    public void Reschedule_WhenOccupied_TransitionsToReprogramado()
+    {
+        var appointment = new Appointment(Guid.NewGuid(), Guid.NewGuid(), new DateOnly(2026, 4, 20), new TimeOnly(10, 0), 1);
+        appointment.Reserve(Guid.NewGuid());
+
+        appointment.Reschedule("Movido a la tarde");
+
+        Assert.Equal(AppointmentStatus.Reprogramado, appointment.Status);
+        Assert.Null(appointment.PatientId);
+    }
+
+    [Fact]
+    public void IsReservable_WhenReprogramado_ReturnsTrue()
+    {
+        var appointment = new Appointment(Guid.NewGuid(), Guid.NewGuid(), new DateOnly(2026, 4, 20), new TimeOnly(10, 0), 1);
+        appointment.Reserve(Guid.NewGuid());
+        appointment.Reschedule();
+
+        Assert.True(appointment.IsReservable());
+    }
 }
