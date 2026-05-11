@@ -25,7 +25,6 @@ public sealed class RefreshTokenRepositoryTests : IClassFixture<CustomWebApplica
 
         await using (var setupContext = new MedicalCenterDbContext(options))
         {
-            await setupContext.Database.EnsureCreatedAsync();
             var activeTarget = new RefreshToken(Guid.NewGuid(), userId, $"target-active-{userId:N}", now.AddHours(1), "jwt-1");
             var expiredTarget = new RefreshToken(Guid.NewGuid(), userId, $"target-expired-{userId:N}", now.AddHours(-1), "jwt-2");
             var otherUserActive = new RefreshToken(Guid.NewGuid(), otherUserId, $"other-active-{otherUserId:N}", now.AddHours(1), "jwt-3");

@@ -785,7 +785,6 @@ public sealed class AppointmentsControllerTests : IClassFixture<CustomWebApplica
     private async Task SeedPatientAsync(Guid patientId)
     {
         await using var ctx = CreateDbContext();
-        await ctx.Database.EnsureCreatedAsync();
 
         ctx.Patients.Add(new Patient(
             patientId,
@@ -799,7 +798,6 @@ public sealed class AppointmentsControllerTests : IClassFixture<CustomWebApplica
     private async Task SeedStaffUserAsync(Guid userId)
     {
         await using var ctx = CreateDbContext();
-        await ctx.Database.EnsureCreatedAsync();
 
         ctx.Users.Add(new User(new UserCreateParams(userId, $"viewer-{userId:N}", $"viewer-{userId:N}@medicalcenter.local", "hashed-password", true, true)));
 
@@ -809,7 +807,6 @@ public sealed class AppointmentsControllerTests : IClassFixture<CustomWebApplica
     private async Task SeedPortalUserAsync(Guid userId, Guid patientId)
     {
         await using var ctx = CreateDbContext();
-        await ctx.Database.EnsureCreatedAsync();
 
         if (!await ctx.Users.AnyAsync(x => x.Id == userId))
         {
@@ -821,7 +818,6 @@ public sealed class AppointmentsControllerTests : IClassFixture<CustomWebApplica
     private async Task SeedStaffActorWithPermissionsAsync(Guid userId, params string[] permissions)
     {
         await using var ctx = CreateDbContext();
-        await ctx.Database.EnsureCreatedAsync();
 
         if (!await ctx.Users.AnyAsync(x => x.Id == userId))
         {
@@ -887,7 +883,6 @@ public sealed class AppointmentsControllerTests : IClassFixture<CustomWebApplica
     private async Task SeedCameraAsync(int cameraId, int capacity, bool active, string name)
     {
         await using var ctx = CreateDbContext();
-        await ctx.Database.EnsureCreatedAsync();
 
         if (await ctx.Cameras.AnyAsync(x => x.Id == cameraId))
         {
@@ -901,7 +896,6 @@ public sealed class AppointmentsControllerTests : IClassFixture<CustomWebApplica
     private async Task SeedScheduleHourAsync(int id, string hora, int orden, bool active)
     {
         await using var ctx = CreateDbContext();
-        await ctx.Database.EnsureCreatedAsync();
 
         if (await ctx.ScheduleHours.AnyAsync(x => x.Id == id || x.Hora == hora || x.Orden == orden))
         {
@@ -917,7 +911,6 @@ public sealed class AppointmentsControllerTests : IClassFixture<CustomWebApplica
         var scheduleId = Guid.NewGuid();
 
         await using var ctx = CreateDbContext();
-        await ctx.Database.EnsureCreatedAsync();
 
         if (!await ctx.Cameras.AnyAsync(x => x.Id == cameraId))
         {

@@ -101,7 +101,7 @@ public static class AppointmentResponseMappings
             SesionesAutorizadas = x.SesionesAutorizadas,
             CicloObraSocialId = x.CicloObraSocialId,
             MedicoId = x.MedicoId,
-            MedicoNombre = x.Medico.Nombre,
+            MedicoNombre = x.Medico?.Nombre,
             EsNuevoIngreso = x.EsNuevoIngreso,
             ObraSocialValidadaPor = x.ObraSocialValidadaPor,
             ObraSocialValidadaAt = x.ObraSocialValidadaAt,

@@ -211,21 +211,19 @@ public sealed class ConsultationsService(
                 await EnsurePatientHasNoConsecutiveConsultationsAsync(patientId, target.Fecha, target.Hora, source.Id, cancellationToken);
 
                 var medicoUserId = command.MedicoUserId ?? source.MedicoUserId;
-                var medicoId = command.MedicoId ?? (medicoUserId.HasValue ? null : source.MedicoId);
+                var medicoId = ResolveMedicoId(command.MedicoId, source.MedicoId, medicoUserId);
                 if (medicoUserId is null && medicoId is null)
+                {
                     throw new ConflictException("Médico requerido.");
+                }
 
-                    string? medicoNombre = medicoUserId.HasValue
-                        ? (await userRepository.GetByIdAsync(medicoUserId.Value, cancellationToken))?.Nombre
-                        : medicoId.HasValue
-                            ? (await medicoRepository.GetByIdAsync(medicoId.Value, cancellationToken))?.Nombre
-                            : null;
+                var medicoNombre = await ResolveMedicoNombreAsync(medicoUserId, medicoId, cancellationToken);
 
-                    try
-                    {
-                        source.RescheduleToFreeSlot();
-                        target.Assign(patientId, medicoId, null, actorUserId, clock.UtcNow, medicoUserId, medicoNombre);
-                    }
+                try
+                {
+                    source.RescheduleToFreeSlot();
+                    target.Assign(patientId, medicoId, null, actorUserId, clock.UtcNow, medicoUserId, medicoNombre);
+                }
                 catch (InvalidOperationException exception)
                 {
                     throw new ConflictException(exception.Message);
@@ -418,11 +416,7 @@ public sealed class ConsultationsService(
 
     private async Task AssignSlotAsync(ConsultationSlot slot, AssignConsultationCommand command, Guid actorUserId, CancellationToken cancellationToken)
     {
-        string? medicoNombre = command.MedicoUserId.HasValue
-            ? (await userRepository.GetByIdAsync(command.MedicoUserId.Value, cancellationToken))?.Nombre
-            : command.MedicoId.HasValue
-                ? (await medicoRepository.GetByIdAsync(command.MedicoId.Value, cancellationToken))?.Nombre
-                : null;
+        var medicoNombre = await ResolveMedicoNombreAsync(command.MedicoUserId, command.MedicoId, cancellationToken);
 
         try
         {
@@ -440,6 +434,38 @@ public sealed class ConsultationsService(
         {
             throw new ValidationException("El header Idempotency-Key es obligatorio para esta operacion.");
         }
+    }
+
+    private static int? ResolveMedicoId(int? commandMedicoId, int? sourceMedicoId, Guid? medicoUserId)
+    {
+        if (commandMedicoId.HasValue)
+        {
+            return commandMedicoId;
+        }
+
+        if (medicoUserId.HasValue)
+        {
+            return null;
+        }
+
+        return sourceMedicoId;
+    }
+
+    private async Task<string?> ResolveMedicoNombreAsync(Guid? medicoUserId, int? medicoId, CancellationToken cancellationToken)
+    {
+        if (medicoUserId.HasValue)
+        {
+            var medicoUser = await userRepository.GetByIdAsync(medicoUserId.Value, cancellationToken);
+            return medicoUser?.Nombre;
+        }
+
+        if (medicoId.HasValue)
+        {
+            var medico = await medicoRepository.GetByIdAsync(medicoId.Value, cancellationToken);
+            return medico?.Nombre;
+        }
+
+        return null;
     }
 
     private async Task<ConsultationSlotSummary> ExecuteIdempotentAsync<TPayload>(

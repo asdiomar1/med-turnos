@@ -14,6 +14,8 @@ public sealed class BlockHistoryConfiguration : IEntityTypeConfiguration<BlockHi
         builder.Property(x => x.Accion).HasMaxLength(100).IsRequired();
         builder.Property(x => x.ModalidadCobro).HasMaxLength(20).IsRequired().HasDefaultValue("particular");
         builder.Property(x => x.NumeroAutorizacion).HasMaxLength(100);
+        builder.Property(x => x.MedicoUserId).HasColumnName("medico_user_id");
+        builder.Property(x => x.MedicoNombre).HasColumnName("medico_nombre").HasMaxLength(200);
         builder.Property(x => x.Motivo).HasColumnType("text");
         builder.Property(x => x.CreatedAt).HasDefaultValueSql("now()");
         builder.HasIndex(x => new { x.Fecha, x.Hora, x.CamaraId });

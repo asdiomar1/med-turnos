@@ -234,6 +234,7 @@ public sealed class Appointment : Entity<Guid>
         ConvenioCorroborado = operative.ConvenioCorroborado;
         MedicoId = operative.MedicoId;
         MedicoUserId = operative.MedicoUserId;
+        MedicoNombre = null;
         EsNuevoIngreso = operative.EsNuevoIngreso;
         EsMonoxido = operative.EsMonoxido;
         MonoxidoOrdenMedica = operative.MonoxidoOrdenMedica;

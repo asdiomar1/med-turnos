@@ -1211,11 +1211,7 @@ public sealed class AppointmentsService : IAppointmentsService
         var patient = appointment.PatientId.HasValue
             ? await patientRepository.GetByIdAsync(appointment.PatientId.Value, cancellationToken)
             : null;
-        var medico = appointment.MedicoUserId.HasValue
-            ? await medicoRepository.GetByMedicoUserIdAsync(appointment.MedicoUserId.Value, cancellationToken)
-            : appointment.MedicoId.HasValue
-                ? await medicoRepository.GetByIdAsync(appointment.MedicoId.Value, cancellationToken)
-                : null;
+        var medico = await ResolveMedicoAsync(appointment.MedicoUserId, appointment.MedicoId, cancellationToken);
         var referente = appointment.ReferenteId.HasValue
             ? await referenteRepository.GetByIdAsync(appointment.ReferenteId.Value, cancellationToken)
             : null;
@@ -1712,11 +1708,7 @@ public sealed class AppointmentsService : IAppointmentsService
         var patient = history.PacienteId.HasValue
             ? await patientRepository.GetByIdAsync(history.PacienteId.Value, cancellationToken)
             : null;
-        var medico = history.MedicoUserId.HasValue
-            ? await medicoRepository.GetByMedicoUserIdAsync(history.MedicoUserId.Value, cancellationToken)
-            : history.MedicoId.HasValue
-                ? await medicoRepository.GetByIdAsync(history.MedicoId.Value, cancellationToken)
-                : null;
+        var medico = await ResolveMedicoAsync(history.MedicoUserId, history.MedicoId, cancellationToken);
         var referente = history.ReferenteId.HasValue
             ? await referenteRepository.GetByIdAsync(history.ReferenteId.Value, cancellationToken)
             : null;
@@ -1762,6 +1754,21 @@ public sealed class AppointmentsService : IAppointmentsService
             obraSocial is null ? null : new ObraSocialSummaryDto(obraSocial.Id, obraSocial.Nombre, obraSocial.Activa, obraSocial.TieneConvenio, obraSocial.Orden, obraSocial.Abreviatura, obraSocial.CreatedAt),
             realizadoPor is null ? null : new GuidLookupSummary(realizadoPor.Id, realizadoPor.Nombre ?? string.Empty),
             validatedBy is null ? null : new GuidLookupSummary(validatedBy.Id, validatedBy.Nombre ?? string.Empty));
+    }
+
+    private async Task<Medico?> ResolveMedicoAsync(Guid? medicoUserId, int? medicoId, CancellationToken cancellationToken)
+    {
+        if (medicoUserId.HasValue)
+        {
+            return await medicoRepository.GetByMedicoUserIdAsync(medicoUserId.Value, cancellationToken);
+        }
+
+        if (medicoId.HasValue)
+        {
+            return await medicoRepository.GetByIdAsync(medicoId.Value, cancellationToken);
+        }
+
+        return null;
     }
 
     private static AppointmentOperativeData MapOperative(AppointmentOperativeCommand command) =>

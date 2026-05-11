@@ -24,6 +24,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
         await _postgres.StartAsync();
 
         // Wait for database to be ready with retry (GitHub Actions can have timing issues)
+        Exception? lastException = null;
         var maxRetries = 3;
         for (int i = 0; i < maxRetries; i++)
         {
@@ -33,14 +34,24 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
                 optionsBuilder.UseNpgsql(_postgres.GetConnectionString());
                 
                 await using var dbContext = new MedicalCenterDbContext(optionsBuilder.Options);
+
                 await dbContext.Database.MigrateAsync();
-                break;
+                return; // Success
             }
-            catch (Exception) when (i < maxRetries - 1)
+            catch (Exception ex)
             {
-                await Task.Delay(TimeSpan.FromSeconds(2));
+                lastException = ex;
+                if (i < maxRetries - 1)
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(2));
+                }
             }
         }
+        
+        // All retries failed - throw to see the actual error
+        throw new InvalidOperationException(
+            $"Failed to apply migrations after {maxRetries} attempts. See inner exception for details.", 
+            lastException);
     }
 
     public new async Task DisposeAsync()
