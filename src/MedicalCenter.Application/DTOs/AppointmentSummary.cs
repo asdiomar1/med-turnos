@@ -38,4 +38,5 @@ public sealed record AppointmentSummary(
     IntLookupSummary? Referente = null,
     ObraSocialSummaryDto? ObraSocial = null,
     GuidLookupSummary? ApartadoPorPerfil = null,
-    GuidLookupSummary? ObraSocialValidadaPorPerfil = null);
+    GuidLookupSummary? ObraSocialValidadaPorPerfil = null,
+    string? MedicoNombre = null);

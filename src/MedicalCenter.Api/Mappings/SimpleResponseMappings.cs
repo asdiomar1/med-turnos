@@ -37,7 +37,7 @@ public static class SimpleResponseMappings
 
     // Professional mappings
     public static MedicoResponse ToResponse(this MedicoSummaryDto x) =>
-        new() { Id = x.Id, Nombre = x.Nombre };
+        new() { Id = x.Id, Nombre = x.Nombre, MedicoNombre = x.Nombre };
 
     public static ReferenteResponse ToResponse(this ReferenteSummaryDto x) =>
         new() { Id = x.Id, Nombre = x.Nombre, Tipo = x.Tipo, Activo = x.Activo, Orden = x.Orden, CreatedAt = x.CreatedAt, UpdatedAt = x.UpdatedAt };

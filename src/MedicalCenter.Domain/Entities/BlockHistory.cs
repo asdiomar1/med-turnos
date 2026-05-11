@@ -21,6 +21,8 @@ public sealed record BlockHistoryCreateParams(
     Guid? ObraSocialValidadaPor,
     DateTimeOffset? ObraSocialValidadaAt,
     int? MedicoId,
+    Guid? MedicoUserId,
+    string? MedicoNombre,
     bool EsNuevoIngreso,
     int? ReferenteId,
     Guid? TandaId,
@@ -50,6 +52,8 @@ public sealed class BlockHistory : Entity<Guid>
         ObraSocialValidadaPor = p.ObraSocialValidadaPor;
         ObraSocialValidadaAt = p.ObraSocialValidadaAt;
         MedicoId = p.MedicoId;
+        MedicoUserId = p.MedicoUserId;
+        MedicoNombre = p.MedicoNombre;
         EsNuevoIngreso = p.EsNuevoIngreso;
         ReferenteId = p.ReferenteId;
         TandaId = p.TandaId;
@@ -75,6 +79,8 @@ public sealed class BlockHistory : Entity<Guid>
     public DateTimeOffset? ObraSocialValidadaAt { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
     public int? MedicoId { get; private set; }
+    public Guid? MedicoUserId { get; private set; }
+    public string? MedicoNombre { get; private set; }
     public bool EsNuevoIngreso { get; private set; }
     public int? ReferenteId { get; private set; }
     public Guid? TandaId { get; private set; }

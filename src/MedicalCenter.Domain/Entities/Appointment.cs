@@ -39,6 +39,7 @@ public sealed class Appointment : Entity<Guid>
     public bool ConvenioCorroborado { get; private set; }
     public int? MedicoId { get; private set; }
     public Guid? MedicoUserId { get; private set; }
+    public string? MedicoNombre { get; private set; }
     public bool EsNuevoIngreso { get; private set; }
     public bool EsMonoxido { get; private set; }
     public bool MonoxidoOrdenMedica { get; private set; }

@@ -23,6 +23,7 @@ public sealed class ConsultationSlot : Entity<Guid>
     public Guid? PacienteId { get; private set; }
     public int? MedicoId { get; private set; }
     public Guid? MedicoUserId { get; private set; }
+    public string? MedicoNombre { get; private set; }
     public string? MotivoCancelacion { get; private set; }
     public string? ObservacionesAdmin { get; private set; }
     public DateTimeOffset? ConfirmadoAt { get; private set; }
@@ -38,7 +39,7 @@ public sealed class ConsultationSlot : Entity<Guid>
 
     public bool IsClosable() => Estado == ConsultationStatus.Confirmada;
 
-    public void Assign(Guid pacienteId, int? medicoId, string? observacionesAdmin, Guid actorProfileId, DateTimeOffset now, Guid? medicoUserId = null)
+    public void Assign(Guid pacienteId, int? medicoId, string? observacionesAdmin, Guid actorProfileId, DateTimeOffset now, Guid? medicoUserId = null, string? medicoNombre = null)
     {
         if (!IsReservable())
         {
@@ -49,6 +50,7 @@ public sealed class ConsultationSlot : Entity<Guid>
         PacienteId = pacienteId;
         MedicoId = medicoId;
         MedicoUserId = medicoUserId;
+        MedicoNombre = medicoNombre;
         ObservacionesAdmin = string.IsNullOrWhiteSpace(observacionesAdmin) ? null : observacionesAdmin.Trim();
         MotivoCancelacion = null;
         ConfirmadoAt = now;

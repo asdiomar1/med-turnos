@@ -9,6 +9,16 @@ public sealed class MedicoRepository(MedicalCenterDbContext dbContext) : IMedico
     public Task<Medico?> GetByIdAsync(int id, CancellationToken cancellationToken) =>
         dbContext.Medicos.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
+    public Task<Medico?> GetByMedicoUserIdAsync(Guid? medicoUserId, CancellationToken cancellationToken)
+    {
+        if (!medicoUserId.HasValue || medicoUserId.Value == Guid.Empty)
+        {
+            return Task.FromResult<Medico?>(null);
+        }
+
+        return dbContext.Medicos.FirstOrDefaultAsync(x => x.PerfilId == medicoUserId.Value, cancellationToken);
+    }
+
     public async Task<IReadOnlyCollection<Medico>> GetAsync(bool onlyActive, CancellationToken cancellationToken)
     {
         var query = dbContext.Medicos.AsQueryable();
@@ -50,6 +60,19 @@ public sealed class MedicoRepository(MedicalCenterDbContext dbContext) : IMedico
 
         return await dbContext.Medicos
             .Where(x => distinctIds.Contains(x.Id))
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyCollection<Medico>> GetByMedicoUserIdsAsync(IEnumerable<Guid> medicoUserIds, CancellationToken cancellationToken)
+    {
+        var distinctIds = medicoUserIds.Where(id => id != Guid.Empty).Distinct().ToArray();
+        if (distinctIds.Length == 0)
+        {
+            return [];
+        }
+
+        return await dbContext.Medicos
+            .Where(x => x.PerfilId != null && distinctIds.Contains(x.PerfilId.Value))
             .ToListAsync(cancellationToken);
     }
 }

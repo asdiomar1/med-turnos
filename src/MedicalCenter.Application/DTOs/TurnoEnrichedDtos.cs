@@ -36,7 +36,7 @@ public sealed record TurnoEnrichedSummary(
 
 public sealed record PacienteEnrichedSummary(Guid Id, string? Nombre, string? Email, int? ObraSocialId);
 
-public sealed record MedicoEnrichedSummary(int Id, string? Nombre, bool? Activo);
+public sealed record MedicoEnrichedSummary(Guid? Id, string? Nombre, bool? Activo);
 
 public sealed record ReferenteEnrichedSummary(int Id, string? Nombre, string? Tipo, bool? Activo);
 

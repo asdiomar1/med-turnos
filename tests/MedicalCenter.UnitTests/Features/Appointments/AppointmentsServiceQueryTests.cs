@@ -526,6 +526,8 @@ public sealed class AppointmentsServiceQueryTests : IClassFixture<AppointmentsSe
                 null,
                 null,
                 null,
+                null,
+                null,
                 false,
                 null,
                 null,

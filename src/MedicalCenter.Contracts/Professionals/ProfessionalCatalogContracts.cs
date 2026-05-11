@@ -9,6 +9,9 @@ public sealed class MedicoResponse
 
     [JsonPropertyName("nombre")]
     public string Nombre { get; init; } = string.Empty;
+
+    [JsonPropertyName("medico_nombre")]
+    public string? MedicoNombre { get; init; }
 }
 
 public sealed class ReferenteResponse

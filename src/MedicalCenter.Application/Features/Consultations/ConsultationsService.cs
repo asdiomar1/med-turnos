@@ -145,8 +145,8 @@ public sealed class ConsultationsService(
                 await RequireActorAsync(actorUserId, "consultas.asignar", cancellationToken);
                 await EnsureActivePatientAsync(command.PacienteId, cancellationToken);
                 await ValidateMedicoAssignmentAsync(command, cancellationToken);
-                var slot = await GetAssignableSlotAsync(slotId, command.PacienteId, cancellationToken);
-                AssignSlot(slot, command, actorUserId);
+                    var slot = await GetAssignableSlotAsync(slotId, command.PacienteId, cancellationToken);
+                await AssignSlotAsync(slot, command, actorUserId, cancellationToken);
 
                 await unitOfWork.SaveChangesAsync(cancellationToken);
                 return await MapAsync(slot, cancellationToken);
@@ -215,11 +215,17 @@ public sealed class ConsultationsService(
                 if (medicoUserId is null && medicoId is null)
                     throw new ConflictException("Médico requerido.");
 
-                try
-                {
-                    source.RescheduleToFreeSlot();
-                    target.Assign(patientId, medicoId, null, actorUserId, clock.UtcNow, medicoUserId);
-                }
+                    string? medicoNombre = medicoUserId.HasValue
+                        ? (await userRepository.GetByIdAsync(medicoUserId.Value, cancellationToken))?.Nombre
+                        : medicoId.HasValue
+                            ? (await medicoRepository.GetByIdAsync(medicoId.Value, cancellationToken))?.Nombre
+                            : null;
+
+                    try
+                    {
+                        source.RescheduleToFreeSlot();
+                        target.Assign(patientId, medicoId, null, actorUserId, clock.UtcNow, medicoUserId, medicoNombre);
+                    }
                 catch (InvalidOperationException exception)
                 {
                     throw new ConflictException(exception.Message);
@@ -282,7 +288,7 @@ public sealed class ConsultationsService(
         (await consultationRepository.GetSessionsByPatientIdAsync(patientId, cancellationToken)).Select(x => x.ToSummary()).ToArray();
 
     private static ConsultationSlotSummary Map(ConsultationSlot slot, GuidLookupSummary? patient, IntLookupSummary? medico, GuidLookupSummary? medicoUser, GuidLookupSummary? confirmadoPor, GuidLookupSummary? cerradoPor) =>
-        new(slot.Id, slot.Fecha, slot.Hora, slot.Estado.ToString().ToLowerInvariant(), slot.PacienteId, slot.MedicoId, slot.MedicoUserId, slot.MotivoCancelacion, slot.ObservacionesAdmin, slot.ConfirmadoPor, slot.ConfirmadoAt, slot.CerradoPor, slot.CerradoAt, slot.CreatedAt, slot.UpdatedAt, patient, medico, medicoUser, confirmadoPor, cerradoPor);
+        new(slot.Id, slot.Fecha, slot.Hora, slot.Estado.ToString().ToLowerInvariant(), slot.PacienteId, slot.MedicoId, slot.MedicoUserId, slot.MedicoNombre, slot.MotivoCancelacion, slot.ObservacionesAdmin, slot.ConfirmadoPor, slot.ConfirmadoAt, slot.CerradoPor, slot.CerradoAt, slot.CreatedAt, slot.UpdatedAt, patient, medico, medicoUser, confirmadoPor, cerradoPor);
 
     private async Task<ConsultationSlotSummary> MapAsync(ConsultationSlot slot, CancellationToken cancellationToken)
     {
@@ -410,11 +416,17 @@ public sealed class ConsultationsService(
         return slot;
     }
 
-    private void AssignSlot(ConsultationSlot slot, AssignConsultationCommand command, Guid actorUserId)
+    private async Task AssignSlotAsync(ConsultationSlot slot, AssignConsultationCommand command, Guid actorUserId, CancellationToken cancellationToken)
     {
+        string? medicoNombre = command.MedicoUserId.HasValue
+            ? (await userRepository.GetByIdAsync(command.MedicoUserId.Value, cancellationToken))?.Nombre
+            : command.MedicoId.HasValue
+                ? (await medicoRepository.GetByIdAsync(command.MedicoId.Value, cancellationToken))?.Nombre
+                : null;
+
         try
         {
-            slot.Assign(command.PacienteId, command.MedicoId, command.ObservacionesAdmin, actorUserId, clock.UtcNow, command.MedicoUserId);
+            slot.Assign(command.PacienteId, command.MedicoId, command.ObservacionesAdmin, actorUserId, clock.UtcNow, command.MedicoUserId, medicoNombre);
         }
         catch (InvalidOperationException exception)
         {
