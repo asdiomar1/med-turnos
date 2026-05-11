@@ -375,7 +375,8 @@ public sealed class AppointmentsController(
                 request.EsNuevoIngreso,
                 request.EsMonoxido,
                 request.MonoxidoOrdenMedica,
-                request.MonoxidoResumenClinico),
+                request.MonoxidoResumenClinico,
+                request.MedicoUserId),
             cancellationToken);
 
         return Ok(items.Select(x => x.ToResponse()));
