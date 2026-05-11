@@ -44,10 +44,13 @@ public sealed class DailyClosingsService(
             mappedTurnos);
     }
 
-    public async Task<DailyClosingSummaryDto> ConfirmAsync(Guid actorUserId, DateOnly fecha, string? detallesJson, CancellationToken cancellationToken)
+    public Task<DailyClosingSummaryDto> ConfirmAsync(Guid actorUserId, DateOnly fecha, string? detallesJson, CancellationToken cancellationToken) =>
+        ConfirmAsync(actorUserId, fecha, null, detallesJson, cancellationToken);
+
+    public async Task<DailyClosingSummaryDto> ConfirmAsync(Guid actorUserId, DateOnly fecha, Guid? closingId, string? detallesJson, CancellationToken cancellationToken)
     {
         await EnsureActorAsync(actorUserId, cancellationToken);
-        var closing = await EnsureClosingAsync(fecha, actorUserId, cancellationToken);
+        var closing = await EnsureClosingAsync(fecha, closingId, actorUserId, cancellationToken);
         closing.Confirm(actorUserId, NormalizeJson(detallesJson));
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return closing.ToSummary();
@@ -101,8 +104,14 @@ public sealed class DailyClosingsService(
         return closing.ToSummary();
     }
 
-    private async Task<DailyClosing> EnsureClosingAsync(DateOnly fecha, Guid actorUserId, CancellationToken cancellationToken)
+    private async Task<DailyClosing> EnsureClosingAsync(DateOnly fecha, Guid? closingId, Guid actorUserId, CancellationToken cancellationToken)
     {
+        if (closingId.HasValue)
+        {
+            return await dailyClosingRepository.GetByIdAsync(closingId.Value, cancellationToken)
+                ?? throw new NotFoundException("Cierre diario no encontrado");
+        }
+
         var closing = await dailyClosingRepository.GetByDateAsync(fecha, cancellationToken);
         if (closing is not null)
         {

@@ -32,11 +32,11 @@ public sealed class DailyClosingsController(IDailyClosingsService dailyClosingsS
 
     [HttpPost("confirmar")]
     [Authorize(Policy = "StaffManage")]
-    public async Task<IActionResult> Confirm([FromBody] ConfirmDailyClosingRequest request, [FromQuery] DateOnly? fecha, CancellationToken cancellationToken)
+    public async Task<IActionResult> Confirm([FromBody] ConfirmDailyClosingRequest request, [FromQuery] DateOnly? fecha, [FromQuery(Name = "cierre_id")] Guid? closingId, CancellationToken cancellationToken)
     {
         request ??= new ConfirmDailyClosingRequest();
         var date = fecha ?? DateOnly.FromDateTime(DateTime.UtcNow);
-        var result = await dailyClosingsService.ConfirmAsync(User.GetUserId(), date, request.Detalles.HasValue ? request.Detalles.Value.GetRawText() : null, cancellationToken);
+        var result = await dailyClosingsService.ConfirmAsync(User.GetUserId(), date, closingId, request.Detalles.HasValue ? request.Detalles.Value.GetRawText() : null, cancellationToken);
         return Ok(result.ToResponse());
     }
 
