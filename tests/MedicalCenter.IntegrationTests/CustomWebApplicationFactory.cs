@@ -23,10 +23,11 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
     {
         await _postgres.StartAsync();
 
-        // Apply migrations to ensure test database has latest schema
-        var services = Services.BuildServiceProvider();
-        using var scope = services.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<MedicalCenterDbContext>();
+        // Apply migrations using direct connection (before webhost configures services)
+        var optionsBuilder = new DbContextOptionsBuilder<MedicalCenterDbContext>();
+        optionsBuilder.UseNpgsql(_postgres.GetConnectionString());
+        
+        await using var dbContext = new MedicalCenterDbContext(optionsBuilder.Options);
         await dbContext.Database.MigrateAsync();
     }
 
