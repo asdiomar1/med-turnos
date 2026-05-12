@@ -325,6 +325,43 @@ public sealed class OutOfHoursTurnsServiceTests
     }
 
     [Fact]
+    public async Task CreateAsync_WhenMedicoComesFromGenericFields_PersistsEvenWithoutMonoxidoFields()
+    {
+        var actorUserId = Guid.NewGuid();
+        var patientId = Guid.NewGuid();
+        var medicoUserId = Guid.NewGuid();
+        var command = new OutOfHoursTurnCreateCommand(
+            new DateOnly(2026, 5, 3),
+            new TimeOnly(18, 0),
+            patientId,
+            null,
+            "Notas",
+            EsMonoxido: false,
+            MonoxidoOrdenMedica: false,
+            MonoxidoResumenClinico: false,
+            MonoxidoMedicoId: null,
+            MonoxidoMedicoUserId: null,
+            MedicoId: null,
+            MedicoUserId: medicoUserId);
+        var idempotencyKey = "create-generic-medico-ok";
+        var actor = CreateActor(actorUserId, permission: "turnos.fuera_horario", nombre: "Operador Cámara");
+        var patient = CreatePatient(patientId, "Paciente Uno");
+        var medicoUser = CreateActor(medicoUserId, permission: null, nombre: "Dr. Usuario");
+
+        SetupAcquired(CreateOperation(command), idempotencyKey);
+        userRepository.GetByIdAsync(actorUserId, Arg.Any<CancellationToken>()).Returns(actor);
+        patientRepository.GetByIdAsync(patientId, Arg.Any<CancellationToken>()).Returns(patient);
+        userRepository.GetByIdAsync(medicoUserId, Arg.Any<CancellationToken>()).Returns(medicoUser);
+        outOfHoursTurnRepository.GetByDateAsync(command.Fecha, Arg.Any<CancellationToken>()).Returns([]);
+
+        var result = await Sut.CreateAsync(actorUserId, command, idempotencyKey, CancellationToken.None);
+
+        Assert.Equal(medicoUserId, result.MonoxidoMedicoUser!.Id);
+        Assert.Equal("Dr. Usuario", result.MonoxidoMedicoUser.Nombre);
+        await unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task CancelAsync_WhenActorMissing_ThrowsUnauthorizedExceptionAndFailsIdempotency()
     {
         var actorUserId = Guid.NewGuid();

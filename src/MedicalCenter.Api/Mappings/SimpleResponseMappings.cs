@@ -105,45 +105,42 @@ public static class SimpleResponseMappings
     public static DashboardSummaryResponse ToResponse(this DashboardSummaryDto x) =>
         new()
         {
-            Fecha = x.Fecha, TotalTurnos = x.TotalTurnos, Libres = x.Libres,
-            Ocupados = x.Ocupados, Apartados = x.Apartados, Cancelados = x.Cancelados,
-            OcupacionPorcentaje = x.OcupacionPorcentaje, GeneradoEn = x.GeneradoEn,
-        };
-
-    public static DashboardOccupancyResponse ToResponse(this DashboardOccupancyDto x) =>
-        new()
-        {
-            Fecha = x.Fecha, TotalTurnos = x.TotalTurnos, Libres = x.Libres,
-            Ocupados = x.Ocupados, Apartados = x.Apartados, Cancelados = x.Cancelados,
-            OcupacionPorcentaje = x.OcupacionPorcentaje,
-            PorCamara = x.PorCamara.Select(c => c.ToResponse()).ToArray(),
+            PacientesHoy = x.PacientesHoy,
+            ApartadosActivos = x.ApartadosActivos,
         };
 
     public static DashboardOccupancyCameraResponse ToResponse(this DashboardOccupancyCameraDto x) =>
         new()
         {
-            CameraId = x.CameraId, CameraName = x.CameraName,
-            TotalTurnos = x.TotalTurnos, Libres = x.Libres,
-            Ocupados = x.Ocupados, Apartados = x.Apartados, Cancelados = x.Cancelados,
+            CamaraId = x.CamaraId,
+            CamaraNombre = x.CamaraNombre,
+            CapacidadTotal = x.CapacidadTotal,
+            Ocupados = x.Ocupados,
+            PorcentajeOcupacion = x.PorcentajeOcupacion,
         };
 
-    public static DashboardAgendaBucketResponse ToResponse(this DashboardAgendaBucketDto x) =>
+    public static DashboardAgendaRowResponse ToResponse(this DashboardAgendaRowDto x) =>
         new()
         {
-            Fecha = x.Fecha, Hora = x.Hora, CameraId = x.CameraId, CameraName = x.CameraName,
-            TotalTurnos = x.TotalTurnos, Libres = x.Libres,
-            Ocupados = x.Ocupados, Apartados = x.Apartados, Cancelados = x.Cancelados,
+            Hora = x.Hora.ToString("HH:mm"),
+            Lugar = x.Lugar,
+            CamaraId = x.CamaraId,
+            CamaraNombre = x.CamaraNombre,
+            NombrePaciente = x.NombrePaciente,
+            ModalidadCobro = x.ModalidadCobro,
+            EsNuevoIngreso = x.EsNuevoIngreso,
+            EsBloqueCompleto = x.EsBloqueCompleto,
+            Estado = x.Estado,
         };
 
     public static DashboardAlertResponse ToResponse(this DashboardAlertDto x) =>
         new() { Code = x.Code, Message = x.Message, Severity = x.Severity, Count = x.Count };
 
+    public static DashboardUiAlertResponse ToResponse(this DashboardUiAlertDto x) =>
+        new() { Tipo = x.Tipo, Titulo = x.Titulo, Descripcion = x.Descripcion, TargetTab = x.TargetTab };
+
     public static DashboardWeeklyVolumeItemResponse ToResponse(this DashboardWeeklyVolumeItemDto x) =>
-        new()
-        {
-            Fecha = x.Fecha, TotalTurnos = x.TotalTurnos, Libres = x.Libres,
-            Ocupados = x.Ocupados, Apartados = x.Apartados, Cancelados = x.Cancelados,
-        };
+        new() { Fecha = x.Fecha, Ocupados = x.Ocupados };
 
     // Daily closing mappings
     public static DailyClosingPreviewResponse ToResponse(this DailyClosingPreviewDto x) =>
@@ -184,7 +181,11 @@ public static class SimpleResponseMappings
             MedicoNombre = x.MedicoNombre,
             EsMonoxido = x.EsMonoxido,
             EsOxibarica = x.EsOxibarica,
-            Asistio = x.Asistio
+            Asistio = x.Asistio,
+            ReferidoTercero = x.ReferidoTercero,
+            ReferenteId = x.ReferenteId,
+            ReferenteNombre = x.ReferenteNombre,
+            ReferenteTipo = x.ReferenteTipo
         };
 
     public static DailyClosingResponse ToResponse(this DailyClosingSummaryDto x) =>

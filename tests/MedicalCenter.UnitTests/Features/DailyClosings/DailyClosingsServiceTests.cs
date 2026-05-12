@@ -85,6 +85,51 @@ public sealed class DailyClosingsServiceTests
     }
 
     [Fact]
+    public async Task PreviewAsync_EnforcesReferidoInvariantsAndModalidadDefault()
+    {
+        var fecha = new DateOnly(2026, 5, 22);
+        var patientId = Guid.NewGuid();
+        appointmentRepository.GetByDateAsync(fecha, Arg.Any<CancellationToken>()).Returns(
+        [
+            CreateAppointment(fecha, AppointmentStatus.Ocupado),
+            CreateAppointment(fecha, AppointmentStatus.Ocupado),
+            CreateAppointment(fecha, AppointmentStatus.Ocupado)
+        ]);
+
+        appointmentsService.GetEnrichedByDateAsync(fecha, Arg.Any<CancellationToken>()).Returns(
+        [
+            CreateStandardTurn(Guid.NewGuid(), fecha, new TimeOnly(9, 0), 1, 1, patientId, modalidadCobro: null, referidoTercero: false, referenteId: 99, referenteNombre: "No debería salir", referenteTipo: "agencia"),
+            CreateStandardTurn(Guid.NewGuid(), fecha, new TimeOnly(10, 0), 1, 2, patientId, modalidadCobro: " ", referidoTercero: true, referenteId: 55, referenteNombre: "Derivador", referenteTipo: "AGENCIA"),
+            CreateStandardTurn(Guid.NewGuid(), fecha, new TimeOnly(11, 0), 1, 3, patientId, modalidadCobro: "obra_social", referidoTercero: true, referenteId: null, referenteNombre: "Sin id legacy", referenteTipo: "inventado")
+        ]);
+        outOfHoursTurnsService.GetByDateAsync(fecha, Arg.Any<CancellationToken>()).Returns([]);
+
+        var result = await CreateSut().PreviewAsync(fecha, CancellationToken.None);
+        var turnos = result.Turnos.ToArray();
+
+        var noReferido = turnos[0];
+        Assert.False(noReferido.ReferidoTercero);
+        Assert.Null(noReferido.ReferenteId);
+        Assert.Null(noReferido.ReferenteNombre);
+        Assert.Null(noReferido.ReferenteTipo);
+        Assert.Equal("particular", noReferido.ModalidadCobro);
+
+        var referidoValido = turnos[1];
+        Assert.True(referidoValido.ReferidoTercero);
+        Assert.Equal(55, referidoValido.ReferenteId);
+        Assert.Equal("Derivador", referidoValido.ReferenteNombre);
+        Assert.Equal("agencia", referidoValido.ReferenteTipo);
+        Assert.Equal("particular", referidoValido.ModalidadCobro);
+
+        var referidoLegacy = turnos[2];
+        Assert.True(referidoLegacy.ReferidoTercero);
+        Assert.Null(referidoLegacy.ReferenteId);
+        Assert.Equal("Sin id legacy", referidoLegacy.ReferenteNombre);
+        Assert.Null(referidoLegacy.ReferenteTipo);
+        Assert.Equal("obra_social", referidoLegacy.ModalidadCobro);
+    }
+
+    [Fact]
     public async Task ConfirmAsync_WhenActorMissing_ThrowsUnauthorizedAndDoesNotCommit()
     {
         var actorUserId = Guid.NewGuid();
@@ -339,7 +384,18 @@ public sealed class DailyClosingsServiceTests
     private static DailyClosing CreateClosing(Guid? id = null, DateOnly? fecha = null, Guid? createdByUserId = null, string? detallesJson = null) =>
         new(id ?? Guid.NewGuid(), fecha ?? new DateOnly(2026, 5, 11), createdByUserId ?? Guid.NewGuid(), detallesJson);
 
-    private static TurnoEnrichedSummary CreateStandardTurn(Guid id, DateOnly fecha, TimeOnly hora, int camaraId, int lugar, Guid patientId) =>
+    private static TurnoEnrichedSummary CreateStandardTurn(
+        Guid id,
+        DateOnly fecha,
+        TimeOnly hora,
+        int camaraId,
+        int lugar,
+        Guid patientId,
+        string? modalidadCobro = "particular",
+        bool? referidoTercero = false,
+        int? referenteId = null,
+        string? referenteNombre = null,
+        string? referenteTipo = null) =>
         new(
             Id: id,
             Fecha: fecha,
@@ -351,9 +407,9 @@ public sealed class DailyClosingsServiceTests
             EsTanda: false,
             TandaId: null,
             EsBloqueCompleto: false,
-            ReferidoTercero: false,
-            ReferenteId: null,
-            ModalidadCobro: "particular",
+            ReferidoTercero: referidoTercero,
+            ReferenteId: referenteId,
+            ModalidadCobro: modalidadCobro,
             ObraSocialId: null,
             NumeroAutorizacion: null,
             SesionesAutorizadas: null,
@@ -365,7 +421,9 @@ public sealed class DailyClosingsServiceTests
             ObraSocialValidadaAt: null,
             Paciente: new PacienteEnrichedSummary(patientId, "Paciente", null, null),
             Medico: null,
-            Referente: null,
+            Referente: referenteId.HasValue || !string.IsNullOrWhiteSpace(referenteNombre) || !string.IsNullOrWhiteSpace(referenteTipo)
+                ? new ReferenteEnrichedSummary(referenteId ?? 0, referenteNombre, referenteTipo, true)
+                : null,
             Camara: new CamaraEnrichedSummary(camaraId, $"Camara {camaraId}", 1),
             ObraSocial: null,
             ObraSocialValidadaPorPerfil: null);

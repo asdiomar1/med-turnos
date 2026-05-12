@@ -1,44 +1,26 @@
 namespace MedicalCenter.Application.DTOs;
 
 public sealed record DashboardSummaryDto(
-    DateOnly Fecha,
-    int TotalTurnos,
-    int Libres,
-    int Ocupados,
-    int Apartados,
-    int Cancelados,
-    decimal OcupacionPorcentaje,
-    DateTimeOffset GeneradoEn);
+    int PacientesHoy,
+    int ApartadosActivos);
 
 public sealed record DashboardOccupancyCameraDto(
-    int? CameraId,
-    string? CameraName,
-    int TotalTurnos,
-    int Libres,
+    int CamaraId,
+    string CamaraNombre,
+    int CapacidadTotal,
     int Ocupados,
-    int Apartados,
-    int Cancelados);
+    int PorcentajeOcupacion);
 
-public sealed record DashboardOccupancyDto(
-    DateOnly Fecha,
-    int TotalTurnos,
-    int Libres,
-    int Ocupados,
-    int Apartados,
-    int Cancelados,
-    decimal OcupacionPorcentaje,
-    IReadOnlyCollection<DashboardOccupancyCameraDto> PorCamara);
-
-public sealed record DashboardAgendaBucketDto(
-    DateOnly Fecha,
+public sealed record DashboardAgendaRowDto(
     TimeOnly Hora,
-    int? CameraId,
-    string? CameraName,
-    int TotalTurnos,
-    int Libres,
-    int Ocupados,
-    int Apartados,
-    int Cancelados);
+    int Lugar,
+    int CamaraId,
+    string CamaraNombre,
+    string NombrePaciente,
+    string ModalidadCobro,
+    bool EsNuevoIngreso,
+    bool EsBloqueCompleto,
+    string Estado);
 
 public sealed record DashboardAlertDto(
     string Code,
@@ -46,13 +28,15 @@ public sealed record DashboardAlertDto(
     string Severity,
     int Count);
 
+public sealed record DashboardUiAlertDto(
+    string Tipo,
+    string Titulo,
+    string Descripcion,
+    string TargetTab);
+
 public sealed record DashboardWeeklyVolumeItemDto(
     DateOnly Fecha,
-    int TotalTurnos,
-    int Libres,
-    int Ocupados,
-    int Apartados,
-    int Cancelados);
+    int Ocupados);
 
 public sealed record DailyClosingTurnoDto(
     Guid? SlotId,
@@ -66,7 +50,7 @@ public sealed record DailyClosingTurnoDto(
     int PacienteNumeroDia,
     string? NombrePaciente,
     int SesionNumero,
-    string? ModalidadCobro,
+    string ModalidadCobro,
     int? ObraSocialId,
     string? ObraSocialNombre,
     string? ObraSocialAbreviatura,
@@ -79,7 +63,11 @@ public sealed record DailyClosingTurnoDto(
     string? MedicoNombre,
     bool EsMonoxido,
     bool EsOxibarica,
-    bool Asistio);
+    bool Asistio,
+    bool ReferidoTercero,
+    int? ReferenteId,
+    string? ReferenteNombre,
+    string? ReferenteTipo);
 
 public sealed record DailyClosingPreviewDto(
     DateOnly Fecha,

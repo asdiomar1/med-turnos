@@ -146,7 +146,9 @@ public sealed record OutOfHoursTurnCreateCommand(
     bool MonoxidoOrdenMedica,
     bool MonoxidoResumenClinico,
     int? MonoxidoMedicoId,
-    Guid? MonoxidoMedicoUserId = null);
+    Guid? MonoxidoMedicoUserId = null,
+    int? MedicoId = null,
+    Guid? MedicoUserId = null);
 
 public sealed record OutOfHoursTurnSummary(
     Guid Id,

@@ -406,6 +406,12 @@ public sealed class OutOfHoursTurnCreateRequest
 
     [JsonPropertyName("monoxido_medico_user_id")]
     public Guid? MonoxidoMedicoUserId { get; init; }
+
+    [JsonPropertyName("medico_id")]
+    public int? MedicoId { get; init; }
+
+    [JsonPropertyName("medico_user_id")]
+    public Guid? MedicoUserId { get; init; }
 }
 
 public sealed class OutOfHoursTurnResponse

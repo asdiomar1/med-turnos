@@ -4,110 +4,59 @@ namespace MedicalCenter.Contracts.Dashboards;
 
 public sealed class DashboardSummaryResponse
 {
-    [JsonPropertyName("fecha")]
-    public DateOnly Fecha { get; init; }
+    [JsonPropertyName("pacientes_hoy")]
+    public int PacientesHoy { get; init; }
 
-    [JsonPropertyName("total_turnos")]
-    public int TotalTurnos { get; init; }
-
-    [JsonPropertyName("libres")]
-    public int Libres { get; init; }
-
-    [JsonPropertyName("ocupados")]
-    public int Ocupados { get; init; }
-
-    [JsonPropertyName("apartados")]
-    public int Apartados { get; init; }
-
-    [JsonPropertyName("cancelados")]
-    public int Cancelados { get; init; }
-
-    [JsonPropertyName("ocupacion_porcentaje")]
-    public decimal OcupacionPorcentaje { get; init; }
-
-    [JsonPropertyName("generado_en")]
-    public DateTimeOffset GeneradoEn { get; init; }
+    [JsonPropertyName("apartados_activos")]
+    public int ApartadosActivos { get; init; }
 }
 
 public sealed class DashboardOccupancyCameraResponse
 {
-    [JsonPropertyName("camera_id")]
-    public int? CameraId { get; init; }
+    [JsonPropertyName("camara_id")]
+    public int CamaraId { get; init; }
 
-    [JsonPropertyName("camera_name")]
-    public string? CameraName { get; init; }
+    [JsonPropertyName("camara_nombre")]
+    public string CamaraNombre { get; init; } = string.Empty;
 
-    [JsonPropertyName("total_turnos")]
-    public int TotalTurnos { get; init; }
-
-    [JsonPropertyName("libres")]
-    public int Libres { get; init; }
+    [JsonPropertyName("capacidad_total")]
+    public int CapacidadTotal { get; init; }
 
     [JsonPropertyName("ocupados")]
     public int Ocupados { get; init; }
 
-    [JsonPropertyName("apartados")]
-    public int Apartados { get; init; }
-
-    [JsonPropertyName("cancelados")]
-    public int Cancelados { get; init; }
+    [JsonPropertyName("porcentaje_ocupacion")]
+    public int PorcentajeOcupacion { get; init; }
 }
 
-public sealed class DashboardOccupancyResponse
+public sealed class DashboardAgendaRowResponse
 {
-    [JsonPropertyName("fecha")]
-    public DateOnly Fecha { get; init; }
-
-    [JsonPropertyName("total_turnos")]
-    public int TotalTurnos { get; init; }
-
-    [JsonPropertyName("libres")]
-    public int Libres { get; init; }
-
-    [JsonPropertyName("ocupados")]
-    public int Ocupados { get; init; }
-
-    [JsonPropertyName("apartados")]
-    public int Apartados { get; init; }
-
-    [JsonPropertyName("cancelados")]
-    public int Cancelados { get; init; }
-
-    [JsonPropertyName("ocupacion_porcentaje")]
-    public decimal OcupacionPorcentaje { get; init; }
-
-    [JsonPropertyName("por_camara")]
-    public IReadOnlyCollection<DashboardOccupancyCameraResponse> PorCamara { get; init; } = [];
-}
-
-public sealed class DashboardAgendaBucketResponse
-{
-    [JsonPropertyName("fecha")]
-    public DateOnly Fecha { get; init; }
-
     [JsonPropertyName("hora")]
-    public TimeOnly Hora { get; init; }
+    public string Hora { get; init; } = string.Empty;
 
-    [JsonPropertyName("camera_id")]
-    public int? CameraId { get; init; }
+    [JsonPropertyName("lugar")]
+    public int Lugar { get; init; }
 
-    [JsonPropertyName("camera_name")]
-    public string? CameraName { get; init; }
+    [JsonPropertyName("camara_id")]
+    public int CamaraId { get; init; }
 
-    [JsonPropertyName("total_turnos")]
-    public int TotalTurnos { get; init; }
+    [JsonPropertyName("camara_nombre")]
+    public string CamaraNombre { get; init; } = string.Empty;
 
-    [JsonPropertyName("libres")]
-    public int Libres { get; init; }
+    [JsonPropertyName("nombre_paciente")]
+    public string NombrePaciente { get; init; } = string.Empty;
 
-    [JsonPropertyName("ocupados")]
-    public int Ocupados { get; init; }
+    [JsonPropertyName("modalidad_cobro")]
+    public string ModalidadCobro { get; init; } = string.Empty;
 
-    [JsonPropertyName("apartados")]
-    public int Apartados { get; init; }
+    [JsonPropertyName("es_nuevo_ingreso")]
+    public bool EsNuevoIngreso { get; init; }
 
-    [JsonPropertyName("cancelados")]
-    public int Cancelados { get; init; }
+    [JsonPropertyName("es_bloque_completo")]
+    public bool EsBloqueCompleto { get; init; }
+
+    [JsonPropertyName("estado")]
+    public string Estado { get; init; } = string.Empty;
 }
 
 public sealed class DashboardAlertResponse
@@ -125,23 +74,26 @@ public sealed class DashboardAlertResponse
     public int Count { get; init; }
 }
 
+public sealed class DashboardUiAlertResponse
+{
+    [JsonPropertyName("tipo")]
+    public string Tipo { get; init; } = string.Empty;
+
+    [JsonPropertyName("titulo")]
+    public string Titulo { get; init; } = string.Empty;
+
+    [JsonPropertyName("descripcion")]
+    public string Descripcion { get; init; } = string.Empty;
+
+    [JsonPropertyName("target_tab")]
+    public string TargetTab { get; init; } = string.Empty;
+}
+
 public sealed class DashboardWeeklyVolumeItemResponse
 {
     [JsonPropertyName("fecha")]
     public DateOnly Fecha { get; init; }
 
-    [JsonPropertyName("total_turnos")]
-    public int TotalTurnos { get; init; }
-
-    [JsonPropertyName("libres")]
-    public int Libres { get; init; }
-
     [JsonPropertyName("ocupados")]
     public int Ocupados { get; init; }
-
-    [JsonPropertyName("apartados")]
-    public int Apartados { get; init; }
-
-    [JsonPropertyName("cancelados")]
-    public int Cancelados { get; init; }
 }
