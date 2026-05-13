@@ -94,36 +94,24 @@ public sealed class SimpleResponseMappingsTests
     [Fact]
     public void ToResponse_DashboardSummaryDto_MapsAllFields()
     {
-        var dto = new DashboardSummaryDto(DateOnly.FromDateTime(DateTime.Today), 100, 40, 30, 20, 10, 50.5m, DateTimeOffset.UtcNow);
+        var dto = new DashboardSummaryDto(30, 20);
         var response = dto.ToResponse();
 
-        Assert.Equal(dto.Fecha, response.Fecha);
-        Assert.Equal(dto.TotalTurnos, response.TotalTurnos);
-        Assert.Equal(dto.Libres, response.Libres);
-        Assert.Equal(dto.Ocupados, response.Ocupados);
-        Assert.Equal(dto.Apartados, response.Apartados);
-        Assert.Equal(dto.Cancelados, response.Cancelados);
-        Assert.Equal(dto.OcupacionPorcentaje, response.OcupacionPorcentaje);
-        Assert.Equal(dto.GeneradoEn, response.GeneradoEn);
+        Assert.Equal(dto.PacientesHoy, response.PacientesHoy);
+        Assert.Equal(dto.ApartadosActivos, response.ApartadosActivos);
     }
 
     [Fact]
-    public void ToResponse_DashboardOccupancyDto_MapsAllFields()
+    public void ToResponse_DashboardOccupancyCameraDto_MapsAllFields()
     {
-        var cameraDto = new DashboardOccupancyCameraDto(1, "Camara 1", 50, 20, 15, 10, 5);
-        var dto = new DashboardOccupancyDto(DateOnly.FromDateTime(DateTime.Today), 100, 40, 30, 20, 10, 50.5m, new[] { cameraDto });
+        var dto = new DashboardOccupancyCameraDto(1, "Camara 1", 24, 1, 4);
         var response = dto.ToResponse();
 
-        Assert.Equal(dto.Fecha, response.Fecha);
-        Assert.Equal(dto.TotalTurnos, response.TotalTurnos);
-        Assert.Equal(dto.Libres, response.Libres);
+        Assert.Equal(dto.CamaraId, response.CamaraId);
+        Assert.Equal(dto.CamaraNombre, response.CamaraNombre);
+        Assert.Equal(dto.CapacidadTotal, response.CapacidadTotal);
         Assert.Equal(dto.Ocupados, response.Ocupados);
-        Assert.Equal(dto.Apartados, response.Apartados);
-        Assert.Equal(dto.Cancelados, response.Cancelados);
-        Assert.Equal(dto.OcupacionPorcentaje, response.OcupacionPorcentaje);
-        Assert.Single(response.PorCamara);
-        Assert.Equal(cameraDto.CameraId, response.PorCamara.First().CameraId);
-        Assert.Equal(cameraDto.CameraName, response.PorCamara.First().CameraName);
+        Assert.Equal(dto.PorcentajeOcupacion, response.PorcentajeOcupacion);
     }
 
     [Fact]
@@ -131,7 +119,7 @@ public sealed class SimpleResponseMappingsTests
     {
         var alertDto = new DashboardAlertDto("ERR01", "Error message", "High", 1);
         var turnoDto = new DailyClosingTurnoDto(
-            Guid.NewGuid(), null, null, Guid.NewGuid(), DateOnly.FromDateTime(DateTime.Today), "10:00", 1, "Camara 1", 1, "Paciente", 1, "Modalidad", 1, "OSDE", "OS", 100.0m, "AUT-123", 10, Guid.NewGuid(), true, 1, "Medico", false, false, true);
+            Guid.NewGuid(), null, null, Guid.NewGuid(), DateOnly.FromDateTime(DateTime.Today), "10:00", 1, "Camara 1", 1, "Paciente", 1, "Modalidad", 1, "OSDE", "OS", 100.0m, "AUT-123", 10, Guid.NewGuid(), true, 1, "Medico", false, false, true, true, 7, "Referente", "agencia");
         var dto = new DailyClosingPreviewDto(
             DateOnly.FromDateTime(DateTime.Today), 10, 5, 3, 1, 1, 30.0m, true, 
             new[] { alertDto }, DateTimeOffset.UtcNow, new[] { turnoDto });
@@ -151,6 +139,8 @@ public sealed class SimpleResponseMappingsTests
         Assert.Single(response.Turnos);
         Assert.Equal(alertDto.Code, response.Alertas.First().Code);
         Assert.Equal(turnoDto.SlotId, response.Turnos.First().SlotId);
+        Assert.True(response.Turnos.First().ReferidoTercero);
+        Assert.Equal("agencia", response.Turnos.First().ReferenteTipo);
     }
 
     [Fact]
@@ -460,23 +450,42 @@ public sealed class SimpleResponseMappingsTests
     }
 
     [Fact]
-    public void ToResponse_DashboardAgendaBucketDto_MapsAllFields()
+    public void ToResponse_DashboardAgendaRowDto_MapsAllFields()
     {
-        var dto = new DashboardAgendaBucketDto(DateOnly.FromDateTime(DateTime.Today), new TimeOnly(10, 0), 1, "Cam", 10, 5, 3, 1, 1);
+        var dto = new DashboardAgendaRowDto(new TimeOnly(10, 0), 2, 1, "Cam", "Paciente", "particular", true, false, "asignado");
         var response = dto.ToResponse();
 
-        Assert.Equal(dto.Hora, response.Hora);
-        Assert.Equal(dto.TotalTurnos, response.TotalTurnos);
+        Assert.Equal("10:00", response.Hora);
+        Assert.Equal(dto.Lugar, response.Lugar);
+        Assert.Equal(dto.CamaraId, response.CamaraId);
+        Assert.Equal(dto.CamaraNombre, response.CamaraNombre);
+        Assert.Equal(dto.NombrePaciente, response.NombrePaciente);
+        Assert.Equal(dto.ModalidadCobro, response.ModalidadCobro);
+        Assert.Equal(dto.EsNuevoIngreso, response.EsNuevoIngreso);
+        Assert.Equal(dto.EsBloqueCompleto, response.EsBloqueCompleto);
+        Assert.Equal(dto.Estado, response.Estado);
+    }
+
+    [Fact]
+    public void ToResponse_DashboardUiAlertDto_MapsAllFields()
+    {
+        var dto = new DashboardUiAlertDto("cierre_diario_pendiente", "Cierre diario pendiente", "Falta cerrar el día", "cierres-diario");
+        var response = dto.ToResponse();
+
+        Assert.Equal(dto.Tipo, response.Tipo);
+        Assert.Equal(dto.Titulo, response.Titulo);
+        Assert.Equal(dto.Descripcion, response.Descripcion);
+        Assert.Equal(dto.TargetTab, response.TargetTab);
     }
 
     [Fact]
     public void ToResponse_DashboardWeeklyVolumeItemDto_MapsAllFields()
     {
-        var dto = new DashboardWeeklyVolumeItemDto(DateOnly.FromDateTime(DateTime.Today), 100, 50, 30, 10, 10);
+        var dto = new DashboardWeeklyVolumeItemDto(DateOnly.FromDateTime(DateTime.Today), 30);
         var response = dto.ToResponse();
 
         Assert.Equal(dto.Fecha, response.Fecha);
-        Assert.Equal(dto.TotalTurnos, response.TotalTurnos);
+        Assert.Equal(dto.Ocupados, response.Ocupados);
     }
 
     [Fact]

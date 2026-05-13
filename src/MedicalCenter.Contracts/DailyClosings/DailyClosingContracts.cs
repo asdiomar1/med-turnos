@@ -40,7 +40,7 @@ public sealed class DailyClosingTurnoResponse
     public int SesionNumero { get; init; }
 
     [JsonPropertyName("modalidad_cobro")]
-    public string? ModalidadCobro { get; init; }
+    public string ModalidadCobro { get; init; } = "particular";
 
     [JsonPropertyName("obra_social_id")]
     public int? ObraSocialId { get; init; }
@@ -80,6 +80,18 @@ public sealed class DailyClosingTurnoResponse
 
     [JsonPropertyName("asistio")]
     public bool Asistio { get; init; }
+
+    [JsonPropertyName("referido_tercero")]
+    public bool ReferidoTercero { get; init; }
+
+    [JsonPropertyName("referente_id")]
+    public int? ReferenteId { get; init; }
+
+    [JsonPropertyName("referente_nombre")]
+    public string? ReferenteNombre { get; init; }
+
+    [JsonPropertyName("referente_tipo")]
+    public string? ReferenteTipo { get; init; }
 }
 
 public sealed class DailyClosingPreviewResponse

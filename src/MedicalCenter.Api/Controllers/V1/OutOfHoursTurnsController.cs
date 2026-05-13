@@ -21,11 +21,11 @@ public sealed class OutOfHoursTurnsController(IOutOfHoursTurnsService outOfHours
     }
 
     [HttpPost]
-    public async Task<IActionResult> Create([FromBody] OutOfHoursTurnCreateRequest request, string idempotencyKey, CancellationToken cancellationToken)
+    public async Task<IActionResult> Create([FromBody] OutOfHoursTurnCreateRequest request, [FromHeader(Name = "Idempotency-Key")] string idempotencyKey, CancellationToken cancellationToken)
     {
         var item = await outOfHoursTurnsService.CreateAsync(
             User.GetUserId(),
-            new OutOfHoursTurnCreateCommand(request.Fecha, request.Hora, request.PacienteId, request.OperadorCamaraId, request.Notas, request.EsMonoxido, request.MonoxidoOrdenMedica, request.MonoxidoResumenClinico, request.MonoxidoMedicoId, request.MonoxidoMedicoUserId),
+            new OutOfHoursTurnCreateCommand(request.Fecha, request.Hora, request.PacienteId, request.OperadorCamaraId, request.Notas, request.EsMonoxido, request.MonoxidoOrdenMedica, request.MonoxidoResumenClinico, request.MonoxidoMedicoId, request.MonoxidoMedicoUserId, request.MedicoId, request.MedicoUserId),
             idempotencyKey,
             cancellationToken);
 

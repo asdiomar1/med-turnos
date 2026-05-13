@@ -54,6 +54,9 @@ public sealed class OutOfHoursTurnsService(
                     throw new ConflictException("Ya existe un turno fuera de horario para ese paciente y horario.");
                 }
 
+                var medicoId = command.MedicoId ?? command.MonoxidoMedicoId;
+                var medicoUserId = command.MedicoUserId ?? command.MonoxidoMedicoUserId;
+
                 var operadorCamaraId = command.OperadorCamaraId ?? actor.Id;
                 var turno = new OutOfHoursTurn(new OutOfHoursTurnCreateParams(
                     Guid.NewGuid(),
@@ -66,8 +69,8 @@ public sealed class OutOfHoursTurnsService(
                     command.EsMonoxido,
                     command.MonoxidoOrdenMedica,
                     command.MonoxidoResumenClinico,
-                    command.MonoxidoMedicoId,
-                    command.MonoxidoMedicoUserId));
+                    medicoId,
+                    medicoUserId));
 
                 await outOfHoursTurnRepository.AddAsync(turno, cancellationToken);
                 await unitOfWork.SaveChangesAsync(cancellationToken);

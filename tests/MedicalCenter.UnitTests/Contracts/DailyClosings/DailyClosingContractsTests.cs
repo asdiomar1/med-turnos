@@ -55,7 +55,11 @@ public sealed class DailyClosingContractsTests
             Hora = "10:00",
             CamaraNombre = "Camara 1",
             EsNuevoIngreso = true,
-            EsMonoxido = false
+            EsMonoxido = false,
+            ReferidoTercero = true,
+            ReferenteId = 10,
+            ReferenteNombre = "Clinica Central",
+            ReferenteTipo = "agencia"
         };
 
         var json = JsonSerializer.Serialize(response, _options);
@@ -65,5 +69,16 @@ public sealed class DailyClosingContractsTests
         Assert.Contains("\"camara_nombre\"", json);
         Assert.Contains("\"es_nuevo_ingreso\"", json);
         Assert.Contains("\"es_monoxido\"", json);
+        Assert.Contains("\"referido_tercero\"", json);
+        Assert.Contains("\"referente_id\"", json);
+        Assert.Contains("\"referente_nombre\"", json);
+        Assert.Contains("\"referente_tipo\"", json);
+    }
+
+    [Fact]
+    public void DailyClosingTurnoResponse_DefaultModalidadCobro_IsParticular()
+    {
+        var response = new DailyClosingTurnoResponse();
+        Assert.Equal("particular", response.ModalidadCobro);
     }
 }

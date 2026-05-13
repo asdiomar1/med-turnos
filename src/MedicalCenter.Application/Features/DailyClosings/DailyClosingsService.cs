@@ -222,6 +222,11 @@ public sealed class DailyClosingsService(
                 patientDayCounts[appt.PacienteId.Value]++;
             }
 
+            var referidoTercero = appt.ReferidoTercero ?? false;
+            var referenteId = referidoTercero ? appt.ReferenteId : null;
+            var referenteNombre = referidoTercero ? appt.Referente?.Nombre : null;
+            var referenteTipo = referidoTercero ? NormalizeReferenteTipo(appt.Referente?.Tipo) : null;
+
             result.Add(new DailyClosingTurnoDto(
                 SlotId: appt.Id,
                 TurnoFueraHorarioId: null,
@@ -234,7 +239,7 @@ public sealed class DailyClosingsService(
                 PacienteNumeroDia: appt.PacienteId.HasValue ? patientDayCounts[appt.PacienteId.Value] : 0,
                 NombrePaciente: appt.Paciente?.Nombre,
                 SesionNumero: 0, // Simplified: could be calculated if we load cycle progress
-                ModalidadCobro: appt.ModalidadCobro,
+                ModalidadCobro: NormalizeModalidadCobro(appt.ModalidadCobro),
                 ObraSocialId: appt.ObraSocialId,
                 ObraSocialNombre: appt.ObraSocial?.Nombre,
                 ObraSocialAbreviatura: appt.ObraSocial?.Abreviatura,
@@ -247,7 +252,11 @@ public sealed class DailyClosingsService(
                 MedicoNombre: appt.Medico?.Nombre,
                 EsMonoxido: appt.EsMonoxido ?? false,
                 EsOxibarica: !(appt.EsMonoxido ?? false),
-                Asistio: appt.Estado == "completada"
+                Asistio: appt.Estado == "completada",
+                ReferidoTercero: referidoTercero,
+                ReferenteId: referenteId,
+                ReferenteNombre: referenteNombre,
+                ReferenteTipo: referenteTipo
             ));
         }
 
@@ -268,7 +277,7 @@ public sealed class DailyClosingsService(
                 PacienteNumeroDia: patientDayCounts[extra.PacienteId],
                 NombrePaciente: extra.Paciente?.Nombre,
                 SesionNumero: 0,
-                ModalidadCobro: "obra_social", // Common default for medical centers
+                ModalidadCobro: "obra_social",
                 ObraSocialId: null,
                 ObraSocialNombre: null,
                 ObraSocialAbreviatura: null,
@@ -281,10 +290,33 @@ public sealed class DailyClosingsService(
                 MedicoNombre: extra.MonoxidoMedico?.Nombre,
                 EsMonoxido: extra.EsMonoxido,
                 EsOxibarica: !extra.EsMonoxido,
-                Asistio: true
+                Asistio: true,
+                ReferidoTercero: false,
+                ReferenteId: null,
+                ReferenteNombre: null,
+                ReferenteTipo: null
             ));
         }
 
         return result;
+    }
+
+    private static string NormalizeModalidadCobro(string? modalidadCobro) =>
+        string.IsNullOrWhiteSpace(modalidadCobro) ? "particular" : modalidadCobro.Trim();
+
+    private static string? NormalizeReferenteTipo(string? referenteTipo)
+    {
+        if (string.IsNullOrWhiteSpace(referenteTipo))
+        {
+            return null;
+        }
+
+        return referenteTipo.Trim().ToLowerInvariant() switch
+        {
+            "agencia" => "agencia",
+            "medico" => "medico",
+            "otro" => "otro",
+            _ => null
+        };
     }
 }

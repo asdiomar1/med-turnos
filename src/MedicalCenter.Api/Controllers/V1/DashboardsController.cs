@@ -22,7 +22,7 @@ public sealed class DashboardsController(IDashboardService dashboardService) : C
     public async Task<IActionResult> GetOcupacion([FromQuery] DateOnly? fecha, CancellationToken cancellationToken)
     {
         var date = fecha ?? DateOnly.FromDateTime(DateTime.UtcNow);
-        return Ok((await dashboardService.GetOcupacionAsync(date, cancellationToken)).ToResponse());
+        return Ok((await dashboardService.GetOcupacionAsync(date, cancellationToken)).Select(x => x.ToResponse()));
     }
 
     [HttpGet("agenda")]
